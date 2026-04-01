@@ -1,17 +1,14 @@
 @import "tailwindcss";
 
 :root {
-  font-family: "Space Grotesk", "Noto Sans JP", sans-serif;
-  color: #f7f3eb;
+  font-family: "Sora", "Noto Sans JP", sans-serif;
+  color: #eff4fb;
   background: radial-gradient(
       circle at top,
-      rgba(247, 181, 0, 0.16),
-      transparent 26%
-    ), linear-gradient(135deg, #111827 0%, #1f2937 42%, #3a2414 100%);
+      rgba(125, 211, 252, 0.28),
+      transparent 24%
+    ), linear-gradient(180deg, #07111f 0%, #132238 48%, #1d3557 100%);
   color-scheme: dark;
-  --color-ink: #101826;
-  --color-paper: #faf5ee;
-  --color-sand: #efe1c7;
 }
 
 * {
@@ -29,19 +26,78 @@ body {
   min-width: 320px;
 }
 
-.scene-shell {
-  height: min(72vh, 720px);
-  overflow: hidden;
-  border-radius: 1.5rem;
-  background: radial-gradient(
-      circle at 50% 10%,
-      rgba(255, 255, 255, 0.4),
-      transparent 28%
-    ), linear-gradient(180deg, #f7f0e1 0%, #dfc8a4 100%);
+.app-shell {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 24px;
 }
 
-@media (max-width: 1024px) {
-  .scene-shell {
-    height: 50vh;
+.prototype-panel {
+  display: grid;
+  gap: 24px;
+  width: min(1100px, 100%);
+}
+
+.prototype-copy {
+  text-align: center;
+}
+
+.prototype-copy h1 {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+
+.prototype-copy p {
+  width: min(680px, 100%);
+  margin: 12px auto 0;
+  color: rgba(232, 240, 250, 0.82);
+  line-height: 1.7;
+}
+
+.eyebrow {
+  margin: 0 0 12px;
+  color: #8bd3ff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+}
+
+.viewport-frame {
+  width: 100%;
+  height: min(72vh, 760px);
+  min-height: 420px;
+  overflow: hidden;
+  border: 1px solid rgba(191, 219, 254, 0.18);
+  border-radius: 32px;
+  background: radial-gradient(
+      circle at top,
+      rgba(255, 255, 255, 0.42),
+      transparent 32%
+    ), linear-gradient(180deg, #eff7ff 0%, #d3e2f2 100%);
+  box-shadow: 0 30px 80px rgba(3, 10, 20, 0.45), inset 0 1px 0
+    rgba(255, 255, 255, 0.2);
+}
+
+canvas {
+  display: block;
+}
+
+@media (max-width: 768px) {
+  .app-shell {
+    padding: 16px;
+  }
+
+  .prototype-panel {
+    gap: 18px;
+  }
+
+  .viewport-frame {
+    height: 58vh;
+    min-height: 360px;
+    border-radius: 24px;
   }
 }

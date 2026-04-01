@@ -12,18 +12,17 @@ vi.mock("@react-three/fiber", () => ({
 }));
 
 vi.mock("@react-three/drei", () => ({
-  Environment: () => null,
-  Float: ({ children }: { children: ReactNode }) => <>{children}</>,
+  ContactShadows: () => null,
   OrbitControls: () => null,
 }));
 
 describe("App", () => {
-  it("renders the starter heading", () => {
+  it("renders the 3d playground heading", () => {
     render(<App />);
 
     expect(
       screen.getByRole("heading", {
-        name: /React \/ Three\.js の制作環境をそのまま触り始められる土台/i,
+        name: /3D UI Playground/i,
       }),
     ).toBeInTheDocument();
   });
