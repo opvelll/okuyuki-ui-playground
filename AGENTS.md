@@ -1,11 +1,5 @@
 # Repository Workflow
 
-## Setup
-
-```bash
-pnpm install
-pnpm run e2e:install
-```
 
 ## Daily Steps
 
