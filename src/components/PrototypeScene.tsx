@@ -1,6 +1,7 @@
 import { ContactShadows, OrbitControls } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
 import { useRef } from "react";
+import { MOUSE } from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { useUiStore } from "../store/uiStore";
 import { FloorVisual } from "./scene/FloorVisual";
@@ -53,8 +54,13 @@ export function PrototypeScene() {
         <OrbitControls
           ref={controlsRef}
           enableDamping={false}
-          enablePan={false}
+          enablePan
           maxPolarAngle={Math.PI / 2.1}
+          mouseButtons={{
+            LEFT: MOUSE.ROTATE,
+            MIDDLE: MOUSE.DOLLY,
+            RIGHT: MOUSE.PAN,
+          }}
         />
       </Canvas>
     </div>

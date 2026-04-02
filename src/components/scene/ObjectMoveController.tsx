@@ -85,6 +85,10 @@ export function ObjectMoveController({
     event: ThreeEvent<PointerEvent>,
     sceneObject: SceneObject,
   ) => {
+    if (event.button !== 0) {
+      return;
+    }
+
     event.stopPropagation();
 
     selectObject(sceneObject.id);
