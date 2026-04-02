@@ -1,7 +1,10 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
-import { vi } from "vitest";
+import { beforeEach, vi } from "vitest";
 import App from "./App";
+import { useSceneStore } from "./store/sceneStore";
+import { useUiStore } from "./store/uiStore";
 
 vi.mock("@react-three/fiber", () => ({
   Canvas: ({ children }: { children: ReactNode }) => (
@@ -23,7 +26,20 @@ vi.mock("@react-three/drei", () => ({
 }));
 
 describe("App", () => {
-  it("renders the compact heading and physics switch", () => {
+  beforeEach(() => {
+    useUiStore.setState({
+      interactionState: "idle",
+      physicsEnabled: true,
+      moveDepthWheelDirection: "normal",
+      moveDepthWheelStep: 0.24,
+      moveMode: "screen-depth-drag",
+      selectedObjectId: null,
+      settingsOpen: true,
+    });
+    useSceneStore.getState().resetScene();
+  });
+
+  it("renders the compact heading and settings window", () => {
     render(<App />);
 
     expect(
@@ -33,5 +49,29 @@ describe("App", () => {
     ).toBeInTheDocument();
 
     expect(screen.getByLabelText(/Physics/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Collapse settings/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText(/Depth Wheel Step/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Physics enabled: object dragging is paused/i),
+    ).toBeInTheDocument();
+  });
+
+  it("collapses the settings window", async () => {
+    const user = userEvent.setup();
+
+    render(<App />);
+
+    await user.click(
+      screen.getByRole("button", { name: /Collapse settings/i }),
+    );
+
+    expect(
+      screen.getByRole("button", { name: /Expand settings/i }),
+    ).toHaveAttribute("aria-expanded", "false");
+    expect(
+      screen.queryByLabelText(/Depth Wheel Step/i),
+    ).not.toBeInTheDocument();
   });
 });

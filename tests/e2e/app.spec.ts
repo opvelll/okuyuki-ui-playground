@@ -9,5 +9,22 @@ test("shows the 3d prototype screen", async ({ page }) => {
     }),
   ).toBeVisible();
 
+  await expect(
+    page.getByRole("button", { name: /Collapse settings/i }),
+  ).toBeVisible();
   await expect(page.getByLabel("Physics")).toBeVisible();
+  await expect(
+    page.getByText(/Physics enabled: object dragging is paused/i),
+  ).toBeVisible();
+});
+
+test("collapses the settings window", async ({ page }) => {
+  await page.goto("/");
+
+  await page.getByRole("button", { name: /Collapse settings/i }).click();
+
+  await expect(
+    page.getByRole("button", { name: /Expand settings/i }),
+  ).toBeVisible();
+  await expect(page.getByLabel("Depth Wheel Step")).toHaveCount(0);
 });

@@ -1,0 +1,278 @@
+import { type ThreeEvent, useThree } from "@react-three/fiber";
+import { type RefObject, useCallback, useEffect, useMemo, useRef } from "react";
+import { Plane, Vector2, Vector3 } from "three";
+import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
+import { useSceneStore } from "../../store/sceneStore";
+import { useUiStore } from "../../store/uiStore";
+import type { SceneObject, Vector3Tuple } from "../../types/scene";
+import { DynamicSceneObject } from "./DynamicSceneObject";
+import { SelectableSceneObject } from "./SelectableSceneObject";
+
+type DragSession = {
+  objectId: string;
+  plane: Plane;
+  planeNormal: Vector3;
+  pointerId: number;
+  pointerOffset: Vector3;
+};
+
+const vectorFromTuple = ([x, y, z]: Vector3Tuple) => new Vector3(x, y, z);
+const tupleFromVector = ({ x, y, z }: Vector3): Vector3Tuple => [x, y, z];
+
+export function ObjectMoveController({
+  controlsRef,
+  physicsEnabled,
+}: {
+  controlsRef: RefObject<OrbitControlsImpl | null>;
+  physicsEnabled: boolean;
+}) {
+  const camera = useThree((state) => state.camera);
+  const gl = useThree((state) => state.gl);
+  const raycaster = useThree((state) => state.raycaster);
+  const clearSelection = useUiStore((state) => state.clearSelection);
+  const interactionState = useUiStore((state) => state.interactionState);
+  const moveMode = useUiStore((state) => state.moveMode);
+  const selectObject = useUiStore((state) => state.selectObject);
+  const selectedObjectId = useUiStore((state) => state.selectedObjectId);
+  const setInteractionState = useUiStore((state) => state.setInteractionState);
+  const objectIds = useSceneStore((state) => state.objectIds);
+  const objectsById = useSceneStore((state) => state.objectsById);
+  const dragSessionRef = useRef<DragSession | null>(null);
+  const pointerVector = useMemo(() => new Vector2(), []);
+
+  const setControlsEnabled = useCallback(
+    (enabled: boolean) => {
+      if (controlsRef.current) {
+        controlsRef.current.enabled = enabled;
+      }
+    },
+    [controlsRef],
+  );
+
+  const finishDrag = useCallback(
+    (nextState: "active" | "idle") => {
+      dragSessionRef.current = null;
+      setControlsEnabled(true);
+      setInteractionState(nextState);
+    },
+    [setControlsEnabled, setInteractionState],
+  );
+
+  const projectClientPointToPlane = useCallback(
+    (clientX: number, clientY: number, plane: Plane) => {
+      const bounds = gl.domElement.getBoundingClientRect();
+      if (bounds.width === 0 || bounds.height === 0) {
+        return null;
+      }
+
+      pointerVector.set(
+        ((clientX - bounds.left) / bounds.width) * 2 - 1,
+        -((clientY - bounds.top) / bounds.height) * 2 + 1,
+      );
+      raycaster.setFromCamera(pointerVector, camera);
+
+      const intersection = new Vector3();
+      if (!raycaster.ray.intersectPlane(plane, intersection)) {
+        return null;
+      }
+
+      return intersection;
+    },
+    [camera, gl, pointerVector, raycaster],
+  );
+
+  const handlePointerDown = (
+    event: ThreeEvent<PointerEvent>,
+    sceneObject: SceneObject,
+  ) => {
+    event.stopPropagation();
+
+    selectObject(sceneObject.id);
+
+    if (physicsEnabled || moveMode !== "screen-depth-drag") {
+      return;
+    }
+
+    const planeNormal = camera.getWorldDirection(new Vector3()).normalize();
+    const objectPosition = vectorFromTuple(sceneObject.position);
+    const plane = new Plane().setFromNormalAndCoplanarPoint(
+      planeNormal,
+      objectPosition,
+    );
+    const intersection = projectClientPointToPlane(
+      event.nativeEvent.clientX,
+      event.nativeEvent.clientY,
+      plane,
+    );
+
+    if (!intersection) {
+      setInteractionState("active");
+      return;
+    }
+
+    dragSessionRef.current = {
+      objectId: sceneObject.id,
+      plane,
+      planeNormal,
+      pointerId: event.pointerId,
+      pointerOffset: objectPosition.sub(intersection),
+    };
+    setControlsEnabled(false);
+    setInteractionState("dragging");
+  };
+
+  useEffect(() => {
+    const handlePointerMove = (event: PointerEvent) => {
+      const dragSession = dragSessionRef.current;
+      if (!dragSession || event.pointerId !== dragSession.pointerId) {
+        return;
+      }
+
+      const intersection = projectClientPointToPlane(
+        event.clientX,
+        event.clientY,
+        dragSession.plane,
+      );
+
+      if (!intersection) {
+        return;
+      }
+
+      const nextPosition = intersection.add(dragSession.pointerOffset);
+      useSceneStore
+        .getState()
+        .updateObjectPosition(
+          dragSession.objectId,
+          tupleFromVector(nextPosition),
+        );
+    };
+
+    const handlePointerUp = (event: PointerEvent) => {
+      const dragSession = dragSessionRef.current;
+      if (!dragSession || event.pointerId !== dragSession.pointerId) {
+        return;
+      }
+
+      finishDrag("active");
+    };
+
+    const handleWheel = (event: WheelEvent) => {
+      const dragSession = dragSessionRef.current;
+      if (!dragSession) {
+        return;
+      }
+
+      event.preventDefault();
+
+      const { moveDepthWheelDirection, moveDepthWheelStep } =
+        useUiStore.getState();
+      const directionMultiplier = moveDepthWheelDirection === "normal" ? 1 : -1;
+      const delta =
+        (-event.deltaY / 100) * moveDepthWheelStep * directionMultiplier;
+
+      if (delta === 0) {
+        return;
+      }
+
+      const currentObject =
+        useSceneStore.getState().objectsById[dragSession.objectId];
+      if (!currentObject) {
+        return;
+      }
+
+      const forwardOffset = dragSession.planeNormal
+        .clone()
+        .multiplyScalar(delta);
+      const nextPosition = vectorFromTuple(currentObject.position).add(
+        forwardOffset,
+      );
+      const nextPlanePoint = dragSession.plane
+        .coplanarPoint(new Vector3())
+        .add(forwardOffset);
+
+      dragSession.plane.setFromNormalAndCoplanarPoint(
+        dragSession.planeNormal,
+        nextPlanePoint,
+      );
+      useSceneStore
+        .getState()
+        .updateObjectPosition(
+          dragSession.objectId,
+          tupleFromVector(nextPosition),
+        );
+    };
+
+    const handlePointerCancel = () => {
+      if (dragSessionRef.current) {
+        finishDrag(useUiStore.getState().selectedObjectId ? "active" : "idle");
+      }
+    };
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
+    window.addEventListener("pointercancel", handlePointerCancel);
+    window.addEventListener("wheel", handleWheel, { passive: false });
+
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+      window.removeEventListener("pointercancel", handlePointerCancel);
+      window.removeEventListener("wheel", handleWheel);
+    };
+  }, [finishDrag, projectClientPointToPlane]);
+
+  useEffect(() => {
+    if (!physicsEnabled) {
+      return;
+    }
+
+    if (dragSessionRef.current) {
+      finishDrag("idle");
+    } else {
+      setControlsEnabled(true);
+    }
+  }, [finishDrag, physicsEnabled, setControlsEnabled]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") {
+        return;
+      }
+
+      if (dragSessionRef.current) {
+        finishDrag("idle");
+      }
+      clearSelection();
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [clearSelection, finishDrag]);
+
+  return objectIds.map((objectId) => {
+    const sceneObject = objectsById[objectId];
+
+    if (!sceneObject) {
+      return null;
+    }
+
+    if (physicsEnabled) {
+      return (
+        <DynamicSceneObject key={`${objectId}-dynamic`} {...sceneObject} />
+      );
+    }
+
+    return (
+      <SelectableSceneObject
+        dragging={
+          interactionState === "dragging" && selectedObjectId === sceneObject.id
+        }
+        key={`${objectId}-static`}
+        onPointerDown={handlePointerDown}
+        sceneObject={sceneObject}
+        selected={selectedObjectId === sceneObject.id}
+      />
+    );
+  });
+}
