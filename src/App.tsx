@@ -210,7 +210,11 @@ function PrototypeScene({
           position={[0, 0.001, 0]}
           scale={14}
         />
-        <OrbitControls enablePan={false} maxPolarAngle={Math.PI / 2.1} />
+        <OrbitControls
+          enableDamping={false}
+          enablePan={false}
+          maxPolarAngle={Math.PI / 2.1}
+        />
       </Canvas>
     </div>
   );
