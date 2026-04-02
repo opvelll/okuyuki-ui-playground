@@ -11,19 +11,27 @@ vi.mock("@react-three/fiber", () => ({
   ),
 }));
 
+vi.mock("@react-three/rapier", () => ({
+  CuboidCollider: () => null,
+  Physics: ({ children }: { children: ReactNode }) => <>{children}</>,
+  RigidBody: ({ children }: { children: ReactNode }) => <>{children}</>,
+}));
+
 vi.mock("@react-three/drei", () => ({
   ContactShadows: () => null,
   OrbitControls: () => null,
 }));
 
 describe("App", () => {
-  it("renders the 3d playground heading", () => {
+  it("renders the compact heading and physics switch", () => {
     render(<App />);
 
     expect(
       screen.getByRole("heading", {
-        name: /3D UI Playground/i,
+        name: /Okuyuki-UI-Playground/i,
       }),
     ).toBeInTheDocument();
+
+    expect(screen.getByLabelText(/Physics/i)).toBeInTheDocument();
   });
 });
