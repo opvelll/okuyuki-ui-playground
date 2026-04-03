@@ -31,7 +31,6 @@ export function SceneStatusHud() {
     (state) => state.moveOverlayOrientationMode,
   );
   const moveDepthWheelStep = useUiStore((state) => state.moveDepthWheelStep);
-  const moveMode = useUiStore((state) => state.moveMode);
   const movePrecisionStep = useUiStore((state) => state.movePrecisionStep);
   const physicsEnabled = useUiStore((state) => state.physicsEnabled);
   const selectedObjectId = useUiStore((state) => state.selectedObjectId);
@@ -57,10 +56,6 @@ export function SceneStatusHud() {
           <dd>{interactionState}</dd>
         </div>
         <div className="grid grid-cols-[5rem_1fr] gap-3">
-          <dt className="text-slate-300/70">Mode</dt>
-          <dd>{moveMode}</dd>
-        </div>
-        <div className="grid grid-cols-[5rem_1fr] gap-3">
           <dt className="text-slate-300/70">Depth</dt>
           <dd>
             {moveDepthWheelStep.toFixed(2)} / {moveDepthWheelDirection}
@@ -69,8 +64,8 @@ export function SceneStatusHud() {
         <div className="grid grid-cols-[5rem_1fr] gap-3">
           <dt className="text-slate-300/70">Snap</dt>
           <dd>
-            wheel {moveDepthWheelStep.toFixed(2)} / shift{" "}
-            {movePrecisionStep.toFixed(2)} / ctrl {moveGridSnapStep.toFixed(2)}
+            shift {movePrecisionStep.toFixed(2)} / ctrl{" "}
+            {moveGridSnapStep.toFixed(2)}
           </dd>
         </div>
         <div className="grid grid-cols-[5rem_1fr] gap-3">

@@ -3,7 +3,6 @@ import { initialSceneObjects } from "../data/sceneObjects";
 import type { SceneObject, Vector3Tuple } from "../types/scene";
 
 type SceneState = {
-  objectIds: string[];
   objectsById: Record<string, SceneObject>;
   resetScene: () => void;
   updateObjectPosition: (id: string, position: Vector3Tuple) => void;
@@ -15,7 +14,6 @@ const createObjectsById = () =>
   ) as Record<string, SceneObject>;
 
 const createInitialSceneState = () => ({
-  objectIds: initialSceneObjects.map((sceneObject) => sceneObject.id),
   objectsById: createObjectsById(),
 });
 

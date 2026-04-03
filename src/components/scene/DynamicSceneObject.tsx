@@ -5,6 +5,20 @@ import { Euler, Quaternion, Vector3 } from "three";
 import type { SceneObject } from "../../types/scene";
 import { ShapeMesh } from "./ShapeMesh";
 
+const ZERO_VELOCITY = { x: 0, y: 0, z: 0 };
+
+const syncRigidBody = (
+  wakeUp: boolean,
+  rigidBody: RapierRigidBody,
+  nextTranslation: Vector3,
+  nextQuaternion: Quaternion,
+) => {
+  rigidBody.setTranslation(nextTranslation, wakeUp);
+  rigidBody.setRotation(nextQuaternion, wakeUp);
+  rigidBody.setLinvel(ZERO_VELOCITY, wakeUp);
+  rigidBody.setAngvel(ZERO_VELOCITY, wakeUp);
+};
+
 export function DynamicSceneObject({
   color,
   kind,
@@ -34,10 +48,7 @@ export function DynamicSceneObject({
       return;
     }
 
-    rigidBody.setTranslation(translation, false);
-    rigidBody.setRotation(quaternion, false);
-    rigidBody.setLinvel({ x: 0, y: 0, z: 0 }, false);
-    rigidBody.setAngvel({ x: 0, y: 0, z: 0 }, false);
+    syncRigidBody(false, rigidBody, translation, quaternion);
 
     const releaseTimer = window.setTimeout(() => {
       setBodyType("dynamic");
@@ -52,10 +63,7 @@ export function DynamicSceneObject({
       return;
     }
 
-    rigidBody.setTranslation(translation, true);
-    rigidBody.setRotation(quaternion, true);
-    rigidBody.setLinvel({ x: 0, y: 0, z: 0 }, true);
-    rigidBody.setAngvel({ x: 0, y: 0, z: 0 }, true);
+    syncRigidBody(true, rigidBody, translation, quaternion);
 
     if (bodyType === "dynamic") {
       rigidBody.wakeUp();

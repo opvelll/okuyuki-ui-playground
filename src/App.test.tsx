@@ -38,9 +38,7 @@ describe("App", () => {
       movePrecisionStep: 0.1,
       moveOverlayRadiusMultiplier: 1.15,
       moveDepthWheelStep: 0.24,
-      moveMode: "screen-depth-drag",
       selectedObjectId: null,
-      settingsOpen: true,
     });
     useSceneStore.getState().resetScene();
   });

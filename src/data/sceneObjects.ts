@@ -50,3 +50,7 @@ export const initialSceneObjects: SceneObject[] = [
     scale: [1, 1, 1],
   },
 ];
+
+export const sceneObjectIds = initialSceneObjects.map(
+  (sceneObject) => sceneObject.id,
+);

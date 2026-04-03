@@ -1,6 +1,4 @@
 import { create } from "zustand";
-
-export type MoveMode = "screen-depth-drag";
 export type MoveDepthWheelDirection = "normal" | "inverted";
 export type InteractionState = "idle" | "active" | "dragging";
 export type MoveOverlayOrientationMode =
@@ -30,10 +28,7 @@ type UiState = {
   movePrecisionStep: number;
   moveOverlayRadiusMultiplier: number;
   moveDepthWheelStep: number;
-  moveMode: MoveMode;
   selectedObjectId: string | null;
-  settingsOpen: boolean;
-  clearAxisMagnetTarget: () => void;
   clearSelection: () => void;
   selectObject: (objectId: string) => void;
   setAxisMagnetTarget: (target: AxisMagnetTarget | null) => void;
@@ -46,8 +41,6 @@ type UiState = {
   setMovePrecisionStep: (step: number) => void;
   setMoveOverlayRadiusMultiplier: (multiplier: number) => void;
   setMoveDepthWheelStep: (step: number) => void;
-  setMoveMode: (mode: MoveMode) => void;
-  toggleSettingsOpen: () => void;
 };
 
 export const useUiStore = create<UiState>((set) => ({
@@ -61,10 +54,7 @@ export const useUiStore = create<UiState>((set) => ({
   movePrecisionStep: 0.1,
   moveOverlayRadiusMultiplier: 1.15,
   moveDepthWheelStep: 0.24,
-  moveMode: "screen-depth-drag",
   selectedObjectId: null,
-  settingsOpen: true,
-  clearAxisMagnetTarget: () => set({ axisMagnetTarget: null }),
   clearSelection: () =>
     set({
       axisMagnetTarget: null,
@@ -96,7 +86,4 @@ export const useUiStore = create<UiState>((set) => ({
   setMoveOverlayRadiusMultiplier: (multiplier) =>
     set({ moveOverlayRadiusMultiplier: multiplier }),
   setMoveDepthWheelStep: (step) => set({ moveDepthWheelStep: step }),
-  setMoveMode: (mode) => set({ moveMode: mode }),
-  toggleSettingsOpen: () =>
-    set((state) => ({ settingsOpen: !state.settingsOpen })),
 }));

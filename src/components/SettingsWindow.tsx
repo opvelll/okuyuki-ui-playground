@@ -1,4 +1,9 @@
-import { useUiStore } from "../store/uiStore";
+import { useState } from "react";
+import {
+  type MoveDepthWheelDirection,
+  type MoveOverlayDisplayMode,
+  useUiStore,
+} from "../store/uiStore";
 
 const panelClasses =
   "absolute right-3 top-3 z-20 w-[min(20rem,calc(100vw-3rem))] overflow-hidden rounded-[1.4rem] border border-white/15 bg-slate-950/72 shadow-[0_22px_48px_rgba(3,10,20,0.34)] backdrop-blur-xl md:right-4 md:top-4";
@@ -7,7 +12,32 @@ const sectionHeadingClasses =
 const fieldClasses =
   "min-h-11 w-full rounded-2xl border border-white/12 bg-slate-900/80 px-3 text-sm text-slate-50 outline-none transition focus:border-sky-200/60 focus:ring-2 focus:ring-sky-300/40";
 
+const overlayDisplayOptions = [
+  { label: "1", value: "mode-1" },
+  { label: "2", value: "mode-2" },
+  { label: "3", value: "mode-3" },
+  { label: "2 + 3", value: "modes-2-3" },
+  { label: "1 + 2 + 3", value: "modes-1-2-3" },
+] as const;
+
+const depthDirectionOptions = [
+  { label: "normal", value: "normal" },
+  { label: "inverted", value: "inverted" },
+] as const;
+
+const isOverlayDisplayMode = (value: string): value is MoveOverlayDisplayMode =>
+  overlayDisplayOptions.some((option) => option.value === value);
+
+const isDepthDirection = (value: string): value is MoveDepthWheelDirection =>
+  depthDirectionOptions.some((option) => option.value === value);
+
+const parseNumberInput = (value: string) => {
+  const parsedValue = Number(value);
+  return Number.isFinite(parsedValue) ? parsedValue : null;
+};
+
 export function SettingsWindow() {
+  const [settingsOpen, setSettingsOpen] = useState(true);
   const physicsEnabled = useUiStore((state) => state.physicsEnabled);
   const moveDepthWheelDirection = useUiStore(
     (state) => state.moveDepthWheelDirection,
@@ -20,9 +50,7 @@ export function SettingsWindow() {
     (state) => state.moveOverlayRadiusMultiplier,
   );
   const moveDepthWheelStep = useUiStore((state) => state.moveDepthWheelStep);
-  const moveMode = useUiStore((state) => state.moveMode);
   const movePrecisionStep = useUiStore((state) => state.movePrecisionStep);
-  const settingsOpen = useUiStore((state) => state.settingsOpen);
   const setPhysicsEnabled = useUiStore((state) => state.setPhysicsEnabled);
   const setMoveDepthWheelDirection = useUiStore(
     (state) => state.setMoveDepthWheelDirection,
@@ -37,39 +65,17 @@ export function SettingsWindow() {
   const setMoveDepthWheelStep = useUiStore(
     (state) => state.setMoveDepthWheelStep,
   );
-  const setMoveMode = useUiStore((state) => state.setMoveMode);
   const setMovePrecisionStep = useUiStore(
     (state) => state.setMovePrecisionStep,
   );
-  const toggleSettingsOpen = useUiStore((state) => state.toggleSettingsOpen);
 
-  const handleDepthStepChange = (value: string) => {
-    const parsedValue = Number(value);
-    if (Number.isFinite(parsedValue)) {
-      setMoveDepthWheelStep(parsedValue);
-    }
-  };
-
-  const handleOverlayRadiusMultiplierChange = (value: string) => {
-    const parsedValue = Number(value);
-    if (Number.isFinite(parsedValue)) {
-      setMoveOverlayRadiusMultiplier(parsedValue);
-    }
-  };
-
-  const handlePrecisionStepChange = (value: string) => {
-    const parsedValue = Number(value);
-    if (Number.isFinite(parsedValue)) {
-      setMovePrecisionStep(parsedValue);
-    }
-  };
-
-  const handleGridSnapStepChange = (value: string) => {
-    const parsedValue = Number(value);
-    if (Number.isFinite(parsedValue)) {
-      setMoveGridSnapStep(parsedValue);
-    }
-  };
+  const handleNumberChange =
+    (setter: (value: number) => void) => (value: string) => {
+      const parsedValue = parseNumberInput(value);
+      if (parsedValue !== null) {
+        setter(parsedValue);
+      }
+    };
 
   return (
     <aside aria-label="Settings window" className={panelClasses}>
@@ -77,7 +83,7 @@ export function SettingsWindow() {
         aria-expanded={settingsOpen}
         aria-label={settingsOpen ? "Collapse settings" : "Expand settings"}
         className="flex w-full items-center justify-between gap-4 px-4 py-3 text-[0.72rem] font-bold uppercase tracking-[0.18em] text-slate-50 outline-none transition hover:bg-white/5 focus-visible:ring-2 focus-visible:ring-sky-300/50"
-        onClick={toggleSettingsOpen}
+        onClick={() => setSettingsOpen((currentValue) => !currentValue)}
         type="button"
       >
         <span>Settings</span>
@@ -116,25 +122,6 @@ export function SettingsWindow() {
             </h2>
             <label
               className="grid gap-2 text-sm text-slate-100/90"
-              htmlFor="move-mode"
-            >
-              <span>Mode</span>
-              <select
-                className={fieldClasses}
-                id="move-mode"
-                onChange={(event) => {
-                  const nextMode = event.target.value;
-                  if (nextMode === "screen-depth-drag") {
-                    setMoveMode(nextMode);
-                  }
-                }}
-                value={moveMode}
-              >
-                <option value="screen-depth-drag">screen-depth-drag</option>
-              </select>
-            </label>
-            <label
-              className="grid gap-2 text-sm text-slate-100/90"
               htmlFor="overlay-display-mode"
             >
               <span>Overlay Display</span>
@@ -143,23 +130,17 @@ export function SettingsWindow() {
                 id="overlay-display-mode"
                 onChange={(event) => {
                   const nextDisplayMode = event.target.value;
-                  if (
-                    nextDisplayMode === "mode-1" ||
-                    nextDisplayMode === "mode-2" ||
-                    nextDisplayMode === "mode-3" ||
-                    nextDisplayMode === "modes-2-3" ||
-                    nextDisplayMode === "modes-1-2-3"
-                  ) {
+                  if (isOverlayDisplayMode(nextDisplayMode)) {
                     setMoveOverlayDisplayMode(nextDisplayMode);
                   }
                 }}
                 value={moveOverlayDisplayMode}
               >
-                <option value="mode-1">1</option>
-                <option value="mode-2">2</option>
-                <option value="mode-3">3</option>
-                <option value="modes-2-3">2 + 3</option>
-                <option value="modes-1-2-3">1 + 2 + 3</option>
+                {overlayDisplayOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
             </label>
             <label
@@ -173,7 +154,7 @@ export function SettingsWindow() {
                 max="2"
                 min="0.01"
                 onChange={(event) =>
-                  handlePrecisionStepChange(event.target.value)
+                  handleNumberChange(setMovePrecisionStep)(event.target.value)
                 }
                 step="0.01"
                 type="number"
@@ -191,7 +172,7 @@ export function SettingsWindow() {
                 max="4"
                 min="0.01"
                 onChange={(event) =>
-                  handleGridSnapStepChange(event.target.value)
+                  handleNumberChange(setMoveGridSnapStep)(event.target.value)
                 }
                 step="0.01"
                 type="number"
@@ -209,7 +190,9 @@ export function SettingsWindow() {
                 max="4"
                 min="1"
                 onChange={(event) =>
-                  handleOverlayRadiusMultiplierChange(event.target.value)
+                  handleNumberChange(setMoveOverlayRadiusMultiplier)(
+                    event.target.value,
+                  )
                 }
                 step="0.1"
                 type="number"
@@ -226,7 +209,9 @@ export function SettingsWindow() {
                 id="depth-step"
                 max="2"
                 min="0.01"
-                onChange={(event) => handleDepthStepChange(event.target.value)}
+                onChange={(event) =>
+                  handleNumberChange(setMoveDepthWheelStep)(event.target.value)
+                }
                 step="0.01"
                 type="number"
                 value={moveDepthWheelStep}
@@ -242,17 +227,17 @@ export function SettingsWindow() {
                 id="depth-direction"
                 onChange={(event) => {
                   const nextDirection = event.target.value;
-                  if (
-                    nextDirection === "normal" ||
-                    nextDirection === "inverted"
-                  ) {
+                  if (isDepthDirection(nextDirection)) {
                     setMoveDepthWheelDirection(nextDirection);
                   }
                 }}
                 value={moveDepthWheelDirection}
               >
-                <option value="normal">normal</option>
-                <option value="inverted">inverted</option>
+                {depthDirectionOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
             </label>
           </section>
