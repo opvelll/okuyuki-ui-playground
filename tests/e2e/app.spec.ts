@@ -13,6 +13,8 @@ test("shows the 3d prototype screen", async ({ page }) => {
     page.getByRole("button", { name: /Collapse settings/i }),
   ).toBeVisible();
   await expect(page.getByLabel("Physics")).toBeVisible();
+  await expect(page.getByLabel("Shift Depth Step")).toBeVisible();
+  await expect(page.getByLabel("Ctrl Grid Snap Step")).toBeVisible();
   await expect(
     page.getByText(/Physics enabled: object dragging is paused/i),
   ).toBeVisible();

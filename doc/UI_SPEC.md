@@ -54,6 +54,9 @@
 - `moveOverlayRadiusMultiplier`
 - `moveDepthWheelStep`
 - `moveDepthWheelDirection`: `normal | inverted`
+- `movePrecisionStep`
+- `moveGridSnapStep`
+- `axisMagnetTarget`
 - `physicsEnabled`
 - `settingsOpen`
 
@@ -104,16 +107,23 @@
 - 対応する `pointerId` の移動だけを受け付ける。
 - 現在のポインタ座標を同じ plane に再投影する。
 - `intersection + pointerOffset` を次のオブジェクト位置として `useSceneStore` に反映する。
+- 修飾キーにより、最終位置へ次の補正をかける。
+  - `Ctrl`: 結果の world position を XYZ すべて `moveGridSnapStep` 単位でスナップする。
+  - `Shift`: 平面ドラッグには影響しない。
+  - `Shift + Ctrl`: 他オブジェクトのローカル `x+ / x- / y+ / y- / z+ / z-` のうち最も近い 1 本の軸 ray に吸着する。
+    直前の吸着先が近い範囲に残っている間は同じ軸方向・同じオブジェクトを優先し、ガタつきを抑える。
 
 ### 7.4 Depth Move
 
 - ドラッグ中だけ `window` の `wheel` を受け付ける。
 - 移動量は `(-deltaY / 100) * moveDepthWheelStep` を基準に計算する。
+- `Shift` 押下中は `movePrecisionStep` をホイール奥行き移動量として使う。
 - `moveDepthWheelDirection = inverted` のときは符号を反転する。
 - plane 自体を `planeNormal` 方向へ前後移動する。
 - その直後、現在の `clientX/clientY` で再投影し直してオブジェクト位置を更新する。
 - これにより、ホイール操作中もオブジェクトがカーソル基準から横滑りしにくい。
 - `wheel` イベントの位置が使えない場合は、最後に記録した `lastClientX / lastClientY` をフォールバックに使う。
+- `Ctrl` / `Shift + Ctrl` の位置補正規則は通常ドラッグと同じ。
 
 ### 7.5 Drag Finish / Cancel
 
@@ -171,8 +181,11 @@
   - `State`
   - `Mode`
   - `Depth`
+  - `Snap`
+  - `Magnet`
   - `Overlay`
   - 補助メッセージ
+- `Shift + Ctrl` で吸着中は、対象の軸 ray を scene 上に細いラインで表示する。
 - 補助メッセージは `physicsEnabled` と選択有無で切り替える。
 
 ## 9. Settings window の現在仕様
@@ -190,6 +203,8 @@
   - `1 + 2 + 3`
 - `Overlay Radius Multiplier`
 - `Depth Wheel Step`
+- `Shift Depth Step`
+- `Ctrl Grid Snap Step`
 - `Depth Direction`
 
 パネル自体は開閉できる。

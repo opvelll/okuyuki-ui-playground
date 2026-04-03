@@ -10,7 +10,7 @@ import {
 import { Plane, Vector2, Vector3 } from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { useSceneStore } from "../../store/sceneStore";
-import { useUiStore } from "../../store/uiStore";
+import { type AxisMagnetTarget, useUiStore } from "../../store/uiStore";
 import type { SceneObject, Vector3Tuple } from "../../types/scene";
 import { DragPlaneOverlay } from "./DragPlaneOverlay";
 import { DynamicSceneObject } from "./DynamicSceneObject";
@@ -19,6 +19,7 @@ import {
   type DragPlaneOverlayState,
   calculateDragPlaneOverlayGeometry,
 } from "./dragPlaneOverlay";
+import { applyScreenDepthDragModifiers } from "./moveDragModifiers";
 
 const OVERLAY_ORIENTATION_SHORTCUTS = {
   "1": "camera-facing",
@@ -27,6 +28,7 @@ const OVERLAY_ORIENTATION_SHORTCUTS = {
 } as const;
 
 type DragSession = {
+  axisMagnetTarget: AxisMagnetTarget | null;
   currentPoint: Vector3;
   lastSurfaceNormal: Vector3 | null;
   objectId: string;
@@ -37,6 +39,11 @@ type DragSession = {
   pointerId: number;
   pointerOffset: Vector3;
   startPoint: Vector3;
+};
+
+type DragModifierState = {
+  ctrlKey: boolean;
+  shiftKey: boolean;
 };
 
 const vectorFromTuple = ([x, y, z]: Vector3Tuple) => new Vector3(x, y, z);
@@ -57,6 +64,7 @@ export function ObjectMoveController({
   const moveMode = useUiStore((state) => state.moveMode);
   const selectObject = useUiStore((state) => state.selectObject);
   const selectedObjectId = useUiStore((state) => state.selectedObjectId);
+  const setAxisMagnetTarget = useUiStore((state) => state.setAxisMagnetTarget);
   const setInteractionState = useUiStore((state) => state.setInteractionState);
   const setMoveOverlayDisplayMode = useUiStore(
     (state) => state.setMoveOverlayDisplayMode,
@@ -83,11 +91,12 @@ export function ObjectMoveController({
   const finishDrag = useCallback(
     (nextState: "active" | "idle") => {
       dragSessionRef.current = null;
+      setAxisMagnetTarget(null);
       setOverlayState(null);
       setControlsEnabled(true);
       setInteractionState(nextState);
     },
-    [setControlsEnabled, setInteractionState],
+    [setAxisMagnetTarget, setControlsEnabled, setInteractionState],
   );
 
   const syncOverlayState = useCallback((dragSession: DragSession) => {
@@ -127,7 +136,12 @@ export function ObjectMoveController({
   );
 
   const updateDraggedObjectPosition = useCallback(
-    (dragSession: DragSession, clientX: number, clientY: number) => {
+    (
+      dragSession: DragSession,
+      clientX: number,
+      clientY: number,
+      modifierState: DragModifierState,
+    ) => {
       const intersection = projectClientPointToPlane(
         clientX,
         clientY,
@@ -142,18 +156,31 @@ export function ObjectMoveController({
       dragSession.lastClientY = clientY;
 
       const nextPosition = intersection.add(dragSession.pointerOffset);
-      dragSession.currentPoint.copy(nextPosition);
+      const { moveGridSnapStep } = useUiStore.getState();
+      const adjustedResult = applyScreenDepthDragModifiers({
+        currentAxisMagnetTarget: dragSession.axisMagnetTarget,
+        ctrlKey: modifierState.ctrlKey,
+        gridSnapStep: moveGridSnapStep,
+        objectId: dragSession.objectId,
+        objectsById: useSceneStore.getState().objectsById,
+        position: nextPosition,
+        shiftKey: modifierState.shiftKey,
+      });
+      dragSession.axisMagnetTarget = adjustedResult.axisMagnetTarget;
+      setAxisMagnetTarget(adjustedResult.axisMagnetTarget);
+      const adjustedPosition = adjustedResult.position;
+      dragSession.currentPoint.copy(adjustedPosition);
       useSceneStore
         .getState()
         .updateObjectPosition(
           dragSession.objectId,
-          tupleFromVector(nextPosition),
+          tupleFromVector(adjustedPosition),
         );
       syncOverlayState(dragSession);
 
-      return nextPosition;
+      return adjustedPosition;
     },
-    [projectClientPointToPlane, syncOverlayState],
+    [projectClientPointToPlane, setAxisMagnetTarget, syncOverlayState],
   );
 
   const handlePointerDown = (
@@ -190,6 +217,7 @@ export function ObjectMoveController({
     }
 
     dragSessionRef.current = {
+      axisMagnetTarget: null,
       currentPoint: objectPosition.clone(),
       lastSurfaceNormal: null,
       objectId: sceneObject.id,
@@ -213,7 +241,10 @@ export function ObjectMoveController({
         return;
       }
 
-      updateDraggedObjectPosition(dragSession, event.clientX, event.clientY);
+      updateDraggedObjectPosition(dragSession, event.clientX, event.clientY, {
+        ctrlKey: event.ctrlKey,
+        shiftKey: event.shiftKey,
+      });
     };
 
     const handlePointerUp = (event: PointerEvent) => {
@@ -233,11 +264,11 @@ export function ObjectMoveController({
 
       event.preventDefault();
 
-      const { moveDepthWheelDirection, moveDepthWheelStep } =
+      const { moveDepthWheelDirection, moveDepthWheelStep, movePrecisionStep } =
         useUiStore.getState();
       const directionMultiplier = moveDepthWheelDirection === "normal" ? 1 : -1;
-      const delta =
-        (-event.deltaY / 100) * moveDepthWheelStep * directionMultiplier;
+      const wheelStep = event.shiftKey ? movePrecisionStep : moveDepthWheelStep;
+      const delta = (-event.deltaY / 100) * wheelStep * directionMultiplier;
 
       if (delta === 0) {
         return;
@@ -267,7 +298,10 @@ export function ObjectMoveController({
       // Reproject from the active pointer so wheel depth keeps the object under
       // the cursor instead of drifting until the next pointermove arrives.
       if (
-        updateDraggedObjectPosition(dragSession, event.clientX, event.clientY)
+        updateDraggedObjectPosition(dragSession, event.clientX, event.clientY, {
+          ctrlKey: event.ctrlKey,
+          shiftKey: event.shiftKey,
+        })
       ) {
         return;
       }
@@ -277,18 +311,35 @@ export function ObjectMoveController({
           dragSession,
           dragSession.lastClientX,
           dragSession.lastClientY,
+          {
+            ctrlKey: event.ctrlKey,
+            shiftKey: event.shiftKey,
+          },
         )
       ) {
         return;
       }
 
+      const { moveGridSnapStep } = useUiStore.getState();
+      const adjustedResult = applyScreenDepthDragModifiers({
+        currentAxisMagnetTarget: dragSession.axisMagnetTarget,
+        ctrlKey: event.ctrlKey,
+        gridSnapStep: moveGridSnapStep,
+        objectId: dragSession.objectId,
+        objectsById: useSceneStore.getState().objectsById,
+        position: nextPosition,
+        shiftKey: event.shiftKey,
+      });
+      dragSession.axisMagnetTarget = adjustedResult.axisMagnetTarget;
+      setAxisMagnetTarget(adjustedResult.axisMagnetTarget);
+      const adjustedPosition = adjustedResult.position;
       useSceneStore
         .getState()
         .updateObjectPosition(
           dragSession.objectId,
-          tupleFromVector(nextPosition),
+          tupleFromVector(adjustedPosition),
         );
-      dragSession.currentPoint.copy(nextPosition);
+      dragSession.currentPoint.copy(adjustedPosition);
       syncOverlayState(dragSession);
     };
 
@@ -309,7 +360,12 @@ export function ObjectMoveController({
       window.removeEventListener("pointercancel", handlePointerCancel);
       window.removeEventListener("wheel", handleWheel);
     };
-  }, [finishDrag, syncOverlayState, updateDraggedObjectPosition]);
+  }, [
+    finishDrag,
+    setAxisMagnetTarget,
+    syncOverlayState,
+    updateDraggedObjectPosition,
+  ]);
 
   useEffect(() => {
     if (!physicsEnabled) {

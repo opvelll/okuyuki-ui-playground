@@ -12,6 +12,7 @@ export function SettingsWindow() {
   const moveDepthWheelDirection = useUiStore(
     (state) => state.moveDepthWheelDirection,
   );
+  const moveGridSnapStep = useUiStore((state) => state.moveGridSnapStep);
   const moveOverlayDisplayMode = useUiStore(
     (state) => state.moveOverlayDisplayMode,
   );
@@ -20,11 +21,13 @@ export function SettingsWindow() {
   );
   const moveDepthWheelStep = useUiStore((state) => state.moveDepthWheelStep);
   const moveMode = useUiStore((state) => state.moveMode);
+  const movePrecisionStep = useUiStore((state) => state.movePrecisionStep);
   const settingsOpen = useUiStore((state) => state.settingsOpen);
   const setPhysicsEnabled = useUiStore((state) => state.setPhysicsEnabled);
   const setMoveDepthWheelDirection = useUiStore(
     (state) => state.setMoveDepthWheelDirection,
   );
+  const setMoveGridSnapStep = useUiStore((state) => state.setMoveGridSnapStep);
   const setMoveOverlayDisplayMode = useUiStore(
     (state) => state.setMoveOverlayDisplayMode,
   );
@@ -35,6 +38,9 @@ export function SettingsWindow() {
     (state) => state.setMoveDepthWheelStep,
   );
   const setMoveMode = useUiStore((state) => state.setMoveMode);
+  const setMovePrecisionStep = useUiStore(
+    (state) => state.setMovePrecisionStep,
+  );
   const toggleSettingsOpen = useUiStore((state) => state.toggleSettingsOpen);
 
   const handleDepthStepChange = (value: string) => {
@@ -48,6 +54,20 @@ export function SettingsWindow() {
     const parsedValue = Number(value);
     if (Number.isFinite(parsedValue)) {
       setMoveOverlayRadiusMultiplier(parsedValue);
+    }
+  };
+
+  const handlePrecisionStepChange = (value: string) => {
+    const parsedValue = Number(value);
+    if (Number.isFinite(parsedValue)) {
+      setMovePrecisionStep(parsedValue);
+    }
+  };
+
+  const handleGridSnapStepChange = (value: string) => {
+    const parsedValue = Number(value);
+    if (Number.isFinite(parsedValue)) {
+      setMoveGridSnapStep(parsedValue);
     }
   };
 
@@ -141,6 +161,42 @@ export function SettingsWindow() {
                 <option value="modes-2-3">2 + 3</option>
                 <option value="modes-1-2-3">1 + 2 + 3</option>
               </select>
+            </label>
+            <label
+              className="grid gap-2 text-sm text-slate-100/90"
+              htmlFor="precision-step"
+            >
+              <span>Shift Depth Step</span>
+              <input
+                className={fieldClasses}
+                id="precision-step"
+                max="2"
+                min="0.01"
+                onChange={(event) =>
+                  handlePrecisionStepChange(event.target.value)
+                }
+                step="0.01"
+                type="number"
+                value={movePrecisionStep}
+              />
+            </label>
+            <label
+              className="grid gap-2 text-sm text-slate-100/90"
+              htmlFor="grid-snap-step"
+            >
+              <span>Ctrl Grid Snap Step</span>
+              <input
+                className={fieldClasses}
+                id="grid-snap-step"
+                max="4"
+                min="0.01"
+                onChange={(event) =>
+                  handleGridSnapStepChange(event.target.value)
+                }
+                step="0.01"
+                type="number"
+                value={moveGridSnapStep}
+              />
             </label>
             <label
               className="grid gap-2 text-sm text-slate-100/90"

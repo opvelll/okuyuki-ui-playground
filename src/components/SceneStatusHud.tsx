@@ -12,12 +12,18 @@ const OVERLAY_MODE_LABELS = {
   "screen-horizontal": "up-facing",
   "screen-vertical": "world-y plane",
 } as const;
+const AXIS_DIRECTION_LABELS = {
+  negative: "-",
+  positive: "+",
+} as const;
 
 export function SceneStatusHud() {
+  const axisMagnetTarget = useUiStore((state) => state.axisMagnetTarget);
   const interactionState = useUiStore((state) => state.interactionState);
   const moveDepthWheelDirection = useUiStore(
     (state) => state.moveDepthWheelDirection,
   );
+  const moveGridSnapStep = useUiStore((state) => state.moveGridSnapStep);
   const moveOverlayDisplayMode = useUiStore(
     (state) => state.moveOverlayDisplayMode,
   );
@@ -26,13 +32,14 @@ export function SceneStatusHud() {
   );
   const moveDepthWheelStep = useUiStore((state) => state.moveDepthWheelStep);
   const moveMode = useUiStore((state) => state.moveMode);
+  const movePrecisionStep = useUiStore((state) => state.movePrecisionStep);
   const physicsEnabled = useUiStore((state) => state.physicsEnabled);
   const selectedObjectId = useUiStore((state) => state.selectedObjectId);
 
   const helperText = physicsEnabled
     ? "Physics enabled: object dragging is paused."
     : selectedObjectId
-      ? "Drag to move on screen plane. Wheel changes camera depth. Key 1 is camera-facing, 2 uses world Y, 3 keeps the overlay facing up."
+      ? "Drag to move on screen plane. Wheel changes camera depth. Shift reduces wheel depth step, Ctrl snaps XYZ to the floor grid, and Shift + Ctrl magnetizes one axis to another object."
       : "Select an object to start screen-depth-drag editing.";
 
   return (
@@ -57,6 +64,21 @@ export function SceneStatusHud() {
           <dt className="text-slate-300/70">Depth</dt>
           <dd>
             {moveDepthWheelStep.toFixed(2)} / {moveDepthWheelDirection}
+          </dd>
+        </div>
+        <div className="grid grid-cols-[5rem_1fr] gap-3">
+          <dt className="text-slate-300/70">Snap</dt>
+          <dd>
+            wheel {moveDepthWheelStep.toFixed(2)} / shift{" "}
+            {movePrecisionStep.toFixed(2)} / ctrl {moveGridSnapStep.toFixed(2)}
+          </dd>
+        </div>
+        <div className="grid grid-cols-[5rem_1fr] gap-3">
+          <dt className="text-slate-300/70">Magnet</dt>
+          <dd>
+            {axisMagnetTarget
+              ? `${axisMagnetTarget.objectId} / ${axisMagnetTarget.axis}${AXIS_DIRECTION_LABELS[axisMagnetTarget.direction]}`
+              : "none"}
           </dd>
         </div>
         <div className="grid grid-cols-[5rem_1fr] gap-3">

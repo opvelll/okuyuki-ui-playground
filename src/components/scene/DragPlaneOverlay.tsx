@@ -1,11 +1,13 @@
 import { Line } from "@react-three/drei";
 import { useMemo } from "react";
 import { DoubleSide, Quaternion, Vector3 } from "three";
+import { useSceneStore } from "../../store/sceneStore";
 import { useUiStore } from "../../store/uiStore";
 import {
   type DragPlaneOverlayState,
   calculateDragPlaneOverlayGeometry,
 } from "./dragPlaneOverlay";
+import { calculateAxisMagnetLinePoints } from "./moveDragModifiers";
 
 const DEFAULT_PLANE_NORMAL = new Vector3(0, 0, 1);
 const MARKER_RADIUS = 0.06;
@@ -49,9 +51,11 @@ export function DragPlaneOverlay({
   const moveOverlayDisplayMode = useUiStore(
     (state) => state.moveOverlayDisplayMode,
   );
+  const axisMagnetTarget = useUiStore((state) => state.axisMagnetTarget);
   const moveOverlayRadiusMultiplier = useUiStore(
     (state) => state.moveOverlayRadiusMultiplier,
   );
+  const objectsById = useSceneStore((state) => state.objectsById);
   const overlayModes = useMemo(() => {
     switch (moveOverlayDisplayMode) {
       case "mode-2":
@@ -99,6 +103,15 @@ export function DragPlaneOverlay({
     [moveOverlayRadiusMultiplier, overlayModes, overlayState],
   );
   const { linePoints } = overlayGeometries[0];
+  const axisMagnetLinePoints = useMemo(
+    () =>
+      calculateAxisMagnetLinePoints(
+        axisMagnetTarget,
+        objectsById,
+        overlayState.currentPoint,
+      ),
+    [axisMagnetTarget, objectsById, overlayState.currentPoint],
+  );
 
   return (
     <group raycast={() => null}>
@@ -121,6 +134,18 @@ export function DragPlaneOverlay({
         renderOrder={2}
         transparent
       />
+      {axisMagnetLinePoints ? (
+        <Line
+          color="#ffd166"
+          depthTest={false}
+          depthWrite={false}
+          lineWidth={2.6}
+          opacity={0.95}
+          points={axisMagnetLinePoints}
+          renderOrder={3}
+          transparent
+        />
+      ) : null}
       <mesh position={overlayState.startPoint} renderOrder={3}>
         <sphereGeometry args={[MARKER_RADIUS, 20, 20]} />
         <meshBasicMaterial
@@ -131,7 +156,7 @@ export function DragPlaneOverlay({
           transparent
         />
       </mesh>
-      <mesh position={overlayState.currentPoint} renderOrder={3}>
+      <mesh position={overlayState.currentPoint} renderOrder={4}>
         <sphereGeometry args={[MARKER_RADIUS, 20, 20]} />
         <meshBasicMaterial
           color="#0c7fcd"
