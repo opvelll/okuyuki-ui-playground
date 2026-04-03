@@ -9,46 +9,108 @@ import {
 
 const DEFAULT_PLANE_NORMAL = new Vector3(0, 0, 1);
 const MARKER_RADIUS = 0.06;
+const OVERLAY_COLORS = {
+  "camera-facing": "#6ac4ff",
+  "screen-horizontal": "#9be37a",
+  "screen-vertical": "#ffb46a",
+} as const;
+
+function OverlayDisk({
+  color,
+  planeQuaternion,
+  position,
+  radius,
+}: {
+  color: string;
+  planeQuaternion: Quaternion;
+  position: Vector3;
+  radius: number;
+}) {
+  return (
+    <mesh position={position} quaternion={planeQuaternion} renderOrder={1}>
+      <circleGeometry args={[radius, 96]} />
+      <meshBasicMaterial
+        color={color}
+        depthTest={true}
+        depthWrite={false}
+        opacity={0.22}
+        side={DoubleSide}
+        transparent
+      />
+    </mesh>
+  );
+}
 
 export function DragPlaneOverlay({
   overlayState,
 }: {
   overlayState: DragPlaneOverlayState;
 }) {
+  const moveOverlayDisplayMode = useUiStore(
+    (state) => state.moveOverlayDisplayMode,
+  );
   const moveOverlayRadiusMultiplier = useUiStore(
     (state) => state.moveOverlayRadiusMultiplier,
   );
-  const { center, linePoints, radius, surfaceNormal } = useMemo(
+  const overlayModes = useMemo(() => {
+    switch (moveOverlayDisplayMode) {
+      case "mode-2":
+        return ["screen-vertical"] as const;
+      case "mode-3":
+        return ["screen-horizontal"] as const;
+      case "modes-2-3":
+        return ["screen-vertical", "screen-horizontal"] as const;
+      case "modes-1-2-3":
+        return [
+          "camera-facing",
+          "screen-vertical",
+          "screen-horizontal",
+        ] as const;
+      default:
+        return ["camera-facing"] as const;
+    }
+  }, [moveOverlayDisplayMode]);
+  const overlayGeometries = useMemo(
     () =>
-      calculateDragPlaneOverlayGeometry(overlayState, {
-        radiusMultiplier: moveOverlayRadiusMultiplier,
+      overlayModes.map((orientationMode) => {
+        const geometry = calculateDragPlaneOverlayGeometry(
+          {
+            ...overlayState,
+            orientationMode,
+          },
+          {
+            radiusMultiplier: moveOverlayRadiusMultiplier,
+          },
+        );
+        const planeQuaternion = new Quaternion();
+
+        planeQuaternion.setFromUnitVectors(
+          DEFAULT_PLANE_NORMAL,
+          geometry.surfaceNormal.clone().normalize(),
+        );
+
+        return {
+          color: OVERLAY_COLORS[orientationMode],
+          planeQuaternion,
+          ...geometry,
+          orientationMode,
+        };
       }),
-    [moveOverlayRadiusMultiplier, overlayState],
+    [moveOverlayRadiusMultiplier, overlayModes, overlayState],
   );
-  const planeQuaternion = useMemo(() => {
-    const nextQuaternion = new Quaternion();
-
-    nextQuaternion.setFromUnitVectors(
-      DEFAULT_PLANE_NORMAL,
-      surfaceNormal.clone().normalize(),
-    );
-
-    return nextQuaternion;
-  }, [surfaceNormal]);
+  const { linePoints } = overlayGeometries[0];
 
   return (
     <group raycast={() => null}>
-      <mesh position={center} quaternion={planeQuaternion} renderOrder={1}>
-        <circleGeometry args={[radius, 96]} />
-        <meshBasicMaterial
-          color="#6ac4ff"
-          depthTest={true}
-          depthWrite={false}
-          opacity={0.25}
-          side={DoubleSide}
-          transparent
+      {overlayGeometries.map((geometry) => (
+        <OverlayDisk
+          color={geometry.color}
+          key={geometry.orientationMode}
+          planeQuaternion={geometry.planeQuaternion}
+          position={geometry.center}
+          radius={geometry.radius}
         />
-      </mesh>
+      ))}
       <Line
         color="#2d8fd6"
         depthTest={false}

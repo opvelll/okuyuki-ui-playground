@@ -5,6 +5,7 @@ export type DragPlaneOverlayState = {
   currentPoint: Vector3;
   orientationMode: MoveOverlayOrientationMode;
   planeNormal: Vector3;
+  previousSurfaceNormal: Vector3 | null;
   startPoint: Vector3;
 };
 
@@ -28,6 +29,24 @@ function projectReferenceAxisOntoOverlayPlane(
   const projectedAxis = referenceAxis.clone().projectOnPlane(movementDirection);
   if (projectedAxis.lengthSq() > SURFACE_NORMAL_EPSILON) {
     return projectedAxis.normalize();
+  }
+
+  return null;
+}
+
+function projectPreviousNormalOntoOverlayPlane(
+  movementDirection: Vector3,
+  previousSurfaceNormal: Vector3 | null,
+) {
+  if (!previousSurfaceNormal) {
+    return null;
+  }
+
+  const projectedNormal = previousSurfaceNormal
+    .clone()
+    .projectOnPlane(movementDirection);
+  if (projectedNormal.lengthSq() > SURFACE_NORMAL_EPSILON) {
+    return projectedNormal.normalize();
   }
 
   return null;
@@ -61,7 +80,16 @@ function calculateCameraFacingSurfaceNormal(
 function orientNormalTowardsHemisphere(
   normal: Vector3,
   primaryHemisphere: Vector3,
+  previousSurfaceNormal: Vector3 | null,
 ) {
+  if (previousSurfaceNormal) {
+    const flippedNormal = normal.clone().negate();
+    return normal.dot(previousSurfaceNormal) >=
+      flippedNormal.dot(previousSurfaceNormal)
+      ? normal
+      : flippedNormal;
+  }
+
   if (normal.dot(primaryHemisphere) < 0) {
     return normal.negate();
   }
@@ -82,6 +110,7 @@ function calculateAxisAlignedSurfaceNormal(
       return orientNormalTowardsHemisphere(
         fallbackNormal.normalize(),
         primaryHemisphere,
+        overlayState.previousSurfaceNormal,
       );
     }
 
@@ -96,6 +125,19 @@ function calculateAxisAlignedSurfaceNormal(
     return orientNormalTowardsHemisphere(
       movementDirection.clone().cross(planeAxis).normalize(),
       primaryHemisphere,
+      overlayState.previousSurfaceNormal,
+    );
+  }
+
+  const previousNormal = projectPreviousNormalOntoOverlayPlane(
+    movementDirection,
+    overlayState.previousSurfaceNormal,
+  );
+  if (previousNormal) {
+    return orientNormalTowardsHemisphere(
+      previousNormal,
+      primaryHemisphere,
+      overlayState.previousSurfaceNormal,
     );
   }
 
@@ -107,10 +149,52 @@ function calculateAxisAlignedSurfaceNormal(
     return orientNormalTowardsHemisphere(
       movementDirection.clone().cross(fallbackPlaneAxis).normalize(),
       primaryHemisphere,
+      overlayState.previousSurfaceNormal,
     );
   }
 
   return calculateCameraFacingSurfaceNormal(overlayState, movementDirection);
+}
+
+function calculateUpFacingSurfaceNormal(
+  overlayState: DragPlaneOverlayState,
+  movementDirection: Vector3 | null,
+) {
+  if (!movementDirection) {
+    return WORLD_UP.clone();
+  }
+
+  const candidateNormal = WORLD_UP.clone().projectOnPlane(movementDirection);
+  if (candidateNormal.lengthSq() > SURFACE_NORMAL_EPSILON) {
+    return orientNormalTowardsHemisphere(
+      candidateNormal.normalize(),
+      WORLD_UP,
+      overlayState.previousSurfaceNormal,
+    );
+  }
+
+  const previousNormal = projectPreviousNormalOntoOverlayPlane(
+    movementDirection,
+    overlayState.previousSurfaceNormal,
+  );
+  if (previousNormal) {
+    return orientNormalTowardsHemisphere(
+      previousNormal,
+      WORLD_UP,
+      overlayState.previousSurfaceNormal,
+    );
+  }
+
+  const fallbackNormal = WORLD_RIGHT.clone().projectOnPlane(movementDirection);
+  if (fallbackNormal.lengthSq() > SURFACE_NORMAL_EPSILON) {
+    return orientNormalTowardsHemisphere(
+      fallbackNormal.normalize(),
+      WORLD_UP,
+      overlayState.previousSurfaceNormal,
+    );
+  }
+
+  return WORLD_UP.clone();
 }
 
 function calculateOverlaySurfaceNormal(overlayState: DragPlaneOverlayState) {
@@ -132,13 +216,7 @@ function calculateOverlaySurfaceNormal(overlayState: DragPlaneOverlayState) {
         WORLD_RIGHT,
       );
     case "screen-horizontal":
-      return calculateAxisAlignedSurfaceNormal(
-        overlayState,
-        movementDirection,
-        WORLD_RIGHT,
-        WORLD_UP,
-        WORLD_UP,
-      );
+      return calculateUpFacingSurfaceNormal(overlayState, movementDirection);
     default:
       return calculateCameraFacingSurfaceNormal(
         overlayState,

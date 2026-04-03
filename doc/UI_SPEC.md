@@ -130,29 +130,48 @@
   - 開始地点から現在地点への細いライン
   - 開始地点マーカー
   - 現在地点マーカー
+- 円板は 1 枚とは限らず、`moveOverlayDisplayMode` に応じて複数同時に表示できる。
+  - `mode-1`: 1 のみ
+  - `mode-2`: 2 のみ
+  - `mode-3`: 3 のみ
+  - `modes-2-3`: 2 と 3
+  - `modes-1-2-3`: 1 と 2 と 3
 - 円板の半径は `distance(startPoint, currentPoint) * moveOverlayRadiusMultiplier` を基準にし、最小値 `0.58` を下回らない。
 - `moveOverlayRadiusMultiplier` の初期値は `1.15`。
-- 円板の向きは、移動ベクトルに直交しつつ、できるだけ camera-facing を保つ向きで計算する。
-- そのため、画面内の横移動だけではほぼ camera-facing に見え、ホイールなどで奥行き差が入ると面が傾く。
+- 各円板の向きは次の通り。
+  - 1 (`camera-facing`):
+    移動ベクトルに直交しつつ、できるだけ camera-facing を保つ。
+  - 2 (`screen-vertical`):
+    移動線を含みつつ、world `Y` を基準にした面になる。
+  - 3 (`screen-horizontal`):
+    移動線を含みつつ、できるだけ上向きになる面になる。
+- 2 と 3 は、特異点付近で急に反転しにくくするため、直前の面法線を使って連続性を保つ。
 - 円板 material の現在値は次の通り。
   - `transparent = true`
-  - `opacity = 0.25`
+  - `opacity = 0.22`
   - `side = DoubleSide`
   - `depthTest = true`
   - `depthWrite = false`
+- 円板の色は向きごとに固定する。
+  - 1: `#6ac4ff`
+  - 2: `#ffb46a`
+  - 3: `#9be37a`
 - `pointerup`、`pointercancel`、`Escape`、`physicsEnabled` 切替で overlay は消える。
+- `1`、`2`、`3` キーを押すと、対応する単独表示へ切り替わる。
 
 ## 8. 見た目の現在仕様
 
 - 選択中オブジェクトは emissive と material 値を上げ、スケールを `1.04x` にする。
 - ドラッグ中オブジェクトはさらにスケールを `1.08x` にする。
 - `screen-depth-drag` 中は、開始地点中心の円板 overlay を scene 上に表示する。
+- overlay は display mode により 1 枚または複数枚の円板になる。
 - overlay の円板はオブジェクトに隠れる設定で、前後関係の干渉が読めるようにしている。
 - `SceneStatusHud` には次を表示する。
   - `Selected`
   - `State`
   - `Mode`
   - `Depth`
+  - `Overlay`
   - 補助メッセージ
 - 補助メッセージは `physicsEnabled` と選択有無で切り替える。
 
@@ -163,6 +182,12 @@
 - `Physics` の on/off
 - `Mode`
   - 現状は `screen-depth-drag` のみ選択可能
+- `Overlay Display`
+  - `1`
+  - `2`
+  - `3`
+  - `2 + 3`
+  - `1 + 2 + 3`
 - `Overlay Radius Multiplier`
 - `Depth Wheel Step`
 - `Depth Direction`
@@ -206,11 +231,13 @@
 - pointer move / up / cancel
 - wheel depth move
 - overlay 用 state の生成
+- `1` / `2` / `3` キーによる overlay 単独表示切替
 - `OrbitControls` の停止 / 再開
 
 ### `DragPlaneOverlay`
 
 - overlay 用の円板、ライン、マーカー描画
+- display mode に応じた複数円板の描画
 - 開始地点と現在地点から center / radius / surfaceNormal を算出して反映する
 
 ## 12. 既知の未実装事項

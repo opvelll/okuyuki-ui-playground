@@ -7,11 +7,18 @@ export type MoveOverlayOrientationMode =
   | "camera-facing"
   | "screen-vertical"
   | "screen-horizontal";
+export type MoveOverlayDisplayMode =
+  | "mode-1"
+  | "mode-2"
+  | "mode-3"
+  | "modes-2-3"
+  | "modes-1-2-3";
 
 type UiState = {
   interactionState: InteractionState;
   physicsEnabled: boolean;
   moveDepthWheelDirection: MoveDepthWheelDirection;
+  moveOverlayDisplayMode: MoveOverlayDisplayMode;
   moveOverlayOrientationMode: MoveOverlayOrientationMode;
   moveOverlayRadiusMultiplier: number;
   moveDepthWheelStep: number;
@@ -23,6 +30,7 @@ type UiState = {
   setInteractionState: (state: InteractionState) => void;
   setPhysicsEnabled: (enabled: boolean) => void;
   setMoveDepthWheelDirection: (direction: MoveDepthWheelDirection) => void;
+  setMoveOverlayDisplayMode: (mode: MoveOverlayDisplayMode) => void;
   setMoveOverlayOrientationMode: (mode: MoveOverlayOrientationMode) => void;
   setMoveOverlayRadiusMultiplier: (multiplier: number) => void;
   setMoveDepthWheelStep: (step: number) => void;
@@ -34,6 +42,7 @@ export const useUiStore = create<UiState>((set) => ({
   interactionState: "idle",
   physicsEnabled: true,
   moveDepthWheelDirection: "normal",
+  moveOverlayDisplayMode: "mode-1",
   moveOverlayOrientationMode: "camera-facing",
   moveOverlayRadiusMultiplier: 1.15,
   moveDepthWheelStep: 0.24,
@@ -59,6 +68,7 @@ export const useUiStore = create<UiState>((set) => ({
     }),
   setMoveDepthWheelDirection: (direction) =>
     set({ moveDepthWheelDirection: direction }),
+  setMoveOverlayDisplayMode: (mode) => set({ moveOverlayDisplayMode: mode }),
   setMoveOverlayOrientationMode: (mode) =>
     set({ moveOverlayOrientationMode: mode }),
   setMoveOverlayRadiusMultiplier: (multiplier) =>

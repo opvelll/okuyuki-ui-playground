@@ -12,6 +12,9 @@ export function SettingsWindow() {
   const moveDepthWheelDirection = useUiStore(
     (state) => state.moveDepthWheelDirection,
   );
+  const moveOverlayDisplayMode = useUiStore(
+    (state) => state.moveOverlayDisplayMode,
+  );
   const moveOverlayRadiusMultiplier = useUiStore(
     (state) => state.moveOverlayRadiusMultiplier,
   );
@@ -21,6 +24,9 @@ export function SettingsWindow() {
   const setPhysicsEnabled = useUiStore((state) => state.setPhysicsEnabled);
   const setMoveDepthWheelDirection = useUiStore(
     (state) => state.setMoveDepthWheelDirection,
+  );
+  const setMoveOverlayDisplayMode = useUiStore(
+    (state) => state.setMoveOverlayDisplayMode,
   );
   const setMoveOverlayRadiusMultiplier = useUiStore(
     (state) => state.setMoveOverlayRadiusMultiplier,
@@ -105,6 +111,35 @@ export function SettingsWindow() {
                 value={moveMode}
               >
                 <option value="screen-depth-drag">screen-depth-drag</option>
+              </select>
+            </label>
+            <label
+              className="grid gap-2 text-sm text-slate-100/90"
+              htmlFor="overlay-display-mode"
+            >
+              <span>Overlay Display</span>
+              <select
+                className={fieldClasses}
+                id="overlay-display-mode"
+                onChange={(event) => {
+                  const nextDisplayMode = event.target.value;
+                  if (
+                    nextDisplayMode === "mode-1" ||
+                    nextDisplayMode === "mode-2" ||
+                    nextDisplayMode === "mode-3" ||
+                    nextDisplayMode === "modes-2-3" ||
+                    nextDisplayMode === "modes-1-2-3"
+                  ) {
+                    setMoveOverlayDisplayMode(nextDisplayMode);
+                  }
+                }}
+                value={moveOverlayDisplayMode}
+              >
+                <option value="mode-1">1</option>
+                <option value="mode-2">2</option>
+                <option value="mode-3">3</option>
+                <option value="modes-2-3">2 + 3</option>
+                <option value="modes-1-2-3">1 + 2 + 3</option>
               </select>
             </label>
             <label

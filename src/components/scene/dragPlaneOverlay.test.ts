@@ -6,17 +6,20 @@ function createOverlayState({
   currentPoint,
   orientationMode = "camera-facing" as const,
   planeNormal = new Vector3(0, 0, 1),
+  previousSurfaceNormal = null,
   startPoint,
 }: {
   currentPoint: Vector3;
   orientationMode?: "camera-facing" | "screen-vertical" | "screen-horizontal";
   planeNormal?: Vector3;
+  previousSurfaceNormal?: Vector3 | null;
   startPoint: Vector3;
 }) {
   return {
     currentPoint,
     orientationMode,
     planeNormal,
+    previousSurfaceNormal,
     startPoint,
   };
 }
@@ -45,7 +48,7 @@ describe("calculateDragPlaneOverlayGeometry", () => {
     expect(geometry.radius).toBeCloseTo(4.8);
   });
 
-  it("keeps both points on the overlay surface for axis-aligned modes", () => {
+  it("keeps both points on the overlay surface for vertical mode", () => {
     const geometry = calculateDragPlaneOverlayGeometry(
       createOverlayState({
         currentPoint: new Vector3(3, 1, 2),
@@ -156,7 +159,7 @@ describe("calculateDragPlaneOverlayGeometry", () => {
     expect(Math.abs(geometry.surfaceNormal.z)).toBeCloseTo(1);
   });
 
-  it("falls back to world Y when horizontal mode is parallel to world X", () => {
+  it("keeps horizontal mode facing up when movement is parallel to world X", () => {
     const geometry = calculateDragPlaneOverlayGeometry(
       createOverlayState({
         currentPoint: new Vector3(2, 0, 0),
@@ -165,10 +168,10 @@ describe("calculateDragPlaneOverlayGeometry", () => {
       }),
     );
 
-    expect(geometry.surfaceNormal.toArray()).toEqual([0, 0, 1]);
+    expect(geometry.surfaceNormal.toArray()).toEqual([0, 1, 0]);
   });
 
-  it("keeps horizontal mode in the upward hemisphere", () => {
+  it("keeps horizontal mode facing up on diagonal movement", () => {
     const geometry = calculateDragPlaneOverlayGeometry(
       createOverlayState({
         currentPoint: new Vector3(1, 0, -1),
@@ -177,6 +180,34 @@ describe("calculateDragPlaneOverlayGeometry", () => {
       }),
     );
 
-    expect(geometry.surfaceNormal.y).toBeGreaterThanOrEqual(0);
+    expect(geometry.surfaceNormal.y).toBeGreaterThan(0);
+    expect(geometry.surfaceNormal.dot(new Vector3(1, 0, -1))).toBeCloseTo(0);
+  });
+
+  it("ignores previous normal for horizontal mode and stays up-facing", () => {
+    const geometry = calculateDragPlaneOverlayGeometry(
+      createOverlayState({
+        currentPoint: new Vector3(1, 0, 0),
+        orientationMode: "screen-horizontal",
+        previousSurfaceNormal: new Vector3(0, 1, 0),
+        startPoint: new Vector3(0, 0, 0),
+      }),
+    );
+
+    expect(geometry.surfaceNormal.toArray()).toEqual([0, 1, 0]);
+  });
+
+  it("keeps horizontal mode close to previous normal on vertical movement", () => {
+    const geometry = calculateDragPlaneOverlayGeometry(
+      createOverlayState({
+        currentPoint: new Vector3(0, 1, 0),
+        orientationMode: "screen-horizontal",
+        previousSurfaceNormal: new Vector3(0, 0.9, 0.1).normalize(),
+        startPoint: new Vector3(0, 0, 0),
+      }),
+    );
+
+    expect(geometry.surfaceNormal.y).toBeCloseTo(0);
+    expect(geometry.surfaceNormal.dot(new Vector3(0, 0, 1))).toBeGreaterThan(0);
   });
 });

@@ -15,7 +15,10 @@ import type { SceneObject, Vector3Tuple } from "../../types/scene";
 import { DragPlaneOverlay } from "./DragPlaneOverlay";
 import { DynamicSceneObject } from "./DynamicSceneObject";
 import { SelectableSceneObject } from "./SelectableSceneObject";
-import type { DragPlaneOverlayState } from "./dragPlaneOverlay";
+import {
+  type DragPlaneOverlayState,
+  calculateDragPlaneOverlayGeometry,
+} from "./dragPlaneOverlay";
 
 const OVERLAY_ORIENTATION_SHORTCUTS = {
   "1": "camera-facing",
@@ -25,6 +28,7 @@ const OVERLAY_ORIENTATION_SHORTCUTS = {
 
 type DragSession = {
   currentPoint: Vector3;
+  lastSurfaceNormal: Vector3 | null;
   objectId: string;
   lastClientX: number;
   lastClientY: number;
@@ -54,6 +58,9 @@ export function ObjectMoveController({
   const selectObject = useUiStore((state) => state.selectObject);
   const selectedObjectId = useUiStore((state) => state.selectedObjectId);
   const setInteractionState = useUiStore((state) => state.setInteractionState);
+  const setMoveOverlayDisplayMode = useUiStore(
+    (state) => state.setMoveOverlayDisplayMode,
+  );
   const setMoveOverlayOrientationMode = useUiStore(
     (state) => state.setMoveOverlayOrientationMode,
   );
@@ -84,12 +91,16 @@ export function ObjectMoveController({
   );
 
   const syncOverlayState = useCallback((dragSession: DragSession) => {
-    setOverlayState({
+    const nextOverlayState: DragPlaneOverlayState = {
       currentPoint: dragSession.currentPoint.clone(),
       orientationMode: useUiStore.getState().moveOverlayOrientationMode,
       planeNormal: dragSession.planeNormal.clone(),
+      previousSurfaceNormal: dragSession.lastSurfaceNormal?.clone() ?? null,
       startPoint: dragSession.startPoint.clone(),
-    });
+    };
+    const geometry = calculateDragPlaneOverlayGeometry(nextOverlayState);
+    dragSession.lastSurfaceNormal = geometry.surfaceNormal.clone();
+    setOverlayState(nextOverlayState);
   }, []);
 
   const projectClientPointToPlane = useCallback(
@@ -180,6 +191,7 @@ export function ObjectMoveController({
 
     dragSessionRef.current = {
       currentPoint: objectPosition.clone(),
+      lastSurfaceNormal: null,
       objectId: sceneObject.id,
       lastClientX: event.nativeEvent.clientX,
       lastClientY: event.nativeEvent.clientY,
@@ -319,6 +331,13 @@ export function ObjectMoveController({
         ];
       if (dragSessionRef.current && nextOrientationMode) {
         event.preventDefault();
+        setMoveOverlayDisplayMode(
+          event.key === "1"
+            ? "mode-1"
+            : event.key === "2"
+              ? "mode-2"
+              : "mode-3",
+        );
         setMoveOverlayOrientationMode(nextOrientationMode);
         syncOverlayState(dragSessionRef.current);
         return;
@@ -340,6 +359,7 @@ export function ObjectMoveController({
   }, [
     clearSelection,
     finishDrag,
+    setMoveOverlayDisplayMode,
     setMoveOverlayOrientationMode,
     syncOverlayState,
   ]);

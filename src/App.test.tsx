@@ -31,6 +31,7 @@ describe("App", () => {
       interactionState: "idle",
       physicsEnabled: true,
       moveDepthWheelDirection: "normal",
+      moveOverlayDisplayMode: "mode-1",
       moveOverlayOrientationMode: "camera-facing",
       moveOverlayRadiusMultiplier: 1.15,
       moveDepthWheelStep: 0.24,
@@ -57,6 +58,7 @@ describe("App", () => {
     expect(
       screen.getByLabelText(/Overlay Radius Multiplier/i),
     ).toBeInTheDocument();
+    expect(screen.getByLabelText(/Overlay Display/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Depth Wheel Step/i)).toBeInTheDocument();
     expect(
       screen.getByText(/Physics enabled: object dragging is paused/i),
