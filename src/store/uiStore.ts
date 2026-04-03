@@ -3,11 +3,16 @@ import { create } from "zustand";
 export type MoveMode = "screen-depth-drag";
 export type MoveDepthWheelDirection = "normal" | "inverted";
 export type InteractionState = "idle" | "active" | "dragging";
+export type MoveOverlayOrientationMode =
+  | "camera-facing"
+  | "screen-vertical"
+  | "screen-horizontal";
 
 type UiState = {
   interactionState: InteractionState;
   physicsEnabled: boolean;
   moveDepthWheelDirection: MoveDepthWheelDirection;
+  moveOverlayOrientationMode: MoveOverlayOrientationMode;
   moveOverlayRadiusMultiplier: number;
   moveDepthWheelStep: number;
   moveMode: MoveMode;
@@ -18,6 +23,7 @@ type UiState = {
   setInteractionState: (state: InteractionState) => void;
   setPhysicsEnabled: (enabled: boolean) => void;
   setMoveDepthWheelDirection: (direction: MoveDepthWheelDirection) => void;
+  setMoveOverlayOrientationMode: (mode: MoveOverlayOrientationMode) => void;
   setMoveOverlayRadiusMultiplier: (multiplier: number) => void;
   setMoveDepthWheelStep: (step: number) => void;
   setMoveMode: (mode: MoveMode) => void;
@@ -28,6 +34,7 @@ export const useUiStore = create<UiState>((set) => ({
   interactionState: "idle",
   physicsEnabled: true,
   moveDepthWheelDirection: "normal",
+  moveOverlayOrientationMode: "camera-facing",
   moveOverlayRadiusMultiplier: 1.15,
   moveDepthWheelStep: 0.24,
   moveMode: "screen-depth-drag",
@@ -52,6 +59,8 @@ export const useUiStore = create<UiState>((set) => ({
     }),
   setMoveDepthWheelDirection: (direction) =>
     set({ moveDepthWheelDirection: direction }),
+  setMoveOverlayOrientationMode: (mode) =>
+    set({ moveOverlayOrientationMode: mode }),
   setMoveOverlayRadiusMultiplier: (multiplier) =>
     set({ moveOverlayRadiusMultiplier: multiplier }),
   setMoveDepthWheelStep: (step) => set({ moveDepthWheelStep: step }),

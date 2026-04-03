@@ -31,6 +31,7 @@ describe("App", () => {
       interactionState: "idle",
       physicsEnabled: true,
       moveDepthWheelDirection: "normal",
+      moveOverlayOrientationMode: "camera-facing",
       moveOverlayRadiusMultiplier: 1.15,
       moveDepthWheelStep: 0.24,
       moveMode: "screen-depth-drag",

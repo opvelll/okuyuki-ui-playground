@@ -1,9 +1,18 @@
 import { useUiStore } from "../store/uiStore";
 
+const OVERLAY_MODE_LABELS = {
+  "camera-facing": "camera-fit",
+  "screen-horizontal": "world-x plane",
+  "screen-vertical": "world-y plane",
+} as const;
+
 export function SceneStatusHud() {
   const interactionState = useUiStore((state) => state.interactionState);
   const moveDepthWheelDirection = useUiStore(
     (state) => state.moveDepthWheelDirection,
+  );
+  const moveOverlayOrientationMode = useUiStore(
+    (state) => state.moveOverlayOrientationMode,
   );
   const moveDepthWheelStep = useUiStore((state) => state.moveDepthWheelStep);
   const moveMode = useUiStore((state) => state.moveMode);
@@ -13,7 +22,7 @@ export function SceneStatusHud() {
   const helperText = physicsEnabled
     ? "Physics enabled: object dragging is paused."
     : selectedObjectId
-      ? "Drag to move on screen plane. Wheel changes camera depth."
+      ? "Drag to move on screen plane. Wheel changes camera depth. Key 1 is camera-facing, 2 uses world Y, 3 uses world X."
       : "Select an object to start screen-depth-drag editing.";
 
   return (
@@ -39,6 +48,10 @@ export function SceneStatusHud() {
           <dd>
             {moveDepthWheelStep.toFixed(2)} / {moveDepthWheelDirection}
           </dd>
+        </div>
+        <div className="grid grid-cols-[5rem_1fr] gap-3">
+          <dt className="text-slate-300/70">Overlay</dt>
+          <dd>{OVERLAY_MODE_LABELS[moveOverlayOrientationMode]}</dd>
         </div>
       </dl>
       <p className="mt-3 text-sm text-slate-200/85">{helperText}</p>

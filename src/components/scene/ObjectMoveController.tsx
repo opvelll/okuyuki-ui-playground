@@ -17,6 +17,12 @@ import { DynamicSceneObject } from "./DynamicSceneObject";
 import { SelectableSceneObject } from "./SelectableSceneObject";
 import type { DragPlaneOverlayState } from "./dragPlaneOverlay";
 
+const OVERLAY_ORIENTATION_SHORTCUTS = {
+  "1": "camera-facing",
+  "2": "screen-vertical",
+  "3": "screen-horizontal",
+} as const;
+
 type DragSession = {
   currentPoint: Vector3;
   objectId: string;
@@ -48,6 +54,9 @@ export function ObjectMoveController({
   const selectObject = useUiStore((state) => state.selectObject);
   const selectedObjectId = useUiStore((state) => state.selectedObjectId);
   const setInteractionState = useUiStore((state) => state.setInteractionState);
+  const setMoveOverlayOrientationMode = useUiStore(
+    (state) => state.setMoveOverlayOrientationMode,
+  );
   const objectIds = useSceneStore((state) => state.objectIds);
   const objectsById = useSceneStore((state) => state.objectsById);
   const dragSessionRef = useRef<DragSession | null>(null);
@@ -77,6 +86,7 @@ export function ObjectMoveController({
   const syncOverlayState = useCallback((dragSession: DragSession) => {
     setOverlayState({
       currentPoint: dragSession.currentPoint.clone(),
+      orientationMode: useUiStore.getState().moveOverlayOrientationMode,
       planeNormal: dragSession.planeNormal.clone(),
       startPoint: dragSession.startPoint.clone(),
     });
@@ -303,6 +313,17 @@ export function ObjectMoveController({
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      const nextOrientationMode =
+        OVERLAY_ORIENTATION_SHORTCUTS[
+          event.key as keyof typeof OVERLAY_ORIENTATION_SHORTCUTS
+        ];
+      if (dragSessionRef.current && nextOrientationMode) {
+        event.preventDefault();
+        setMoveOverlayOrientationMode(nextOrientationMode);
+        syncOverlayState(dragSessionRef.current);
+        return;
+      }
+
       if (event.key !== "Escape") {
         return;
       }
@@ -316,7 +337,12 @@ export function ObjectMoveController({
     window.addEventListener("keydown", handleKeyDown);
 
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [clearSelection, finishDrag]);
+  }, [
+    clearSelection,
+    finishDrag,
+    setMoveOverlayOrientationMode,
+    syncOverlayState,
+  ]);
 
   return (
     <>

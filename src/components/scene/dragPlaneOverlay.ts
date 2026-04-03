@@ -1,7 +1,9 @@
 import { Vector3 } from "three";
+import type { MoveOverlayOrientationMode } from "../../store/uiStore";
 
 export type DragPlaneOverlayState = {
   currentPoint: Vector3;
+  orientationMode: MoveOverlayOrientationMode;
   planeNormal: Vector3;
   startPoint: Vector3;
 };
@@ -19,15 +21,26 @@ const SURFACE_NORMAL_EPSILON = 1e-6;
 const WORLD_RIGHT = new Vector3(1, 0, 0);
 const WORLD_UP = new Vector3(0, 1, 0);
 
-function calculateOverlaySurfaceNormal(overlayState: DragPlaneOverlayState) {
-  const movementVector = overlayState.currentPoint
-    .clone()
-    .sub(overlayState.startPoint);
-  if (movementVector.lengthSq() <= SURFACE_NORMAL_EPSILON) {
+function projectReferenceAxisOntoOverlayPlane(
+  movementDirection: Vector3,
+  referenceAxis: Vector3,
+) {
+  const projectedAxis = referenceAxis.clone().projectOnPlane(movementDirection);
+  if (projectedAxis.lengthSq() > SURFACE_NORMAL_EPSILON) {
+    return projectedAxis.normalize();
+  }
+
+  return null;
+}
+
+function calculateCameraFacingSurfaceNormal(
+  overlayState: DragPlaneOverlayState,
+  movementDirection: Vector3 | null,
+) {
+  if (!movementDirection) {
     return overlayState.planeNormal.clone().normalize();
   }
 
-  const movementDirection = movementVector.clone().normalize();
   const cameraFacingNormal = overlayState.planeNormal.clone().normalize();
   const candidateSurfaceNormal = cameraFacingNormal
     .clone()
@@ -43,6 +56,95 @@ function calculateOverlaySurfaceNormal(overlayState: DragPlaneOverlayState) {
   }
 
   return WORLD_RIGHT.clone().cross(movementDirection).normalize();
+}
+
+function orientNormalTowardsHemisphere(
+  normal: Vector3,
+  primaryHemisphere: Vector3,
+) {
+  if (normal.dot(primaryHemisphere) < 0) {
+    return normal.negate();
+  }
+
+  return normal;
+}
+
+function calculateAxisAlignedSurfaceNormal(
+  overlayState: DragPlaneOverlayState,
+  movementDirection: Vector3 | null,
+  referenceAxis: Vector3,
+  fallbackAxis: Vector3,
+  primaryHemisphere: Vector3,
+) {
+  if (!movementDirection) {
+    const fallbackNormal = referenceAxis.clone().cross(fallbackAxis);
+    if (fallbackNormal.lengthSq() > SURFACE_NORMAL_EPSILON) {
+      return orientNormalTowardsHemisphere(
+        fallbackNormal.normalize(),
+        primaryHemisphere,
+      );
+    }
+
+    return calculateCameraFacingSurfaceNormal(overlayState, null);
+  }
+
+  const planeAxis = projectReferenceAxisOntoOverlayPlane(
+    movementDirection,
+    referenceAxis,
+  );
+  if (planeAxis) {
+    return orientNormalTowardsHemisphere(
+      movementDirection.clone().cross(planeAxis).normalize(),
+      primaryHemisphere,
+    );
+  }
+
+  const fallbackPlaneAxis = projectReferenceAxisOntoOverlayPlane(
+    movementDirection,
+    fallbackAxis,
+  );
+  if (fallbackPlaneAxis) {
+    return orientNormalTowardsHemisphere(
+      movementDirection.clone().cross(fallbackPlaneAxis).normalize(),
+      primaryHemisphere,
+    );
+  }
+
+  return calculateCameraFacingSurfaceNormal(overlayState, movementDirection);
+}
+
+function calculateOverlaySurfaceNormal(overlayState: DragPlaneOverlayState) {
+  const movementVector = overlayState.currentPoint
+    .clone()
+    .sub(overlayState.startPoint);
+  const movementDirection =
+    movementVector.lengthSq() > SURFACE_NORMAL_EPSILON
+      ? movementVector.clone().normalize()
+      : null;
+
+  switch (overlayState.orientationMode) {
+    case "screen-vertical":
+      return calculateAxisAlignedSurfaceNormal(
+        overlayState,
+        movementDirection,
+        WORLD_UP,
+        WORLD_RIGHT,
+        WORLD_RIGHT,
+      );
+    case "screen-horizontal":
+      return calculateAxisAlignedSurfaceNormal(
+        overlayState,
+        movementDirection,
+        WORLD_RIGHT,
+        WORLD_UP,
+        WORLD_UP,
+      );
+    default:
+      return calculateCameraFacingSurfaceNormal(
+        overlayState,
+        movementDirection,
+      );
+  }
 }
 
 export function calculateDragPlaneOverlayGeometry(
