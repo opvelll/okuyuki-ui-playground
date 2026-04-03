@@ -1,14 +1,24 @@
 import { type ThreeEvent, useThree } from "@react-three/fiber";
-import { type RefObject, useCallback, useEffect, useMemo, useRef } from "react";
+import {
+  type RefObject,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Plane, Vector2, Vector3 } from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { useSceneStore } from "../../store/sceneStore";
 import { useUiStore } from "../../store/uiStore";
 import type { SceneObject, Vector3Tuple } from "../../types/scene";
+import { DragPlaneOverlay } from "./DragPlaneOverlay";
 import { DynamicSceneObject } from "./DynamicSceneObject";
 import { SelectableSceneObject } from "./SelectableSceneObject";
+import type { DragPlaneOverlayState } from "./dragPlaneOverlay";
 
 type DragSession = {
+  currentPoint: Vector3;
   objectId: string;
   lastClientX: number;
   lastClientY: number;
@@ -16,6 +26,7 @@ type DragSession = {
   planeNormal: Vector3;
   pointerId: number;
   pointerOffset: Vector3;
+  startPoint: Vector3;
 };
 
 const vectorFromTuple = ([x, y, z]: Vector3Tuple) => new Vector3(x, y, z);
@@ -41,6 +52,8 @@ export function ObjectMoveController({
   const objectsById = useSceneStore((state) => state.objectsById);
   const dragSessionRef = useRef<DragSession | null>(null);
   const pointerVector = useMemo(() => new Vector2(), []);
+  const [overlayState, setOverlayState] =
+    useState<DragPlaneOverlayState | null>(null);
 
   const setControlsEnabled = useCallback(
     (enabled: boolean) => {
@@ -54,11 +67,20 @@ export function ObjectMoveController({
   const finishDrag = useCallback(
     (nextState: "active" | "idle") => {
       dragSessionRef.current = null;
+      setOverlayState(null);
       setControlsEnabled(true);
       setInteractionState(nextState);
     },
     [setControlsEnabled, setInteractionState],
   );
+
+  const syncOverlayState = useCallback((dragSession: DragSession) => {
+    setOverlayState({
+      currentPoint: dragSession.currentPoint.clone(),
+      planeNormal: dragSession.planeNormal.clone(),
+      startPoint: dragSession.startPoint.clone(),
+    });
+  }, []);
 
   const projectClientPointToPlane = useCallback(
     (clientX: number, clientY: number, plane: Plane) => {
@@ -99,16 +121,18 @@ export function ObjectMoveController({
       dragSession.lastClientY = clientY;
 
       const nextPosition = intersection.add(dragSession.pointerOffset);
+      dragSession.currentPoint.copy(nextPosition);
       useSceneStore
         .getState()
         .updateObjectPosition(
           dragSession.objectId,
           tupleFromVector(nextPosition),
         );
+      syncOverlayState(dragSession);
 
       return nextPosition;
     },
-    [projectClientPointToPlane],
+    [projectClientPointToPlane, syncOverlayState],
   );
 
   const handlePointerDown = (
@@ -145,6 +169,7 @@ export function ObjectMoveController({
     }
 
     dragSessionRef.current = {
+      currentPoint: objectPosition.clone(),
       objectId: sceneObject.id,
       lastClientX: event.nativeEvent.clientX,
       lastClientY: event.nativeEvent.clientY,
@@ -152,7 +177,9 @@ export function ObjectMoveController({
       planeNormal,
       pointerId: event.pointerId,
       pointerOffset: objectPosition.sub(intersection),
+      startPoint: vectorFromTuple(sceneObject.position),
     };
+    syncOverlayState(dragSessionRef.current);
     setControlsEnabled(false);
     setInteractionState("dragging");
   };
@@ -239,6 +266,8 @@ export function ObjectMoveController({
           dragSession.objectId,
           tupleFromVector(nextPosition),
         );
+      dragSession.currentPoint.copy(nextPosition);
+      syncOverlayState(dragSession);
     };
 
     const handlePointerCancel = () => {
@@ -258,7 +287,7 @@ export function ObjectMoveController({
       window.removeEventListener("pointercancel", handlePointerCancel);
       window.removeEventListener("wheel", handleWheel);
     };
-  }, [finishDrag, updateDraggedObjectPosition]);
+  }, [finishDrag, syncOverlayState, updateDraggedObjectPosition]);
 
   useEffect(() => {
     if (!physicsEnabled) {
@@ -289,29 +318,37 @@ export function ObjectMoveController({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [clearSelection, finishDrag]);
 
-  return objectIds.map((objectId) => {
-    const sceneObject = objectsById[objectId];
+  return (
+    <>
+      {objectIds.map((objectId) => {
+        const sceneObject = objectsById[objectId];
 
-    if (!sceneObject) {
-      return null;
-    }
-
-    if (physicsEnabled) {
-      return (
-        <DynamicSceneObject key={`${objectId}-dynamic`} {...sceneObject} />
-      );
-    }
-
-    return (
-      <SelectableSceneObject
-        dragging={
-          interactionState === "dragging" && selectedObjectId === sceneObject.id
+        if (!sceneObject) {
+          return null;
         }
-        key={`${objectId}-static`}
-        onPointerDown={handlePointerDown}
-        sceneObject={sceneObject}
-        selected={selectedObjectId === sceneObject.id}
-      />
-    );
-  });
+
+        if (physicsEnabled) {
+          return (
+            <DynamicSceneObject key={`${objectId}-dynamic`} {...sceneObject} />
+          );
+        }
+
+        return (
+          <SelectableSceneObject
+            dragging={
+              interactionState === "dragging" &&
+              selectedObjectId === sceneObject.id
+            }
+            key={`${objectId}-static`}
+            onPointerDown={handlePointerDown}
+            sceneObject={sceneObject}
+            selected={selectedObjectId === sceneObject.id}
+          />
+        );
+      })}
+      {!physicsEnabled && interactionState === "dragging" && overlayState ? (
+        <DragPlaneOverlay overlayState={overlayState} />
+      ) : null}
+    </>
+  );
 }

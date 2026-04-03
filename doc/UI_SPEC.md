@@ -1,250 +1,221 @@
-# Object Move UI Specification
+# Object Move UI Current Specification
 
-## 1. Purpose
+## 1. 位置づけ
 
-このドキュメントは、`doc/SPEC.md` を現在の `naname_ui` 向けに縮小・再構成した UI 仕様である。
-対象は「ボーン先端の編集」ではなく「シーン上のオブジェクト移動」とし、初期実装では Move UI のみを扱う。
+このドキュメントは、`naname_ui` の現状実装に合わせた Object Move UI の仕様書である。
+将来案や元仕様の広い射程は `doc/SPEC.md` に残し、このファイルでは「今、画面上でどう動くか」だけを扱う。
 
-## 2. Scope
+## 2. 現在のスコープ
 
 ### In Scope
 
-- シーン上のオブジェクト選択
-- 選択オブジェクトの移動 UI
-- `screen-depth-drag` を既定値とする移動操作
-- `zustand` と `react-three/fiber` に合わせた責務分割
-- 選択状態とドラッグ中の視覚フィードバック
+- シーン上のオブジェクト表示
+- オブジェクトの選択
+- `screen-depth-drag` による移動
+- ドラッグ中ホイールによる奥行き移動
+- `screen-depth-drag` 中の plane overlay 表示
+- 右上の Settings window
+- 左下の状態 HUD
+- `physicsEnabled` の on/off 切替
 
 ### Out of Scope
 
-- ボーン、Control Point、IK、Virtual Root
+- `plane-overlay` モード
 - Rotate UI
-- `plane-overlay` の実装
-- ボーン差分 telemetry
-- 物理演算中の厳密なドラッグ同期
+- ボーン、Control Point、IK
+- Undo / history
+- 永続保存
+- 物理有効時のドラッグ編集
 
-`plane-overlay` は将来拡張候補として名前だけ残すが、初期実装では UI とロジックを持たない。
+## 3. 画面構成
 
-## 3. Terms
+- ヘッダー:
+  `Okuyuki-UI-Playground` とサブタイトルを表示する。
+- 3D Scene:
+  `PrototypeScene` が `Canvas`、ライト、床、オブジェクト、`OrbitControls` を持つ。
+- Settings window:
+  右上固定。開閉可能。
+- SceneStatusHud:
+  左下固定。選択状態と操作ヒントを表示する。
 
-- `Scene Object`:
-  シーン上で選択・移動できる対象。現在の `box` / `sphere` / `cone` などを含む。
-- `Selected Object`:
-  現在 UI 操作対象となっている `Scene Object`。
-- `Move Mode`:
-  オブジェクト移動方式。初期実装では `screen-depth-drag` のみ。
-- `screen-depth-drag`:
-  ドラッグ中のスクリーン座標に追従して平面移動し、ホイールでカメラ前後方向へ奥行きを調整する方式。
-- `Drag Session`:
-  1 回の `pointerdown` から `pointerup` までの一時的な計算状態。
+## 4. シーンオブジェクト
 
-## 4. UX Goal
+- 対象は `box` / `capsule` / `cone` / `cylinder` / `sphere` / `torus`。
+- 各オブジェクトは `id`、`color`、`position`、`rotation`、`scale` を持つ。
+- シーン定義は `useSceneStore` が単一情報源になる。
 
-- クリックで対象を選び、そのままドラッグ開始できる。
-- 画面上のマウス移動に対して、選択オブジェクトが素直に追従する。
-- 奥行き調整はドラッグ中のホイールだけに限定し、通常時のホイールはカメラ操作に使わない。
-- 既存の `OrbitControls` と競合しない。
+## 5. UI State
 
-## 5. Interaction Model
+`useUiStore` は次の状態を持つ。
 
-### 5.1 States
-
-- `Idle`:
-  未選択。移動ガイドは非表示。
-- `Active`:
-  オブジェクト選択済み。選択ハイライトと移動可能状態を表示。
-- `Dragging`:
-  `screen-depth-drag` による移動中。
-
-### 5.2 Selection
-
-- オブジェクト左クリックで `Selected Object` を更新し、`Active` に入る。
-- すでに選択中のオブジェクトを左ドラッグした場合、そのまま `Dragging` を開始する。
-- 未選択オブジェクトを左クリックした場合も、同一 `pointerdown` から選択とドラッグ開始を許可する。
-- 空間クリックで `Idle` に戻す。
-- `Escape` で `Idle` に戻す。
-
-### 5.3 Drag Start
-
-- `pointerdown` 時に対象オブジェクトの現在ワールド位置を取得する。
-- カメラ forward とオブジェクト位置から、camera-facing plane を 1 枚生成する。
-- その plane へのレイ交点を初期 pointer 位置として保存する。
-- `OrbitControls` はドラッグ開始時に一時停止する。
-
-### 5.4 Drag Move
-
-- `pointermove` ごとに現在 pointer を raycast し、camera-facing plane との交点を再計算する。
-- オブジェクト位置は、その交点に追従して更新する。
-- ドラッグ中の表示ガイドとして、選択オブジェクト中心に薄い plane を表示してよい。
-- 高頻度更新は `zustand` に逐次流さず、controller 内の ref と対象 `Object3D` 更新を優先する。
-
-### 5.5 Depth Move
-
-- `screen-depth-drag` 中のホイールで、選択オブジェクトをカメラ前後方向へ移動する。
-- `moveDepthWheelStep` を `delta / 100` に対する移動量として使う。
-- 初期値の向きは `normal` とし、「前ホイールで奥、手前ホイールで手前」とする。
-- 非ドラッグ時のホイールには移動処理を割り当てない。
-
-### 5.6 Drag Finish
-
-- `pointerup` で現在位置を確定し、`Active` に戻る。
-- 初期実装では `moveDropCommitEnabled = false` 相当とし、ドラッグ後も選択を維持する。
-- `OrbitControls` を再度有効化する。
-
-## 6. Visual Rules
-
-- `Selected Object` は色・輪郭・スケールのいずれかで強調する。
-- `Dragging` 中は通常の選択表示に加え、移動 plane または drag helper を表示する。
-- `screen-depth-drag` では DOM overlay を持たない。
-- HUD が必要な場合は、まずは画面上部または左上に「Selected / Mode / Depth step」だけを出す。
-
-## 7. Settings
-
-初期実装で持つ設定は次の最小セットとする。
-
-- `moveMode`:
-  既定値は `screen-depth-drag`。他モードは予約値扱い。
-- `moveDepthWheelStep`:
-  ホイール 1 単位あたりの奥行き移動量。
-- `moveDepthWheelDirection`:
-  `normal | inverted`。
-
-初期実装では UI 上に設定切替を並べなくてもよい。まずは store の固定値または簡易 toggle で十分とする。
-
-## 8. Architecture Decision
-
-### 8.1 Store Responsibilities
-
-`zustand` は「UI が参照する安定状態」と「コミット済みの scene state」を持つ。
-ドラッグ中の一時ベクトル計算や pointer 差分は store に入れない。
-
-#### `useUiStore`
-
-保持対象:
-
-- `physicsEnabled`
-- `selectedObjectId`
 - `interactionState`: `idle | active | dragging`
-- `moveMode`
+- `selectedObjectId`
+- `moveMode`: 現在は `screen-depth-drag` のみ
+- `moveOverlayRadiusMultiplier`
 - `moveDepthWheelStep`
-- `moveDepthWheelDirection`
+- `moveDepthWheelDirection`: `normal | inverted`
+- `physicsEnabled`
+- `settingsOpen`
 
-責務:
+状態遷移は次の通り。
 
-- 選択状態の更新
-- モードと設定値の保持
-- Escape や UI toggle に反応するアクション提供
+- `idle`:
+  未選択状態。
+- `active`:
+  オブジェクト選択済み、ただしドラッグしていない状態。
+- `dragging`:
+  `screen-depth-drag` の移動中。
 
-#### `useSceneStore`
+## 6. 選択と解除
 
-新規追加前提の store とし、保持対象は以下。
+- オブジェクト左クリックでそのオブジェクトを選択する。
+- `physicsEnabled = false` のときは、同じ `pointerdown` からドラッグ開始まで入る。
+- 何もない場所をクリックすると、ドラッグ中でない限り選択解除する。
+- `Escape` で選択解除し、状態を `idle` に戻す。
+- `physicsEnabled` を切り替えると、状態は `idle` に戻り選択もクリアされる。
 
-- `objects`: `id`, `kind`, `color`, `position`, `rotation`, `scale`
-- `updateObjectTransform(id, partialTransform)`
-- `resetObjectTransform(id)`
+## 7. `screen-depth-drag` の現在仕様
 
-責務:
+### 7.1 前提
 
-- 画面に並ぶオブジェクト定義の単一情報源
-- ドラッグ完了時の transform commit
-- 将来の保存・履歴機能の受け皿
+- このモードだけが実装されている。
+- `physicsEnabled = false` のときだけ移動できる。
+- `OrbitControls` はドラッグ開始中だけ無効化される。
 
-### 8.2 Drag Session Placement
+### 7.2 Drag Start
 
-`Drag Session` は `react-three/fiber` 側の controller component 内で `useRef` 管理する。
+- 対象オブジェクトの現在位置を通る camera-facing plane を生成する。
+- `pointerdown` 位置をその plane に投影し、交点を得る。
+- オブジェクト位置と交点との差を `pointerOffset` として保存する。
+- 以下を `Drag Session` として `ObjectMoveController` 内の ref に保持する。
+  - `objectId`
+  - `pointerId`
+  - `plane`
+  - `planeNormal`
+  - `pointerOffset`
+  - `startPoint`
+  - `currentPoint`
+  - `lastClientX`
+  - `lastClientY`
 
-保持対象:
+### 7.3 Drag Move
 
-- 対象 object id
-- start world position
-- active plane
-- pointer capture 状態
-- 現在の depth offset
-- `OrbitControls` の一時停止状態
+- `window` の `pointermove` を監視する。
+- 対応する `pointerId` の移動だけを受け付ける。
+- 現在のポインタ座標を同じ plane に再投影する。
+- `intersection + pointerOffset` を次のオブジェクト位置として `useSceneStore` に反映する。
 
-理由:
+### 7.4 Depth Move
 
-- `pointermove` ごとの global store 更新を避ける
-- 3D ベクトルや `THREE.Plane` を React render state に載せない
-- drag 中の再 render を最小化する
+- ドラッグ中だけ `window` の `wheel` を受け付ける。
+- 移動量は `(-deltaY / 100) * moveDepthWheelStep` を基準に計算する。
+- `moveDepthWheelDirection = inverted` のときは符号を反転する。
+- plane 自体を `planeNormal` 方向へ前後移動する。
+- その直後、現在の `clientX/clientY` で再投影し直してオブジェクト位置を更新する。
+- これにより、ホイール操作中もオブジェクトがカーソル基準から横滑りしにくい。
+- `wheel` イベントの位置が使えない場合は、最後に記録した `lastClientX / lastClientY` をフォールバックに使う。
 
-### 8.3 Event Routing
+### 7.5 Drag Finish / Cancel
 
-`doc/SPEC.md` のような `AppEvent` 正規化レイヤは初期実装では作らない。
-このプロジェクトでは、まず `react-three/fiber` の pointer event を直接使う。
+- 対応する `pointerup` で `dragging` を終了し、`active` に戻る。
+- `pointercancel` では、選択が残っていれば `active`、なければ `idle` に戻る。
+- ドラッグ終了時に `OrbitControls` を再有効化する。
 
-- オブジェクト選択: mesh/group の `onPointerDown`
-- ドラッグ更新: controller 内で pointer capture 後の `onPointerMove`
-- ドラッグ終了: `onPointerUp`
-- ホイール奥行き: `onWheel`
-- `Escape`: `window` に対する keydown listener
+### 7.6 Drag Plane Overlay
 
-イベントの意味付けは component で行い、結果だけを store action に流す。
+- 対象は `screen-depth-drag` 中のみで、`physicsEnabled = false` のときだけ表示する。
+- overlay は Three.js scene 上に描く 3D ガイドであり、raycast 対象にはしない。
+- overlay は次の要素で構成する。
+  - 開始地点を中心にした半透明の円板
+  - 開始地点から現在地点への細いライン
+  - 開始地点マーカー
+  - 現在地点マーカー
+- 円板の半径は `distance(startPoint, currentPoint) * moveOverlayRadiusMultiplier` を基準にし、最小値 `0.58` を下回らない。
+- `moveOverlayRadiusMultiplier` の初期値は `1.15`。
+- 円板の向きは、移動ベクトルに直交しつつ、できるだけ camera-facing を保つ向きで計算する。
+- そのため、画面内の横移動だけではほぼ camera-facing に見え、ホイールなどで奥行き差が入ると面が傾く。
+- 円板 material の現在値は次の通り。
+  - `transparent = true`
+  - `opacity = 0.25`
+  - `side = DoubleSide`
+  - `depthTest = true`
+  - `depthWrite = false`
+- `pointerup`、`pointercancel`、`Escape`、`physicsEnabled` 切替で overlay は消える。
 
-## 9. Suggested Component Structure
+## 8. 見た目の現在仕様
 
-初期実装では以下の構造を採用する。
+- 選択中オブジェクトは emissive と material 値を上げ、スケールを `1.04x` にする。
+- ドラッグ中オブジェクトはさらにスケールを `1.08x` にする。
+- `screen-depth-drag` 中は、開始地点中心の円板 overlay を scene 上に表示する。
+- overlay の円板はオブジェクトに隠れる設定で、前後関係の干渉が読めるようにしている。
+- `SceneStatusHud` には次を表示する。
+  - `Selected`
+  - `State`
+  - `Mode`
+  - `Depth`
+  - 補助メッセージ
+- 補助メッセージは `physicsEnabled` と選択有無で切り替える。
 
-- `App`
-  - ヘッダー、トグル、HUD を配置する
+## 9. Settings window の現在仕様
+
+右上の Settings window では次を変更できる。
+
+- `Physics` の on/off
+- `Mode`
+  - 現状は `screen-depth-drag` のみ選択可能
+- `Overlay Radius Multiplier`
+- `Depth Wheel Step`
+- `Depth Direction`
+
+パネル自体は開閉できる。
+
+## 10. 物理との関係
+
+- `physicsEnabled = true` のときは `Physics` / `RigidBody` 側の描画に切り替える。
+- この状態では object dragging は停止する。
+- HUD でも「Physics enabled: object dragging is paused.」を表示する。
+
+## 11. 実装責務
+
+### `App`
+
+- ヘッダー
 - `PrototypeScene`
-  - `Canvas`、camera、light、`OrbitControls` を持つ
-- `SceneObjectList`
-  - `useSceneStore` の `objects` を描画する
-- `SelectableSceneObject`
-  - 1 オブジェクト分の mesh 表示と選択見た目を担当する
-- `ObjectMoveController`
-  - raycast、drag session、depth wheel、`OrbitControls` の停止/再開を担当する
+- `SettingsWindow`
+- `SceneStatusHud`
 
-初期段階では、シーン描画と操作管理を同じファイルに詰め込みすぎない。
-少なくとも「オブジェクト描画」と「移動操作 controller」は分離する。
+### `PrototypeScene`
 
-## 10. Physics Handling
+- `Canvas`
+- ライト、床、`ContactShadows`
+- `OrbitControls`
+- `SceneContents`
 
-現在のプロジェクトは `physicsEnabled` により static / dynamic 表示を切り替えている。
-初期実装の object move UI は、`physicsEnabled = false` を主対象とする。
+### `SceneContents`
 
-- `physicsEnabled = false`:
-  通常どおり選択・移動を許可する。
-- `physicsEnabled = true`:
-  初期実装では move UI を無効化するか、選択のみ許可して移動開始を抑止する。
+- `physicsEnabled` に応じて static / physics 表示を切り替える。
 
-理由:
+### `SelectableSceneObject`
 
-- 動的 `RigidBody` と手動ドラッグの競合を避ける
-- まず UX と state 管理を固める
+- static 表示時の選択見た目と `onPointerDown` を受け持つ。
 
-物理あり編集は次段階で `kinematicPosition` などを用いて別仕様で扱う。
+### `ObjectMoveController`
 
-## 11. Data Model
+- 選択開始
+- drag session 管理
+- pointer move / up / cancel
+- wheel depth move
+- overlay 用 state の生成
+- `OrbitControls` の停止 / 再開
 
-`ShapeSpec` は将来的に次のような `SceneObject` へ置き換える。
+### `DragPlaneOverlay`
 
-```ts
-type SceneObject = {
-  id: string;
-  kind: "box" | "capsule" | "cone" | "cylinder" | "sphere" | "torus";
-  color: string;
-  position: [number, number, number];
-  rotation: [number, number, number];
-  scale: [number, number, number];
-};
-```
+- overlay 用の円板、ライン、マーカー描画
+- 開始地点と現在地点から center / radius / surfaceNormal を算出して反映する
 
-`id` を持たせることで、描画 key と選択 state を安定化する。
+## 12. 既知の未実装事項
 
-## 12. Implementation Order
-
-1. `ShapeSpec` に `id` を追加し、描画キーを安定化する
-2. `selectedObjectId` と `interactionState` を `useUiStore` に追加する
-3. `physicsEnabled = false` 時だけ選択ハイライトを出す
-4. `ObjectMoveController` を追加し、`screen-depth-drag` を実装する
-5. HUD に最小限の mode / selection 表示を足す
-
-## 13. Future Extensions
-
-- `plane-overlay` の追加
-- Rotate UI の追加
-- transform reset / undo
-- physics 有効時の kinematic drag
-- 選択対象の複数化
+- `plane-overlay` モードは未実装
+- Rotate UI は未実装
+- 物理有効時の移動編集は未実装
+- 操作履歴やリセットは未実装

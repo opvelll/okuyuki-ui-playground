@@ -12,12 +12,18 @@ export function SettingsWindow() {
   const moveDepthWheelDirection = useUiStore(
     (state) => state.moveDepthWheelDirection,
   );
+  const moveOverlayRadiusMultiplier = useUiStore(
+    (state) => state.moveOverlayRadiusMultiplier,
+  );
   const moveDepthWheelStep = useUiStore((state) => state.moveDepthWheelStep);
   const moveMode = useUiStore((state) => state.moveMode);
   const settingsOpen = useUiStore((state) => state.settingsOpen);
   const setPhysicsEnabled = useUiStore((state) => state.setPhysicsEnabled);
   const setMoveDepthWheelDirection = useUiStore(
     (state) => state.setMoveDepthWheelDirection,
+  );
+  const setMoveOverlayRadiusMultiplier = useUiStore(
+    (state) => state.setMoveOverlayRadiusMultiplier,
   );
   const setMoveDepthWheelStep = useUiStore(
     (state) => state.setMoveDepthWheelStep,
@@ -29,6 +35,13 @@ export function SettingsWindow() {
     const parsedValue = Number(value);
     if (Number.isFinite(parsedValue)) {
       setMoveDepthWheelStep(parsedValue);
+    }
+  };
+
+  const handleOverlayRadiusMultiplierChange = (value: string) => {
+    const parsedValue = Number(value);
+    if (Number.isFinite(parsedValue)) {
+      setMoveOverlayRadiusMultiplier(parsedValue);
     }
   };
 
@@ -93,6 +106,24 @@ export function SettingsWindow() {
               >
                 <option value="screen-depth-drag">screen-depth-drag</option>
               </select>
+            </label>
+            <label
+              className="grid gap-2 text-sm text-slate-100/90"
+              htmlFor="overlay-radius-multiplier"
+            >
+              <span>Overlay Radius Multiplier</span>
+              <input
+                className={fieldClasses}
+                id="overlay-radius-multiplier"
+                max="4"
+                min="1"
+                onChange={(event) =>
+                  handleOverlayRadiusMultiplierChange(event.target.value)
+                }
+                step="0.1"
+                type="number"
+                value={moveOverlayRadiusMultiplier}
+              />
             </label>
             <label
               className="grid gap-2 text-sm text-slate-100/90"

@@ -31,6 +31,7 @@ describe("App", () => {
       interactionState: "idle",
       physicsEnabled: true,
       moveDepthWheelDirection: "normal",
+      moveOverlayRadiusMultiplier: 1.15,
       moveDepthWheelStep: 0.24,
       moveMode: "screen-depth-drag",
       selectedObjectId: null,
@@ -51,6 +52,9 @@ describe("App", () => {
     expect(screen.getByLabelText(/Physics/i)).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /Collapse settings/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(/Overlay Radius Multiplier/i),
     ).toBeInTheDocument();
     expect(screen.getByLabelText(/Depth Wheel Step/i)).toBeInTheDocument();
     expect(
