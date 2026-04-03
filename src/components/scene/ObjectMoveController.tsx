@@ -10,6 +10,8 @@ import { SelectableSceneObject } from "./SelectableSceneObject";
 
 type DragSession = {
   objectId: string;
+  lastClientX: number;
+  lastClientY: number;
   plane: Plane;
   planeNormal: Vector3;
   pointerId: number;
@@ -81,6 +83,34 @@ export function ObjectMoveController({
     [camera, gl, pointerVector, raycaster],
   );
 
+  const updateDraggedObjectPosition = useCallback(
+    (dragSession: DragSession, clientX: number, clientY: number) => {
+      const intersection = projectClientPointToPlane(
+        clientX,
+        clientY,
+        dragSession.plane,
+      );
+
+      if (!intersection) {
+        return null;
+      }
+
+      dragSession.lastClientX = clientX;
+      dragSession.lastClientY = clientY;
+
+      const nextPosition = intersection.add(dragSession.pointerOffset);
+      useSceneStore
+        .getState()
+        .updateObjectPosition(
+          dragSession.objectId,
+          tupleFromVector(nextPosition),
+        );
+
+      return nextPosition;
+    },
+    [projectClientPointToPlane],
+  );
+
   const handlePointerDown = (
     event: ThreeEvent<PointerEvent>,
     sceneObject: SceneObject,
@@ -116,6 +146,8 @@ export function ObjectMoveController({
 
     dragSessionRef.current = {
       objectId: sceneObject.id,
+      lastClientX: event.nativeEvent.clientX,
+      lastClientY: event.nativeEvent.clientY,
       plane,
       planeNormal,
       pointerId: event.pointerId,
@@ -132,23 +164,7 @@ export function ObjectMoveController({
         return;
       }
 
-      const intersection = projectClientPointToPlane(
-        event.clientX,
-        event.clientY,
-        dragSession.plane,
-      );
-
-      if (!intersection) {
-        return;
-      }
-
-      const nextPosition = intersection.add(dragSession.pointerOffset);
-      useSceneStore
-        .getState()
-        .updateObjectPosition(
-          dragSession.objectId,
-          tupleFromVector(nextPosition),
-        );
+      updateDraggedObjectPosition(dragSession, event.clientX, event.clientY);
     };
 
     const handlePointerUp = (event: PointerEvent) => {
@@ -198,6 +214,25 @@ export function ObjectMoveController({
         dragSession.planeNormal,
         nextPlanePoint,
       );
+
+      // Reproject from the active pointer so wheel depth keeps the object under
+      // the cursor instead of drifting until the next pointermove arrives.
+      if (
+        updateDraggedObjectPosition(dragSession, event.clientX, event.clientY)
+      ) {
+        return;
+      }
+
+      if (
+        updateDraggedObjectPosition(
+          dragSession,
+          dragSession.lastClientX,
+          dragSession.lastClientY,
+        )
+      ) {
+        return;
+      }
+
       useSceneStore
         .getState()
         .updateObjectPosition(
@@ -223,7 +258,7 @@ export function ObjectMoveController({
       window.removeEventListener("pointercancel", handlePointerCancel);
       window.removeEventListener("wheel", handleWheel);
     };
-  }, [finishDrag, projectClientPointToPlane]);
+  }, [finishDrag, updateDraggedObjectPosition]);
 
   useEffect(() => {
     if (!physicsEnabled) {
