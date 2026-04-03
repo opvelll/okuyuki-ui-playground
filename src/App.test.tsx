@@ -1,8 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
-import { beforeEach, vi } from "vitest";
-import App from "./App";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useSceneStore } from "./store/sceneStore";
 import { useUiStore } from "./store/uiStore";
 
@@ -25,8 +24,14 @@ vi.mock("@react-three/drei", () => ({
   OrbitControls: () => null,
 }));
 
+async function loadApp() {
+  const module = await import("./App");
+  return module.default;
+}
+
 describe("App", () => {
   beforeEach(() => {
+    vi.resetModules();
     useUiStore.setState({
       axisMagnetTarget: null,
       interactionState: "idle",
@@ -43,7 +48,9 @@ describe("App", () => {
     useSceneStore.getState().resetScene();
   });
 
-  it("renders the compact heading and settings window", () => {
+  it("renders the app shell and loaded scene controls", async () => {
+    const App = await loadApp();
+
     render(<App />);
 
     expect(
@@ -66,10 +73,25 @@ describe("App", () => {
     expect(
       screen.getByText(/Physics enabled: object dragging is paused/i),
     ).toBeInTheDocument();
+    expect(await screen.findByLabelText(/three-scene/i)).toBeInTheDocument();
   });
 
-  it("collapses the settings window", async () => {
+  it("shows the placeholder while the scene module is still loading", async () => {
+    vi.doMock("./components/PrototypeScene", () => new Promise(() => {}));
+    const App = await loadApp();
+
+    render(<App />);
+
+    expect(screen.getByLabelText(/Scene loading/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Preparing the 3D prototype scene/i),
+    ).toBeInTheDocument();
+  });
+
+  it("collapses the settings window while the scene is loading", async () => {
     const user = userEvent.setup();
+    vi.doMock("./components/PrototypeScene", () => new Promise(() => {}));
+    const App = await loadApp();
 
     render(<App />);
 

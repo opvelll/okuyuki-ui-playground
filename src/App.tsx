@@ -1,6 +1,12 @@
-import { PrototypeScene } from "./components/PrototypeScene";
+import { Suspense, lazy } from "react";
+import { PrototypeSceneFallback } from "./components/PrototypeSceneFallback";
 import { SceneStatusHud } from "./components/SceneStatusHud";
 import { SettingsWindow } from "./components/SettingsWindow";
+
+const PrototypeScene = lazy(async () => {
+  const module = await import("./components/PrototypeScene");
+  return { default: module.PrototypeScene };
+});
 
 export default function App() {
   return (
@@ -17,7 +23,9 @@ export default function App() {
         </div>
       </header>
       <section className="relative flex-1">
-        <PrototypeScene />
+        <Suspense fallback={<PrototypeSceneFallback />}>
+          <PrototypeScene />
+        </Suspense>
         <SettingsWindow />
         <SceneStatusHud />
       </section>
