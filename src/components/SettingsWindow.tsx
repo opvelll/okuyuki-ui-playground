@@ -213,6 +213,12 @@ export function SettingsWindow() {
     (state) => state.moveOverlayRadiusMultiplier,
   );
   const movePrecisionStep = useUiStore((state) => state.movePrecisionStep);
+  const moveAutoSwitchToRotate = useUiStore(
+    (state) => state.moveAutoSwitchToRotate,
+  );
+  const moveVerticalDropGuide = useUiStore(
+    (state) => state.moveVerticalDropGuide,
+  );
   const objectAngularDamping = useUiStore(
     (state) => state.objectAngularDamping,
   );
@@ -280,6 +286,12 @@ export function SettingsWindow() {
   );
   const setMovePrecisionStep = useUiStore(
     (state) => state.setMovePrecisionStep,
+  );
+  const setMoveAutoSwitchToRotate = useUiStore(
+    (state) => state.setMoveAutoSwitchToRotate,
+  );
+  const setMoveVerticalDropGuide = useUiStore(
+    (state) => state.setMoveVerticalDropGuide,
   );
   const setObjectAngularDamping = useUiStore(
     (state) => state.setObjectAngularDamping,
@@ -614,6 +626,26 @@ export function SettingsWindow() {
                 <SectionNote>
                   Move UI:
                   オブジェクト移動操作の見え方とステップ量を調整します。
+                </SectionNote>
+                <ToggleField
+                  checked={moveAutoSwitchToRotate}
+                  id="move-auto-switch-to-rotate"
+                  label="Auto Switch To Rotate / 移動後に回転へ切替"
+                  onChange={setMoveAutoSwitchToRotate}
+                />
+                <SectionNote>
+                  ON で移動ドラッグを離した直後、そのオブジェクトを選択したまま
+                  Rotate UI に切り替えます。
+                </SectionNote>
+                <ToggleField
+                  checked={moveVerticalDropGuide}
+                  id="move-vertical-drop-guide"
+                  label="Vertical Drop Guide / 落下ガイド線"
+                  onChange={setMoveVerticalDropGuide}
+                />
+                <SectionNote>
+                  ON で移動中のオブジェクト真下に、床へ向かう world Y 軸基準の
+                  縦ガイド線を表示します。
                 </SectionNote>
                 <label
                   className="grid gap-2 text-sm text-slate-100/90"

@@ -240,4 +240,41 @@ describe("App", () => {
     expect(screen.getByLabelText(/Wheel Rotate Step/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Twist Axis/i)).toBeInTheDocument();
   });
+
+  it("shows the new move workflow toggles in move settings", async () => {
+    const user = userEvent.setup();
+    const App = await loadApp();
+
+    render(<App />);
+
+    await user.click(screen.getAllByRole("button", { name: /Move UI/i })[1]);
+
+    expect(
+      screen.getByLabelText(/Auto Switch To Rotate \/ 移動後に回転へ切替/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(/Vertical Drop Guide \/ 落下ガイド線/i),
+    ).toBeInTheDocument();
+  });
+
+  it("persists the new move workflow toggles", async () => {
+    const user = userEvent.setup();
+    const App = await loadApp();
+
+    render(<App />);
+
+    await user.click(screen.getAllByRole("button", { name: /Move UI/i })[1]);
+    await user.click(
+      screen.getByLabelText(/Auto Switch To Rotate \/ 移動後に回転へ切替/i),
+    );
+    await user.click(
+      screen.getByLabelText(/Vertical Drop Guide \/ 落下ガイド線/i),
+    );
+
+    const persistedState = window.localStorage.getItem(UI_STORE_PERSIST_KEY);
+
+    expect(persistedState).not.toBeNull();
+    expect(persistedState).toContain('"moveAutoSwitchToRotate":true');
+    expect(persistedState).toContain('"moveVerticalDropGuide":false');
+  });
 });

@@ -56,6 +56,9 @@ export function useObjectDragSession({
   const raycaster = useThree((state) => state.raycaster);
   const interactionMode = useUiStore((state) => state.interactionMode);
   const clearSelection = useUiStore((state) => state.clearSelection);
+  const beginAutoRotateWorkflow = useUiStore(
+    (state) => state.beginAutoRotateWorkflow,
+  );
   const setAxisMagnetTarget = useUiStore((state) => state.setAxisMagnetTarget);
   const setInteractionState = useUiStore((state) => state.setInteractionState);
   const setMoveOverlayDisplayMode = useUiStore(
@@ -270,6 +273,10 @@ export function useObjectDragSession({
       }
 
       finishDrag("active");
+
+      if (useUiStore.getState().moveAutoSwitchToRotate) {
+        beginAutoRotateWorkflow(dragSession.objectId);
+      }
     };
 
     const handlePointerCancel = () => {
@@ -359,6 +366,7 @@ export function useObjectDragSession({
       }
     };
   }, [
+    beginAutoRotateWorkflow,
     applyModifiers,
     finishDrag,
     setAxisMagnetTarget,

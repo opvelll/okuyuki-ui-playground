@@ -38,6 +38,8 @@ type PersistedUiState = {
   moveOverlayOrientationMode: MoveOverlayOrientationMode;
   moveOverlayRadiusMultiplier: number;
   movePrecisionStep: number;
+  moveAutoSwitchToRotate: boolean;
+  moveVerticalDropGuide: boolean;
   objectAngularDamping: number;
   objectFriction: number;
   objectLinearDamping: number;
@@ -64,10 +66,13 @@ type PersistedUiState = {
 };
 
 type UiState = PersistedUiState & {
+  autoRotateWorkflowObjectId: string | null;
   axisMagnetTarget: AxisMagnetTarget | null;
   interactionState: InteractionState;
   selectedObjectId: string | null;
+  beginAutoRotateWorkflow: (objectId: string) => void;
   clearSelection: () => void;
+  completeAutoRotateWorkflow: () => void;
   selectObject: (objectId: string) => void;
   setAxisMagnetTarget: (target: AxisMagnetTarget | null) => void;
   setFloorFriction: (value: number) => void;
@@ -84,6 +89,8 @@ type UiState = PersistedUiState & {
   setMoveOverlayOrientationMode: (mode: MoveOverlayOrientationMode) => void;
   setMoveOverlayRadiusMultiplier: (multiplier: number) => void;
   setMovePrecisionStep: (step: number) => void;
+  setMoveAutoSwitchToRotate: (value: boolean) => void;
+  setMoveVerticalDropGuide: (value: boolean) => void;
   setObjectAngularDamping: (value: number) => void;
   setObjectFriction: (value: number) => void;
   setObjectLinearDamping: (value: number) => void;
@@ -128,6 +135,8 @@ export const createDefaultPersistedUiState = (): PersistedUiState => ({
   moveOverlayOrientationMode: "camera-facing",
   moveOverlayRadiusMultiplier: 1.15,
   movePrecisionStep: 0.1,
+  moveAutoSwitchToRotate: false,
+  moveVerticalDropGuide: true,
   objectAngularDamping: 0.9,
   objectFriction: 0.9,
   objectLinearDamping: 0.45,
@@ -152,7 +161,9 @@ export const createDefaultPersistedUiState = (): PersistedUiState => ({
 
 const createInitialUiState = (): Omit<
   UiState,
+  | "beginAutoRotateWorkflow"
   | "clearSelection"
+  | "completeAutoRotateWorkflow"
   | "selectObject"
   | "setAxisMagnetTarget"
   | "setFloorFriction"
@@ -169,6 +180,8 @@ const createInitialUiState = (): Omit<
   | "setMoveOverlayOrientationMode"
   | "setMoveOverlayRadiusMultiplier"
   | "setMovePrecisionStep"
+  | "setMoveAutoSwitchToRotate"
+  | "setMoveVerticalDropGuide"
   | "setObjectAngularDamping"
   | "setObjectFriction"
   | "setObjectLinearDamping"
@@ -194,6 +207,7 @@ const createInitialUiState = (): Omit<
   | "setSuppressObjectRotation"
 > => ({
   ...createDefaultPersistedUiState(),
+  autoRotateWorkflowObjectId: null,
   axisMagnetTarget: null,
   interactionState: "idle",
   selectedObjectId: null,
@@ -203,18 +217,45 @@ export const useUiStore = create<UiState>()(
   persist(
     (set) => ({
       ...createInitialUiState(),
-      clearSelection: () =>
+      beginAutoRotateWorkflow: (objectId) =>
         set({
+          autoRotateWorkflowObjectId: objectId,
           axisMagnetTarget: null,
-          interactionState: "idle",
-          selectedObjectId: null,
-        }),
-      selectObject: (objectId) =>
-        set({
-          axisMagnetTarget: null,
+          interactionMode: "rotate",
           interactionState: "active",
           selectedObjectId: objectId,
         }),
+      clearSelection: () =>
+        set((state) => ({
+          autoRotateWorkflowObjectId: null,
+          axisMagnetTarget: null,
+          interactionMode:
+            state.autoRotateWorkflowObjectId !== null
+              ? "move"
+              : state.interactionMode,
+          interactionState: "idle",
+          selectedObjectId: null,
+        })),
+      completeAutoRotateWorkflow: () =>
+        set((state) => ({
+          autoRotateWorkflowObjectId: null,
+          axisMagnetTarget: null,
+          interactionMode:
+            state.autoRotateWorkflowObjectId !== null
+              ? "move"
+              : state.interactionMode,
+          interactionState: state.selectedObjectId ? "active" : "idle",
+        })),
+      selectObject: (objectId) =>
+        set((state) => ({
+          autoRotateWorkflowObjectId:
+            state.autoRotateWorkflowObjectId === objectId
+              ? state.autoRotateWorkflowObjectId
+              : null,
+          axisMagnetTarget: null,
+          interactionState: "active",
+          selectedObjectId: objectId,
+        })),
       setAxisMagnetTarget: (target) => set({ axisMagnetTarget: target }),
       setFloorFriction: (value) => set({ floorFriction: value }),
       setFloorColor: (value) => set({ floorColor: value }),
@@ -234,12 +275,17 @@ export const useUiStore = create<UiState>()(
       setMoveOverlayRadiusMultiplier: (multiplier) =>
         set({ moveOverlayRadiusMultiplier: multiplier }),
       setMovePrecisionStep: (step) => set({ movePrecisionStep: step }),
+      setMoveAutoSwitchToRotate: (value) =>
+        set({ moveAutoSwitchToRotate: value }),
+      setMoveVerticalDropGuide: (value) =>
+        set({ moveVerticalDropGuide: value }),
       setObjectAngularDamping: (value) => set({ objectAngularDamping: value }),
       setObjectFriction: (value) => set({ objectFriction: value }),
       setObjectLinearDamping: (value) => set({ objectLinearDamping: value }),
       setObjectRestitution: (value) => set({ objectRestitution: value }),
       setPhysicsEnabled: (enabled) =>
         set({
+          autoRotateWorkflowObjectId: null,
           axisMagnetTarget: null,
           interactionState: "idle",
           physicsEnabled: enabled,
@@ -254,6 +300,8 @@ export const useUiStore = create<UiState>()(
       setSceneBackgroundColor: (value) => set({ sceneBackgroundColor: value }),
       setInteractionMode: (mode) =>
         set((state) => ({
+          autoRotateWorkflowObjectId:
+            mode === "rotate" ? state.autoRotateWorkflowObjectId : null,
           axisMagnetTarget: null,
           interactionMode: mode,
           interactionState: state.selectedObjectId ? "active" : "idle",
@@ -296,6 +344,8 @@ export const useUiStore = create<UiState>()(
         moveOverlayOrientationMode: state.moveOverlayOrientationMode,
         moveOverlayRadiusMultiplier: state.moveOverlayRadiusMultiplier,
         movePrecisionStep: state.movePrecisionStep,
+        moveAutoSwitchToRotate: state.moveAutoSwitchToRotate,
+        moveVerticalDropGuide: state.moveVerticalDropGuide,
         objectAngularDamping: state.objectAngularDamping,
         objectFriction: state.objectFriction,
         objectLinearDamping: state.objectLinearDamping,

@@ -149,6 +149,9 @@ export function DynamicSceneObject({
   const physicsRigidBodyType = useUiStore(
     (state) => state.physicsRigidBodyType,
   );
+  const autoRotateWorkflowObjectId = useUiStore(
+    (state) => state.autoRotateWorkflowObjectId,
+  );
   const suppressObjectRotation = useUiStore(
     (state) => state.suppressObjectRotation,
   );
@@ -166,8 +169,11 @@ export function DynamicSceneObject({
   const rigidBodyRef = useRef<RapierRigidBody | null>(null);
   const latestTransformRef = useRef({ quaternion, translation });
   const previousDraggingRef = useRef(dragging);
+  const lockedForAutoRotate = autoRotateWorkflowObjectId === id;
   const [bodyType, setBodyType] = useState<NonNullable<RigidBodyProps["type"]>>(
-    dragging ? "kinematicPosition" : physicsRigidBodyType,
+    dragging || lockedForAutoRotate
+      ? "kinematicPosition"
+      : physicsRigidBodyType,
   );
   const scaleMultiplier = dragging ? 1.08 : selected ? 1.04 : 1;
   const scaledSize = scale.map(
@@ -178,7 +184,10 @@ export function DynamicSceneObject({
 
   useEffect(() => {
     const rigidBody = rigidBodyRef.current;
-    const nextBodyType = dragging ? "kinematicPosition" : physicsRigidBodyType;
+    const nextBodyType =
+      dragging || lockedForAutoRotate
+        ? "kinematicPosition"
+        : physicsRigidBodyType;
     const { quaternion: latestQuaternion, translation: latestTranslation } =
       latestTransformRef.current;
 
@@ -186,7 +195,7 @@ export function DynamicSceneObject({
       return;
     }
 
-    if (dragging) {
+    if (dragging || lockedForAutoRotate) {
       previousDraggingRef.current = true;
       setBodyType(nextBodyType);
       syncRigidBody(true, rigidBody, latestTranslation, latestQuaternion);
@@ -207,7 +216,7 @@ export function DynamicSceneObject({
     if (nextBodyType === "dynamic") {
       rigidBody.wakeUp();
     }
-  }, [dragging, physicsRigidBodyType]);
+  }, [dragging, lockedForAutoRotate, physicsRigidBodyType]);
 
   useFrame(() => {
     const rigidBody = rigidBodyRef.current;
