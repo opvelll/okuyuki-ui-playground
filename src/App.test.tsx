@@ -138,6 +138,27 @@ describe("App", () => {
     expect(persistedState).toContain('"settingsOpen":false');
   });
 
+  it("collapses grouped color settings in general section", async () => {
+    const user = userEvent.setup();
+    const App = await loadApp();
+
+    render(<App />);
+
+    expect(screen.getByLabelText(/Scene Background/i)).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", { name: /Collapse color settings/i }),
+    );
+
+    expect(
+      screen.getByRole("button", { name: /Expand color settings/i }),
+    ).toHaveAttribute("aria-expanded", "false");
+    expect(
+      screen.queryByLabelText(/Scene Background/i),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/Fog Color/i)).not.toBeInTheDocument();
+  });
+
   it("switches the active tool mode from the left toolbar", async () => {
     const user = userEvent.setup();
     const App = await loadApp();

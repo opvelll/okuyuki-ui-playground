@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   type MoveDepthWheelDirection,
   type MoveOverlayDisplayMode,
@@ -19,6 +20,8 @@ const toggleLabelClasses =
 const fieldHintClasses = "text-xs leading-5 text-slate-300/72";
 const colorFieldClasses =
   "h-11 w-14 rounded-2xl border border-white/12 bg-slate-900/80 p-1";
+const subsectionToggleClasses =
+  "flex w-full items-center justify-between gap-3 rounded-2xl border border-white/8 bg-white/[0.03] px-3 py-3 text-left text-sm font-semibold text-slate-100/90 transition hover:bg-white/[0.06] focus-visible:ring-2 focus-visible:ring-sky-300/50";
 
 const settingsMenuItems = [
   { description: "app-wide defaults", key: "general", label: "全体" },
@@ -184,6 +187,7 @@ function ColorField({
 }
 
 export function SettingsWindow() {
+  const [generalColorsOpen, setGeneralColorsOpen] = useState(true);
   const floorFriction = useUiStore((state) => state.floorFriction);
   const floorColor = useUiStore((state) => state.floorColor);
   const floorRestitution = useUiStore((state) => state.floorRestitution);
@@ -357,45 +361,68 @@ export function SettingsWindow() {
                   label="Physics"
                   onChange={setPhysicsEnabled}
                 />
-                <ColorField
-                  hint="Scene Background / 背景色。Canvas 背景とフォグに反映します。"
-                  id="scene-background-color"
-                  label="Scene Background / 背景色"
-                  onChange={setSceneBackgroundColor}
-                  value={sceneBackgroundColor}
-                />
-                <ColorField
-                  hint="Fog Color / フォグ色。遠景のかかり方に反映します。"
-                  id="fog-color"
-                  label="Fog Color / フォグ色"
-                  onChange={setFogColor}
-                  value={fogColor}
-                />
-                <ColorField
-                  hint="Floor Color / 床面色。床そのものの色に反映します。"
-                  id="floor-color"
-                  label="Floor Color / 床面色"
-                  onChange={setFloorColor}
-                  value={floorColor}
-                />
-                <ColorField
-                  hint="Grid Major / グリッド主線色。濃いガイド線に反映します。"
-                  id="grid-major-color"
-                  label="Grid Major / グリッド主線"
-                  onChange={setGridMajorColor}
-                  value={gridMajorColor}
-                />
-                <ColorField
-                  hint="Grid Minor / グリッド補助線色。薄い補助線に反映します。"
-                  id="grid-minor-color"
-                  label="Grid Minor / グリッド補助線"
-                  onChange={setGridMinorColor}
-                  value={gridMinorColor}
-                />
                 <SectionNote>
                   Physics: 物理演算全体の有効化。OFF
                   で静的編集モードに切り替えます。
                 </SectionNote>
+                <div className="grid gap-3 rounded-[1.1rem] border border-white/8 bg-white/[0.02] p-3">
+                  <button
+                    aria-controls="general-color-settings"
+                    aria-expanded={generalColorsOpen}
+                    aria-label={
+                      generalColorsOpen
+                        ? "Collapse color settings"
+                        : "Expand color settings"
+                    }
+                    className={subsectionToggleClasses}
+                    onClick={() => setGeneralColorsOpen((open) => !open)}
+                    type="button"
+                  >
+                    <span>Colors / 色設定</span>
+                    <span className="inline-flex w-6 justify-center text-base leading-none text-sky-300">
+                      {generalColorsOpen ? "−" : "+"}
+                    </span>
+                  </button>
+                  {generalColorsOpen ? (
+                    <div className="grid gap-3" id="general-color-settings">
+                      <ColorField
+                        hint="Scene Background / 背景色。Canvas 背景とフォグに反映します。"
+                        id="scene-background-color"
+                        label="Scene Background / 背景色"
+                        onChange={setSceneBackgroundColor}
+                        value={sceneBackgroundColor}
+                      />
+                      <ColorField
+                        hint="Fog Color / フォグ色。遠景のかかり方に反映します。"
+                        id="fog-color"
+                        label="Fog Color / フォグ色"
+                        onChange={setFogColor}
+                        value={fogColor}
+                      />
+                      <ColorField
+                        hint="Floor Color / 床面色。床そのものの色に反映します。"
+                        id="floor-color"
+                        label="Floor Color / 床面色"
+                        onChange={setFloorColor}
+                        value={floorColor}
+                      />
+                      <ColorField
+                        hint="Grid Major / グリッド主線色。濃いガイド線に反映します。"
+                        id="grid-major-color"
+                        label="Grid Major / グリッド主線"
+                        onChange={setGridMajorColor}
+                        value={gridMajorColor}
+                      />
+                      <ColorField
+                        hint="Grid Minor / グリッド補助線色。薄い補助線に反映します。"
+                        id="grid-minor-color"
+                        label="Grid Minor / グリッド補助線"
+                        onChange={setGridMinorColor}
+                        value={gridMinorColor}
+                      />
+                    </div>
+                  ) : null}
+                </div>
               </section>
             ) : null}
             {selectedSettingsMenu === "physics" ? (
