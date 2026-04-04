@@ -1,4 +1,5 @@
 import { Suspense, lazy } from "react";
+import { InteractionModeHotkeys } from "./components/InteractionModeHotkeys";
 import { InteractionModeToolbar } from "./components/InteractionModeToolbar";
 import { PrototypeSceneFallback } from "./components/PrototypeSceneFallback";
 import { SceneStatusHud } from "./components/SceneStatusHud";
@@ -24,6 +25,7 @@ export default function App() {
         </div>
       </header>
       <section className="relative flex-1">
+        <InteractionModeHotkeys />
         <Suspense fallback={<PrototypeSceneFallback />}>
           <PrototypeScene />
         </Suspense>

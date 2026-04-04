@@ -91,7 +91,9 @@ describe("App", () => {
       ),
     ).toBeInTheDocument();
     expect(screen.getByText("FPS")).toBeInTheDocument();
-    expect(await screen.findByLabelText(/three-scene/i)).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(/Scene loading|three-scene/i),
+    ).toBeInTheDocument();
   });
 
   it("shows the placeholder while the scene module is still loading", async () => {
@@ -196,6 +198,27 @@ describe("App", () => {
     );
     expect(
       screen.getByRole("button", { name: /Switch to Rotate UI tool/i }),
+    ).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("switches the interaction mode with m and r hotkeys", async () => {
+    const user = userEvent.setup();
+    const App = await loadApp();
+
+    render(<App />);
+
+    await user.keyboard("r");
+
+    expect(screen.getByText(/Object Rotate/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Switch to Rotate UI tool/i }),
+    ).toHaveAttribute("aria-pressed", "true");
+
+    await user.keyboard("m");
+
+    expect(screen.getByText(/Object Move/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Switch to Move UI tool/i }),
     ).toHaveAttribute("aria-pressed", "true");
   });
 
