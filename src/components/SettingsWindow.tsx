@@ -213,9 +213,6 @@ export function SettingsWindow() {
     (state) => state.moveOverlayRadiusMultiplier,
   );
   const movePrecisionStep = useUiStore((state) => state.movePrecisionStep);
-  const moveAutoSwitchToRotate = useUiStore(
-    (state) => state.moveAutoSwitchToRotate,
-  );
   const moveVerticalDropGuide = useUiStore(
     (state) => state.moveVerticalDropGuide,
   );
@@ -286,9 +283,6 @@ export function SettingsWindow() {
   );
   const setMovePrecisionStep = useUiStore(
     (state) => state.setMovePrecisionStep,
-  );
-  const setMoveAutoSwitchToRotate = useUiStore(
-    (state) => state.setMoveAutoSwitchToRotate,
   );
   const setMoveVerticalDropGuide = useUiStore(
     (state) => state.setMoveVerticalDropGuide,
@@ -626,16 +620,6 @@ export function SettingsWindow() {
                 <SectionNote>
                   Move UI:
                   オブジェクト移動操作の見え方とステップ量を調整します。
-                </SectionNote>
-                <ToggleField
-                  checked={moveAutoSwitchToRotate}
-                  id="move-auto-switch-to-rotate"
-                  label="Auto Switch To Rotate / 移動後に回転へ切替"
-                  onChange={setMoveAutoSwitchToRotate}
-                />
-                <SectionNote>
-                  ON で移動ドラッグを離した直後、そのオブジェクトを選択したまま
-                  Rotate UI に切り替えます。
                 </SectionNote>
                 <ToggleField
                   checked={moveVerticalDropGuide}

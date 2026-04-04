@@ -215,12 +215,6 @@ export function ObjectRotateController({
   const gl = useThree((state) => state.gl);
   const selectedObjectId = useUiStore((state) => state.selectedObjectId);
   const interactionState = useUiStore((state) => state.interactionState);
-  const autoRotateWorkflowObjectId = useUiStore(
-    (state) => state.autoRotateWorkflowObjectId,
-  );
-  const completeAutoRotateWorkflow = useUiStore(
-    (state) => state.completeAutoRotateWorkflow,
-  );
   const rotateUiOpacity = useUiStore((state) => state.rotateUiOpacity);
   const rotateUiRadiusPx = useUiStore((state) => state.rotateUiRadiusPx);
   const rotateArcballSensitivity = useUiStore(
@@ -377,16 +371,6 @@ export function ObjectRotateController({
     setInteractionState(selectedObjectId ? "active" : "idle");
   }, [gl, selectedObjectId, setControlsEnabled, setInteractionState]);
 
-  const shouldReturnToMove = autoRotateWorkflowObjectId === selectedObjectId;
-
-  const finishAutoRotateWorkflow = useCallback(() => {
-    if (!shouldReturnToMove) {
-      return;
-    }
-
-    completeAutoRotateWorkflow();
-  }, [completeAutoRotateWorkflow, shouldReturnToMove]);
-
   const handleGizmoPointerDown = useCallback(
     (event: ThreeEvent<PointerEvent>) => {
       if (
@@ -504,12 +488,10 @@ export function ObjectRotateController({
         currentObjectId,
         quaternionToRotationTuple(nextQuaternion),
       );
-      finishAutoRotateWorkflow();
     },
     [
       applyRotationFromSession,
       computeArcballPointerState,
-      finishAutoRotateWorkflow,
       interactionMode,
       selectedObjectId,
       updateObjectRotation,
@@ -538,7 +520,6 @@ export function ObjectRotateController({
       }
 
       finishDrag();
-      finishAutoRotateWorkflow();
     };
 
     const handlePointerCancel = (event: PointerEvent) => {
@@ -548,7 +529,6 @@ export function ObjectRotateController({
       }
 
       finishDrag();
-      finishAutoRotateWorkflow();
     };
 
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -585,7 +565,6 @@ export function ObjectRotateController({
   }, [
     applyRotationFromSession,
     finishDrag,
-    finishAutoRotateWorkflow,
     gl,
     handleWheelTwist,
     setControlsEnabled,

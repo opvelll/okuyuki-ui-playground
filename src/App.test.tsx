@@ -250,14 +250,11 @@ describe("App", () => {
     await user.click(screen.getAllByRole("button", { name: /Move UI/i })[1]);
 
     expect(
-      screen.getByLabelText(/Auto Switch To Rotate \/ 移動後に回転へ切替/i),
-    ).toBeInTheDocument();
-    expect(
       screen.getByLabelText(/Vertical Drop Guide \/ 落下ガイド線/i),
     ).toBeInTheDocument();
   });
 
-  it("persists the new move workflow toggles", async () => {
+  it("persists the vertical drop guide toggle", async () => {
     const user = userEvent.setup();
     const App = await loadApp();
 
@@ -265,16 +262,12 @@ describe("App", () => {
 
     await user.click(screen.getAllByRole("button", { name: /Move UI/i })[1]);
     await user.click(
-      screen.getByLabelText(/Auto Switch To Rotate \/ 移動後に回転へ切替/i),
-    );
-    await user.click(
       screen.getByLabelText(/Vertical Drop Guide \/ 落下ガイド線/i),
     );
 
     const persistedState = window.localStorage.getItem(UI_STORE_PERSIST_KEY);
 
     expect(persistedState).not.toBeNull();
-    expect(persistedState).toContain('"moveAutoSwitchToRotate":true');
     expect(persistedState).toContain('"moveVerticalDropGuide":false');
   });
 });
