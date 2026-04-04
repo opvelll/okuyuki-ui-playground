@@ -17,6 +17,8 @@ const fieldClasses =
 const toggleLabelClasses =
   "grid grid-cols-[1fr_auto] items-center gap-4 text-sm text-slate-100/90";
 const fieldHintClasses = "text-xs leading-5 text-slate-300/72";
+const colorFieldClasses =
+  "h-11 w-14 rounded-2xl border border-white/12 bg-slate-900/80 p-1";
 
 const settingsMenuItems = [
   { description: "app-wide defaults", key: "general", label: "全体" },
@@ -150,10 +152,45 @@ function SectionNote({ children }: { children: string }) {
   return <p className={fieldHintClasses}>{children}</p>;
 }
 
+function ColorField({
+  hint,
+  id,
+  label,
+  onChange,
+  value,
+}: {
+  hint?: string;
+  id: string;
+  label: string;
+  onChange: (value: string) => void;
+  value: string;
+}) {
+  return (
+    <label className="grid gap-2 text-sm text-slate-100/90" htmlFor={id}>
+      <span>{label}</span>
+      <div className="grid grid-cols-[auto_1fr] items-center gap-3">
+        <input
+          className={colorFieldClasses}
+          id={id}
+          onChange={(event) => onChange(event.target.value)}
+          type="color"
+          value={value}
+        />
+        <span className={fieldClasses}>{value}</span>
+      </div>
+      {hint ? <span className={fieldHintClasses}>{hint}</span> : null}
+    </label>
+  );
+}
+
 export function SettingsWindow() {
   const floorFriction = useUiStore((state) => state.floorFriction);
+  const floorColor = useUiStore((state) => state.floorColor);
   const floorRestitution = useUiStore((state) => state.floorRestitution);
+  const fogColor = useUiStore((state) => state.fogColor);
   const gravityY = useUiStore((state) => state.gravityY);
+  const gridMajorColor = useUiStore((state) => state.gridMajorColor);
+  const gridMinorColor = useUiStore((state) => state.gridMinorColor);
   const moveDepthWheelDirection = useUiStore(
     (state) => state.moveDepthWheelDirection,
   );
@@ -176,6 +213,9 @@ export function SettingsWindow() {
   const physicsRigidBodyType = useUiStore(
     (state) => state.physicsRigidBodyType,
   );
+  const sceneBackgroundColor = useUiStore(
+    (state) => state.sceneBackgroundColor,
+  );
   const rotateTwistAxis = useUiStore((state) => state.rotateTwistAxis);
   const rotateUiOpacity = useUiStore((state) => state.rotateUiOpacity);
   const rotateUiRadiusPx = useUiStore((state) => state.rotateUiRadiusPx);
@@ -193,8 +233,12 @@ export function SettingsWindow() {
     (state) => state.suppressObjectRotation,
   );
   const setFloorFriction = useUiStore((state) => state.setFloorFriction);
+  const setFloorColor = useUiStore((state) => state.setFloorColor);
   const setFloorRestitution = useUiStore((state) => state.setFloorRestitution);
+  const setFogColor = useUiStore((state) => state.setFogColor);
   const setGravityY = useUiStore((state) => state.setGravityY);
+  const setGridMajorColor = useUiStore((state) => state.setGridMajorColor);
+  const setGridMinorColor = useUiStore((state) => state.setGridMinorColor);
   const setMoveDepthWheelDirection = useUiStore(
     (state) => state.setMoveDepthWheelDirection,
   );
@@ -224,6 +268,9 @@ export function SettingsWindow() {
   const setPhysicsEnabled = useUiStore((state) => state.setPhysicsEnabled);
   const setPhysicsRigidBodyType = useUiStore(
     (state) => state.setPhysicsRigidBodyType,
+  );
+  const setSceneBackgroundColor = useUiStore(
+    (state) => state.setSceneBackgroundColor,
   );
   const setRotateTwistAxis = useUiStore((state) => state.setRotateTwistAxis);
   const setRotateUiOpacity = useUiStore((state) => state.setRotateUiOpacity);
@@ -309,6 +356,41 @@ export function SettingsWindow() {
                   id="physics-toggle"
                   label="Physics"
                   onChange={setPhysicsEnabled}
+                />
+                <ColorField
+                  hint="Scene Background / 背景色。Canvas 背景とフォグに反映します。"
+                  id="scene-background-color"
+                  label="Scene Background / 背景色"
+                  onChange={setSceneBackgroundColor}
+                  value={sceneBackgroundColor}
+                />
+                <ColorField
+                  hint="Fog Color / フォグ色。遠景のかかり方に反映します。"
+                  id="fog-color"
+                  label="Fog Color / フォグ色"
+                  onChange={setFogColor}
+                  value={fogColor}
+                />
+                <ColorField
+                  hint="Floor Color / 床面色。床そのものの色に反映します。"
+                  id="floor-color"
+                  label="Floor Color / 床面色"
+                  onChange={setFloorColor}
+                  value={floorColor}
+                />
+                <ColorField
+                  hint="Grid Major / グリッド主線色。濃いガイド線に反映します。"
+                  id="grid-major-color"
+                  label="Grid Major / グリッド主線"
+                  onChange={setGridMajorColor}
+                  value={gridMajorColor}
+                />
+                <ColorField
+                  hint="Grid Minor / グリッド補助線色。薄い補助線に反映します。"
+                  id="grid-minor-color"
+                  label="Grid Minor / グリッド補助線"
+                  onChange={setGridMinorColor}
+                  value={gridMinorColor}
                 />
                 <SectionNote>
                   Physics: 物理演算全体の有効化。OFF
@@ -550,10 +632,10 @@ export function SettingsWindow() {
                   の感度を調整します。
                 </SectionNote>
                 <NumberField
-                  hint="UI Opacity / ギズモ濃度。目安 0.2-1.0。"
+                  hint="UI Strength / ギズモ強度。1 を超えるとさらに見やすくします。"
                   id="rotate-ui-opacity"
-                  label="UI Opacity / ギズモ濃度"
-                  max="1"
+                  label="UI Strength / ギズモ強度"
+                  max="3"
                   min="0.05"
                   onChange={handleNumberChange(setRotateUiOpacity)}
                   step="0.01"

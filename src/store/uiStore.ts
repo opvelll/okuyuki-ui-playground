@@ -26,6 +26,9 @@ export type AxisMagnetTarget = {
 
 type PersistedUiState = {
   floorFriction: number;
+  floorColor: string;
+  gridMajorColor: string;
+  gridMinorColor: string;
   floorRestitution: number;
   gravityY: number;
   moveDepthWheelDirection: MoveDepthWheelDirection;
@@ -41,6 +44,8 @@ type PersistedUiState = {
   objectRestitution: number;
   physicsEnabled: boolean;
   physicsRigidBodyType: PhysicsRigidBodyType;
+  fogColor: string;
+  sceneBackgroundColor: string;
   rotateTwistAxis: RotateTwistAxis;
   rotateUiOpacity: number;
   rotateUiRadiusPx: number;
@@ -60,8 +65,11 @@ type UiState = PersistedUiState & {
   selectObject: (objectId: string) => void;
   setAxisMagnetTarget: (target: AxisMagnetTarget | null) => void;
   setFloorFriction: (value: number) => void;
+  setFloorColor: (value: string) => void;
   setFloorRestitution: (value: number) => void;
   setGravityY: (value: number) => void;
+  setGridMajorColor: (value: string) => void;
+  setGridMinorColor: (value: string) => void;
   setInteractionState: (state: InteractionState) => void;
   setMoveDepthWheelDirection: (direction: MoveDepthWheelDirection) => void;
   setMoveDepthWheelStep: (step: number) => void;
@@ -76,6 +84,8 @@ type UiState = PersistedUiState & {
   setObjectRestitution: (value: number) => void;
   setPhysicsEnabled: (enabled: boolean) => void;
   setPhysicsRigidBodyType: (value: PhysicsRigidBodyType) => void;
+  setFogColor: (value: string) => void;
+  setSceneBackgroundColor: (value: string) => void;
   setInteractionMode: (mode: InteractionMode) => void;
   setRotateTwistAxis: (axis: RotateTwistAxis) => void;
   setRotateUiOpacity: (value: number) => void;
@@ -91,7 +101,11 @@ export const UI_STORE_PERSIST_KEY = "naname-ui-settings";
 
 export const createDefaultPersistedUiState = (): PersistedUiState => ({
   floorFriction: 1.1,
+  floorColor: "#d9dee7",
+  gridMajorColor: "#8d99ae",
+  gridMinorColor: "#c5cedb",
   floorRestitution: 0,
+  fogColor: "#dbe7f3",
   gravityY: -9.81,
   moveDepthWheelDirection: "normal",
   moveDepthWheelStep: 0.24,
@@ -106,8 +120,9 @@ export const createDefaultPersistedUiState = (): PersistedUiState => ({
   objectRestitution: 0.02,
   physicsEnabled: true,
   physicsRigidBodyType: "dynamic",
+  sceneBackgroundColor: "#dbe7f3",
   rotateTwistAxis: "+y",
-  rotateUiOpacity: 0.72,
+  rotateUiOpacity: 1.2,
   rotateUiRadiusPx: 140,
   rotateWheelDirection: "reverse",
   rotateWheelRotateStepDeg: 16,
@@ -123,8 +138,11 @@ const createInitialUiState = (): Omit<
   | "selectObject"
   | "setAxisMagnetTarget"
   | "setFloorFriction"
+  | "setFloorColor"
   | "setFloorRestitution"
   | "setGravityY"
+  | "setGridMajorColor"
+  | "setGridMinorColor"
   | "setInteractionState"
   | "setMoveDepthWheelDirection"
   | "setMoveDepthWheelStep"
@@ -139,6 +157,8 @@ const createInitialUiState = (): Omit<
   | "setObjectRestitution"
   | "setPhysicsEnabled"
   | "setPhysicsRigidBodyType"
+  | "setFogColor"
+  | "setSceneBackgroundColor"
   | "setInteractionMode"
   | "setRotateTwistAxis"
   | "setRotateUiOpacity"
@@ -173,7 +193,10 @@ export const useUiStore = create<UiState>()(
         }),
       setAxisMagnetTarget: (target) => set({ axisMagnetTarget: target }),
       setFloorFriction: (value) => set({ floorFriction: value }),
+      setFloorColor: (value) => set({ floorColor: value }),
       setFloorRestitution: (value) => set({ floorRestitution: value }),
+      setGridMajorColor: (value) => set({ gridMajorColor: value }),
+      setGridMinorColor: (value) => set({ gridMinorColor: value }),
       setGravityY: (value) => set({ gravityY: value }),
       setInteractionState: (state) => set({ interactionState: state }),
       setMoveDepthWheelDirection: (direction) =>
@@ -199,6 +222,8 @@ export const useUiStore = create<UiState>()(
           selectedObjectId: null,
         }),
       setPhysicsRigidBodyType: (value) => set({ physicsRigidBodyType: value }),
+      setFogColor: (value) => set({ fogColor: value }),
+      setSceneBackgroundColor: (value) => set({ sceneBackgroundColor: value }),
       setInteractionMode: (mode) =>
         set((state) => ({
           axisMagnetTarget: null,
@@ -221,7 +246,11 @@ export const useUiStore = create<UiState>()(
       name: UI_STORE_PERSIST_KEY,
       partialize: (state) => ({
         floorFriction: state.floorFriction,
+        floorColor: state.floorColor,
+        gridMajorColor: state.gridMajorColor,
+        gridMinorColor: state.gridMinorColor,
         floorRestitution: state.floorRestitution,
+        fogColor: state.fogColor,
         gravityY: state.gravityY,
         moveDepthWheelDirection: state.moveDepthWheelDirection,
         moveDepthWheelStep: state.moveDepthWheelStep,
@@ -236,6 +265,7 @@ export const useUiStore = create<UiState>()(
         objectRestitution: state.objectRestitution,
         physicsEnabled: state.physicsEnabled,
         physicsRigidBodyType: state.physicsRigidBodyType,
+        sceneBackgroundColor: state.sceneBackgroundColor,
         interactionMode: state.interactionMode,
         rotateTwistAxis: state.rotateTwistAxis,
         rotateUiOpacity: state.rotateUiOpacity,

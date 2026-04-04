@@ -146,7 +146,7 @@ export function SceneStatusHud() {
               <dd>{rotateUiRadiusPx.toFixed(0)} px</dd>
             </div>
             <div className="grid grid-cols-[5rem_1fr] gap-3">
-              <dt className="text-slate-300/70">Opacity</dt>
+              <dt className="text-slate-300/70">Strength</dt>
               <dd>{rotateUiOpacity.toFixed(2)}</dd>
             </div>
             <div className="grid grid-cols-[5rem_1fr] gap-3">

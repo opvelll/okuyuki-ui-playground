@@ -58,6 +58,11 @@ describe("App", () => {
     ).toBeInTheDocument();
 
     expect(screen.getByLabelText(/Physics/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Scene Background/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Fog Color/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Floor Color/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Grid Major/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Grid Minor/i)).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /Collapse settings/i }),
     ).toBeInTheDocument();
@@ -161,7 +166,7 @@ describe("App", () => {
 
     await user.click(screen.getAllByRole("button", { name: /Rotate UI/i })[1]);
 
-    expect(screen.getByLabelText(/UI Opacity/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/UI Strength/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/UI Radius Px/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Wheel Rotate Step/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Twist Axis/i)).toBeInTheDocument();

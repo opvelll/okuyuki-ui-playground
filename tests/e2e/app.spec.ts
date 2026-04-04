@@ -14,6 +14,11 @@ test("shows the 3d prototype screen", async ({ page }) => {
   ).toBeVisible();
   await expect(page.getByLabel("Scene loading")).toBeVisible();
   await expect(page.getByLabel("Physics")).toBeVisible();
+  await expect(page.getByLabel("Scene Background")).toBeVisible();
+  await expect(page.getByLabel("Fog Color")).toBeVisible();
+  await expect(page.getByLabel("Floor Color")).toBeVisible();
+  await expect(page.getByLabel("Grid Major")).toBeVisible();
+  await expect(page.getByLabel("Grid Minor")).toBeVisible();
   await expect(page.getByRole("button", { name: /全体/i })).toBeVisible();
   await expect(page.getByRole("button", { name: /物理演算/i })).toBeVisible();
   await expect(
@@ -72,7 +77,7 @@ test("switches tool mode and opens rotate settings", async ({ page }) => {
     .getByRole("button", { name: /Rotate UI turntable rotate/i })
     .click();
 
-  await expect(page.getByLabel("UI Opacity")).toBeVisible();
+  await expect(page.getByLabel("UI Strength")).toBeVisible();
   await expect(page.getByLabel("UI Radius Px")).toBeVisible();
   await expect(page.getByLabel("Wheel Rotate Step")).toBeVisible();
   await expect(page.getByLabel("Twist Axis")).toBeVisible();

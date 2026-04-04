@@ -1,3 +1,4 @@
+import { Edges } from "@react-three/drei";
 import type { ShapeKind } from "../../types/scene";
 
 type ShapeMeshProps = {
@@ -42,11 +43,14 @@ export function ShapeMesh({
       <ShapeGeometry kind={kind} />
       <meshStandardMaterial
         color={color}
-        emissive={selected ? "#dff4ff" : "#000000"}
-        emissiveIntensity={dragging ? 0.34 : selected ? 0.2 : 0}
-        metalness={selected ? 0.28 : 0.2}
+        emissive={dragging ? "#dff4ff" : "#000000"}
+        emissiveIntensity={dragging ? 0.34 : 0}
+        metalness={selected ? 0.24 : 0.2}
         roughness={dragging ? 0.26 : 0.38}
       />
+      {selected ? (
+        <Edges color="#f8fafc" lineWidth={2.4} scale={1.06} threshold={20} />
+      ) : null}
     </mesh>
   );
 }

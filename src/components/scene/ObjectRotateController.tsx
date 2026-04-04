@@ -3,6 +3,7 @@ import { type ThreeEvent, useThree } from "@react-three/fiber";
 import { type RefObject, useCallback, useEffect, useMemo, useRef } from "react";
 import {
   BufferGeometry,
+  Color,
   Euler,
   Float32BufferAttribute,
   MathUtils,
@@ -25,6 +26,8 @@ const FULL_CIRCLE_SEGMENTS = 72;
 const WORLD_UP = new Vector3(0, 1, 0);
 const WORLD_RIGHT = new Vector3(1, 0, 0);
 const WORLD_FORWARD = new Vector3(0, 0, 1);
+const ACTIVE_GIZMO_COLOR = new Color("#f8fafc");
+const IDLE_GIZMO_COLOR = new Color("#7dd3fc");
 
 type RotateSession = {
   objectId: string;
@@ -78,9 +81,11 @@ function RotateArc({
 
   return (
     <Line
-      color="#f8fafc"
+      color={`#${ACTIVE_GIZMO_COLOR.clone()
+        .multiplyScalar(Math.max(opacity, 1))
+        .getHexString()}`}
       lineWidth={2}
-      opacity={Math.min(opacity + 0.18, 1)}
+      opacity={Math.min(0.82 + opacity * 0.12, 1)}
       points={points}
       transparent
     />
@@ -120,6 +125,19 @@ function RotateGizmo({
     return geometry;
   }, [radiusWorld]);
 
+  const primaryColor = `#${(active ? ACTIVE_GIZMO_COLOR : IDLE_GIZMO_COLOR)
+    .clone()
+    .multiplyScalar(Math.max(opacity, 1))
+    .getHexString()}`;
+  const secondaryColor = `#${(active ? ACTIVE_GIZMO_COLOR : IDLE_GIZMO_COLOR)
+    .clone()
+    .multiplyScalar(Math.max(opacity * 0.82, 1))
+    .getHexString()}`;
+  const shellColor = `#${(active ? ACTIVE_GIZMO_COLOR : IDLE_GIZMO_COLOR)
+    .clone()
+    .multiplyScalar(Math.max(opacity * 0.92, 1))
+    .getHexString()}`;
+
   useEffect(
     () => () => {
       ringGeometry.dispose();
@@ -131,31 +149,44 @@ function RotateGizmo({
     <group position={center}>
       <lineLoop geometry={ringGeometry}>
         <lineBasicMaterial
-          color={active ? "#f8fafc" : "#7dd3fc"}
+          color={primaryColor}
           transparent
-          opacity={(active ? 0.92 : 0.68) * opacity}
+          opacity={Math.min(
+            (active ? 0.94 : 0.72) * Math.max(opacity, 0.35),
+            1,
+          )}
         />
       </lineLoop>
       <lineLoop geometry={ringGeometry} rotation={[Math.PI / 2, 0, 0]}>
         <lineBasicMaterial
-          color={active ? "#f8fafc" : "#7dd3fc"}
+          color={secondaryColor}
           transparent
-          opacity={(active ? 0.7 : 0.44) * opacity}
+          opacity={Math.min(
+            (active ? 0.78 : 0.56) * Math.max(opacity, 0.35),
+            1,
+          )}
         />
       </lineLoop>
       <lineLoop geometry={ringGeometry} rotation={[0, Math.PI / 2, 0]}>
         <lineBasicMaterial
-          color={active ? "#f8fafc" : "#7dd3fc"}
+          color={secondaryColor}
           transparent
-          opacity={(active ? 0.7 : 0.44) * opacity}
+          opacity={Math.min(
+            (active ? 0.78 : 0.56) * Math.max(opacity, 0.35),
+            1,
+          )}
         />
       </lineLoop>
       <mesh onPointerDown={onPointerDown}>
         <sphereGeometry args={[radiusWorld, 48, 48]} />
         <meshBasicMaterial
-          color={active ? "#dff4ff" : "#7dd3fc"}
+          color={shellColor}
           depthWrite={false}
-          opacity={(active ? 0.18 : 0.11) * opacity}
+          opacity={Math.min(
+            (active ? 0.22 : 0.14) * Math.max(opacity, 0.35),
+            0.4,
+          )}
+          toneMapped={false}
           transparent
         />
       </mesh>
