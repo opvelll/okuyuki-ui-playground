@@ -5,11 +5,13 @@ import { RigidBody, type RigidBodyProps } from "@react-three/rapier";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Euler, Quaternion, Vector3 } from "three";
 import { useSceneStore } from "../../store/sceneStore";
+import { useUiStore } from "../../store/uiStore";
 import type { SceneObject } from "../../types/scene";
 import { ShapeMesh } from "./ShapeMesh";
 
 const ZERO_VELOCITY = { x: 0, y: 0, z: 0 };
 const POSITION_SYNC_EPSILON = 0.0001;
+const ROTATION_SYNC_EPSILON = 0.0001;
 
 type DynamicSceneObjectProps = SceneObject & {
   dragging?: boolean;
@@ -40,19 +42,21 @@ export function DynamicSceneObject({
   scale,
   selected = false,
 }: DynamicSceneObjectProps) {
-  const updateObjectPosition = useSceneStore(
-    (state) => state.updateObjectPosition,
+  const updateObjectTransform = useSceneStore(
+    (state) => state.updateObjectTransform,
   );
-  const rigidBodyRef = useRef<RapierRigidBody | null>(null);
-  const previousDraggingRef = useRef(dragging);
-  const [bodyType, setBodyType] = useState<NonNullable<RigidBodyProps["type"]>>(
-    dragging ? "kinematicPosition" : "dynamic",
+  const objectAngularDamping = useUiStore(
+    (state) => state.objectAngularDamping,
   );
-  const scaleMultiplier = dragging ? 1.08 : selected ? 1.04 : 1;
-  const scaledSize = scale.map(
-    (value) => value * scaleMultiplier,
-  ) as SceneObject["scale"];
-
+  const objectFriction = useUiStore((state) => state.objectFriction);
+  const objectLinearDamping = useUiStore((state) => state.objectLinearDamping);
+  const objectRestitution = useUiStore((state) => state.objectRestitution);
+  const physicsRigidBodyType = useUiStore(
+    (state) => state.physicsRigidBodyType,
+  );
+  const suppressObjectRotation = useUiStore(
+    (state) => state.suppressObjectRotation,
+  );
   const translation = useMemo(
     () => new Vector3(position[0], position[1], position[2]),
     [position],
@@ -64,27 +68,51 @@ export function DynamicSceneObject({
       ),
     [rotation],
   );
+  const rigidBodyRef = useRef<RapierRigidBody | null>(null);
+  const latestTransformRef = useRef({ quaternion, translation });
+  const previousDraggingRef = useRef(dragging);
+  const [bodyType, setBodyType] = useState<NonNullable<RigidBodyProps["type"]>>(
+    dragging ? "kinematicPosition" : physicsRigidBodyType,
+  );
+  const scaleMultiplier = dragging ? 1.08 : selected ? 1.04 : 1;
+  const scaledSize = scale.map(
+    (value) => value * scaleMultiplier,
+  ) as SceneObject["scale"];
+
+  latestTransformRef.current = { quaternion, translation };
 
   useEffect(() => {
     const rigidBody = rigidBodyRef.current;
+    const nextBodyType = dragging ? "kinematicPosition" : physicsRigidBodyType;
+    const { quaternion: latestQuaternion, translation: latestTranslation } =
+      latestTransformRef.current;
+
     if (!rigidBody) {
       return;
     }
 
     if (dragging) {
       previousDraggingRef.current = true;
-      setBodyType("kinematicPosition");
-      syncRigidBody(true, rigidBody, translation, quaternion);
+      setBodyType(nextBodyType);
+      syncRigidBody(true, rigidBody, latestTranslation, latestQuaternion);
       return;
     }
 
+    setBodyType(nextBodyType);
+    syncRigidBody(true, rigidBody, latestTranslation, latestQuaternion);
+
     if (previousDraggingRef.current) {
       previousDraggingRef.current = false;
-      syncRigidBody(true, rigidBody, translation, quaternion);
-      setBodyType("dynamic");
+      if (nextBodyType === "dynamic") {
+        rigidBody.wakeUp();
+      }
+      return;
+    }
+
+    if (nextBodyType === "dynamic") {
       rigidBody.wakeUp();
     }
-  }, [dragging, quaternion, translation]);
+  }, [dragging, physicsRigidBodyType]);
 
   useFrame(() => {
     const rigidBody = rigidBodyRef.current;
@@ -93,29 +121,52 @@ export function DynamicSceneObject({
     }
 
     const currentTranslation = rigidBody.translation();
+    const currentRotation = rigidBody.rotation();
+    const nextRotation = new Euler().setFromQuaternion(
+      new Quaternion(
+        currentRotation.x,
+        currentRotation.y,
+        currentRotation.z,
+        currentRotation.w,
+      ),
+      "XYZ",
+    );
+    const rotationTuple = [
+      nextRotation.x,
+      nextRotation.y,
+      nextRotation.z,
+    ] as SceneObject["rotation"];
+
     if (
       Math.abs(currentTranslation.x - position[0]) < POSITION_SYNC_EPSILON &&
       Math.abs(currentTranslation.y - position[1]) < POSITION_SYNC_EPSILON &&
-      Math.abs(currentTranslation.z - position[2]) < POSITION_SYNC_EPSILON
+      Math.abs(currentTranslation.z - position[2]) < POSITION_SYNC_EPSILON &&
+      Math.abs(rotationTuple[0] - rotation[0]) < ROTATION_SYNC_EPSILON &&
+      Math.abs(rotationTuple[1] - rotation[1]) < ROTATION_SYNC_EPSILON &&
+      Math.abs(rotationTuple[2] - rotation[2]) < ROTATION_SYNC_EPSILON
     ) {
       return;
     }
 
-    updateObjectPosition(id, [
-      currentTranslation.x,
-      currentTranslation.y,
-      currentTranslation.z,
-    ]);
+    updateObjectTransform(id, {
+      position: [
+        currentTranslation.x,
+        currentTranslation.y,
+        currentTranslation.z,
+      ],
+      rotation: rotationTuple,
+    });
   });
 
   const rigidBodyProps: RigidBodyProps = {
-    angularDamping: 0.9,
+    angularDamping: objectAngularDamping,
     canSleep: true,
     colliders: "hull",
-    friction: 0.9,
-    linearDamping: 0.45,
+    friction: objectFriction,
+    linearDamping: objectLinearDamping,
+    lockRotations: suppressObjectRotation,
     position,
-    restitution: 0.02,
+    restitution: objectRestitution,
     rotation,
     scale,
     type: bodyType,

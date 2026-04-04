@@ -3,7 +3,11 @@ import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useSceneStore } from "./store/sceneStore";
-import { useUiStore } from "./store/uiStore";
+import {
+  UI_STORE_PERSIST_KEY,
+  createDefaultPersistedUiState,
+  useUiStore,
+} from "./store/uiStore";
 
 vi.mock("@react-three/fiber", () => ({
   Canvas: ({ children }: { children: ReactNode }) => (
@@ -32,17 +36,11 @@ async function loadApp() {
 describe("App", () => {
   beforeEach(() => {
     vi.resetModules();
+    useUiStore.persist.clearStorage();
     useUiStore.setState({
+      ...createDefaultPersistedUiState(),
       axisMagnetTarget: null,
       interactionState: "idle",
-      physicsEnabled: true,
-      moveDepthWheelDirection: "normal",
-      moveGridSnapStep: 0.5,
-      moveOverlayDisplayMode: "mode-1",
-      moveOverlayOrientationMode: "camera-facing",
-      movePrecisionStep: 0.1,
-      moveOverlayRadiusMultiplier: 1.15,
-      moveDepthWheelStep: 0.24,
       selectedObjectId: null,
     });
     useSceneStore.getState().resetScene();
@@ -63,18 +61,23 @@ describe("App", () => {
     expect(
       screen.getByRole("button", { name: /Collapse settings/i }),
     ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /全体/i })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
     expect(
-      screen.getByLabelText(/Overlay Radius Multiplier/i),
+      screen.getByRole("button", { name: /物理演算/i }),
     ).toBeInTheDocument();
-    expect(screen.getByLabelText(/Shift Depth Step/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Ctrl Grid Snap Step/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Overlay Display/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Depth Wheel Step/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Move UI/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText(/Physics/i)).toBeInTheDocument();
     expect(
       screen.getByText(
         /Physics enabled: select an object to start screen-depth-drag editing/i,
       ),
     ).toBeInTheDocument();
+    expect(screen.getByText("FPS")).toBeInTheDocument();
     expect(await screen.findByLabelText(/three-scene/i)).toBeInTheDocument();
   });
 
@@ -105,7 +108,27 @@ describe("App", () => {
       screen.getByRole("button", { name: /Expand settings/i }),
     ).toHaveAttribute("aria-expanded", "false");
     expect(
-      screen.queryByLabelText(/Depth Wheel Step/i),
+      screen.queryByRole("button", { name: /Move UI/i }),
     ).not.toBeInTheDocument();
+  });
+
+  it("persists the selected settings section and open state", async () => {
+    const user = userEvent.setup();
+    const App = await loadApp();
+
+    render(<App />);
+
+    await user.click(screen.getByRole("button", { name: /物理演算/i }));
+    expect(screen.getByLabelText(/Rigid Body Mode/i)).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", { name: /Collapse settings/i }),
+    );
+
+    const persistedState = window.localStorage.getItem(UI_STORE_PERSIST_KEY);
+
+    expect(persistedState).not.toBeNull();
+    expect(persistedState).toContain('"selectedSettingsMenu":"physics"');
+    expect(persistedState).toContain('"settingsOpen":false');
   });
 });

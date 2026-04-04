@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { useUiStore } from "../store/uiStore";
 
 const OVERLAY_DISPLAY_LABELS = {
@@ -18,6 +19,7 @@ const AXIS_DIRECTION_LABELS = {
 } as const;
 
 export function SceneStatusHud() {
+  const [fps, setFps] = useState(0);
   const axisMagnetTarget = useUiStore((state) => state.axisMagnetTarget);
   const interactionState = useUiStore((state) => state.interactionState);
   const moveDepthWheelDirection = useUiStore(
@@ -43,8 +45,33 @@ export function SceneStatusHud() {
       ? "Drag to move on screen plane. Wheel changes camera depth. Shift reduces wheel depth step, Ctrl snaps XYZ to the floor grid, and Shift + Ctrl magnetizes one axis to another object."
       : "Select an object to start screen-depth-drag editing.";
 
+  useEffect(() => {
+    let animationFrameId = 0;
+    let frameCount = 0;
+    let windowStart = performance.now();
+
+    const updateFps = (timestamp: number) => {
+      frameCount += 1;
+      const elapsed = timestamp - windowStart;
+
+      if (elapsed >= 250) {
+        setFps(Math.round((frameCount * 1000) / elapsed));
+        frameCount = 0;
+        windowStart = timestamp;
+      }
+
+      animationFrameId = window.requestAnimationFrame(updateFps);
+    };
+
+    animationFrameId = window.requestAnimationFrame(updateFps);
+
+    return () => {
+      window.cancelAnimationFrame(animationFrameId);
+    };
+  }, []);
+
   return (
-    <aside className="pointer-events-none absolute bottom-3 left-3 z-20 max-w-[min(24rem,calc(100vw-3rem))] rounded-[1.35rem] border border-white/12 bg-slate-950/68 px-4 py-3 text-slate-50 shadow-[0_18px_40px_rgba(3,10,20,0.3)] backdrop-blur-xl md:bottom-4 md:left-4">
+    <aside className="pointer-events-none absolute bottom-3 left-3 z-10 max-w-[min(24rem,calc(100vw-3rem))] rounded-[1.35rem] border border-white/12 bg-slate-950/68 px-4 py-3 text-slate-50 shadow-[0_18px_40px_rgba(3,10,20,0.3)] backdrop-blur-xl md:bottom-4 md:left-4 md:z-20">
       <p className="text-[0.68rem] font-bold uppercase tracking-[0.18em] text-sky-100/70">
         Object Move
       </p>
@@ -56,6 +83,10 @@ export function SceneStatusHud() {
         <div className="grid grid-cols-[5rem_1fr] gap-3">
           <dt className="text-slate-300/70">State</dt>
           <dd>{interactionState}</dd>
+        </div>
+        <div className="grid grid-cols-[5rem_1fr] gap-3">
+          <dt className="text-slate-300/70">FPS</dt>
+          <dd>{fps}</dd>
         </div>
         <div className="grid grid-cols-[5rem_1fr] gap-3">
           <dt className="text-slate-300/70">Depth</dt>
