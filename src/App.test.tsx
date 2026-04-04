@@ -60,6 +60,12 @@ describe("App", () => {
     expect(screen.getByLabelText(/Physics/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Scene Background/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Fog Color/i)).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(/Selection Outline \/ 選択枠線/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(/Selection Outline Thickness \/ 選択枠線の太さ/i),
+    ).toBeInTheDocument();
     expect(screen.getByLabelText(/Floor Color/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Grid Major/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Grid Minor/i)).toBeInTheDocument();
@@ -187,6 +193,8 @@ describe("App", () => {
 
     await user.click(screen.getAllByRole("button", { name: /Rotate UI/i })[1]);
 
+    expect(screen.getByLabelText(/Gizmo Sphere Color/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Gizmo Ring Color/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/UI Strength/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/UI Radius Px/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Wheel Rotate Step/i)).toBeInTheDocument();

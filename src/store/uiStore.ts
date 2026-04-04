@@ -45,7 +45,11 @@ type PersistedUiState = {
   physicsEnabled: boolean;
   physicsRigidBodyType: PhysicsRigidBodyType;
   fogColor: string;
+  generalSelectionOutlineColor: string;
+  generalSelectionOutlineThickness: number;
   sceneBackgroundColor: string;
+  rotateGizmoRingColor: string;
+  rotateGizmoSphereColor: string;
   rotateTwistAxis: RotateTwistAxis;
   rotateUiOpacity: number;
   rotateUiRadiusPx: number;
@@ -85,8 +89,12 @@ type UiState = PersistedUiState & {
   setPhysicsEnabled: (enabled: boolean) => void;
   setPhysicsRigidBodyType: (value: PhysicsRigidBodyType) => void;
   setFogColor: (value: string) => void;
+  setGeneralSelectionOutlineColor: (value: string) => void;
+  setGeneralSelectionOutlineThickness: (value: number) => void;
   setSceneBackgroundColor: (value: string) => void;
   setInteractionMode: (mode: InteractionMode) => void;
+  setRotateGizmoRingColor: (value: string) => void;
+  setRotateGizmoSphereColor: (value: string) => void;
   setRotateTwistAxis: (axis: RotateTwistAxis) => void;
   setRotateUiOpacity: (value: number) => void;
   setRotateUiRadiusPx: (value: number) => void;
@@ -106,6 +114,8 @@ export const createDefaultPersistedUiState = (): PersistedUiState => ({
   gridMinorColor: "#c5cedb",
   floorRestitution: 0,
   fogColor: "#dbe7f3",
+  generalSelectionOutlineColor: "#f8fafc",
+  generalSelectionOutlineThickness: 4,
   gravityY: -9.81,
   moveDepthWheelDirection: "normal",
   moveDepthWheelStep: 0.24,
@@ -121,6 +131,8 @@ export const createDefaultPersistedUiState = (): PersistedUiState => ({
   physicsEnabled: true,
   physicsRigidBodyType: "dynamic",
   sceneBackgroundColor: "#dbe7f3",
+  rotateGizmoRingColor: "#7dd3fc",
+  rotateGizmoSphereColor: "#7dd3fc",
   rotateTwistAxis: "+y",
   rotateUiOpacity: 1.2,
   rotateUiRadiusPx: 140,
@@ -158,8 +170,12 @@ const createInitialUiState = (): Omit<
   | "setPhysicsEnabled"
   | "setPhysicsRigidBodyType"
   | "setFogColor"
+  | "setGeneralSelectionOutlineColor"
+  | "setGeneralSelectionOutlineThickness"
   | "setSceneBackgroundColor"
   | "setInteractionMode"
+  | "setRotateGizmoRingColor"
+  | "setRotateGizmoSphereColor"
   | "setRotateTwistAxis"
   | "setRotateUiOpacity"
   | "setRotateUiRadiusPx"
@@ -223,6 +239,10 @@ export const useUiStore = create<UiState>()(
         }),
       setPhysicsRigidBodyType: (value) => set({ physicsRigidBodyType: value }),
       setFogColor: (value) => set({ fogColor: value }),
+      setGeneralSelectionOutlineColor: (value) =>
+        set({ generalSelectionOutlineColor: value }),
+      setGeneralSelectionOutlineThickness: (value) =>
+        set({ generalSelectionOutlineThickness: value }),
       setSceneBackgroundColor: (value) => set({ sceneBackgroundColor: value }),
       setInteractionMode: (mode) =>
         set((state) => ({
@@ -230,6 +250,9 @@ export const useUiStore = create<UiState>()(
           interactionMode: mode,
           interactionState: state.selectedObjectId ? "active" : "idle",
         })),
+      setRotateGizmoRingColor: (value) => set({ rotateGizmoRingColor: value }),
+      setRotateGizmoSphereColor: (value) =>
+        set({ rotateGizmoSphereColor: value }),
       setRotateTwistAxis: (axis) => set({ rotateTwistAxis: axis }),
       setRotateUiOpacity: (value) => set({ rotateUiOpacity: value }),
       setRotateUiRadiusPx: (value) => set({ rotateUiRadiusPx: value }),
@@ -251,6 +274,9 @@ export const useUiStore = create<UiState>()(
         gridMinorColor: state.gridMinorColor,
         floorRestitution: state.floorRestitution,
         fogColor: state.fogColor,
+        generalSelectionOutlineColor: state.generalSelectionOutlineColor,
+        generalSelectionOutlineThickness:
+          state.generalSelectionOutlineThickness,
         gravityY: state.gravityY,
         moveDepthWheelDirection: state.moveDepthWheelDirection,
         moveDepthWheelStep: state.moveDepthWheelStep,
@@ -267,6 +293,8 @@ export const useUiStore = create<UiState>()(
         physicsRigidBodyType: state.physicsRigidBodyType,
         sceneBackgroundColor: state.sceneBackgroundColor,
         interactionMode: state.interactionMode,
+        rotateGizmoRingColor: state.rotateGizmoRingColor,
+        rotateGizmoSphereColor: state.rotateGizmoSphereColor,
         rotateTwistAxis: state.rotateTwistAxis,
         rotateUiOpacity: state.rotateUiOpacity,
         rotateUiRadiusPx: state.rotateUiRadiusPx,

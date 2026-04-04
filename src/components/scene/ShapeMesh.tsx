@@ -1,4 +1,5 @@
 import { Outlines } from "@react-three/drei";
+import { useUiStore } from "../../store/uiStore";
 import type { ShapeKind } from "../../types/scene";
 
 type ShapeMeshProps = {
@@ -38,6 +39,13 @@ export function ShapeMesh({
   kind,
   selected = false,
 }: ShapeMeshProps) {
+  const generalSelectionOutlineColor = useUiStore(
+    (state) => state.generalSelectionOutlineColor,
+  );
+  const generalSelectionOutlineThickness = useUiStore(
+    (state) => state.generalSelectionOutlineThickness,
+  );
+
   return (
     <mesh castShadow receiveShadow>
       <ShapeGeometry kind={kind} />
@@ -51,11 +59,12 @@ export function ShapeMesh({
       {selected ? (
         <Outlines
           angle={Math.PI}
-          color="#f8fafc"
-          opacity={0.96}
-          thickness={0.08}
+          color={generalSelectionOutlineColor}
+          opacity={1}
+          renderOrder={10}
+          screenspace={false}
+          thickness={generalSelectionOutlineThickness}
           toneMapped={false}
-          transparent
         />
       ) : null}
     </mesh>

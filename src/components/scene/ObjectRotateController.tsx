@@ -29,8 +29,6 @@ const FULL_CIRCLE_SEGMENTS = 72;
 const WORLD_UP = new Vector3(0, 1, 0);
 const WORLD_RIGHT = new Vector3(1, 0, 0);
 const WORLD_FORWARD = new Vector3(0, 0, 1);
-const ACTIVE_GIZMO_COLOR = new Color("#f8fafc");
-const IDLE_GIZMO_COLOR = new Color("#7dd3fc");
 
 type RotateSession = {
   objectId: string;
@@ -84,9 +82,7 @@ function RotateArc({
 
   return (
     <Line
-      color={`#${ACTIVE_GIZMO_COLOR.clone()
-        .multiplyScalar(Math.max(opacity, 1))
-        .getHexString()}`}
+      color="#ffffff"
       lineWidth={2}
       opacity={Math.min(0.82 + opacity * 0.12, 1)}
       points={points}
@@ -99,6 +95,8 @@ function RotateGizmo({
   active,
   arcPoints,
   center,
+  ringColor,
+  sphereColor,
   onPointerDown,
   opacity,
   radiusWorld,
@@ -106,6 +104,8 @@ function RotateGizmo({
   active: boolean;
   arcPoints: Vector3[] | null;
   center: Vector3;
+  ringColor: string;
+  sphereColor: string;
   onPointerDown: (event: ThreeEvent<PointerEvent>) => void;
   opacity: number;
   radiusWorld: number;
@@ -128,17 +128,20 @@ function RotateGizmo({
     return geometry;
   }, [radiusWorld]);
 
-  const primaryColor = `#${(active ? ACTIVE_GIZMO_COLOR : IDLE_GIZMO_COLOR)
+  const ringBaseColor = new Color(ringColor);
+  const sphereBaseColor = new Color(sphereColor);
+  const activeBoost = active ? 1.16 : 1;
+  const primaryColor = `#${ringBaseColor
     .clone()
-    .multiplyScalar(Math.max(opacity, 1))
+    .multiplyScalar(Math.max(opacity * activeBoost, 1))
     .getHexString()}`;
-  const secondaryColor = `#${(active ? ACTIVE_GIZMO_COLOR : IDLE_GIZMO_COLOR)
+  const secondaryColor = `#${ringBaseColor
     .clone()
-    .multiplyScalar(Math.max(opacity * 0.82, 1))
+    .multiplyScalar(Math.max(opacity * 0.82 * activeBoost, 1))
     .getHexString()}`;
-  const shellColor = `#${(active ? ACTIVE_GIZMO_COLOR : IDLE_GIZMO_COLOR)
+  const shellColor = `#${sphereBaseColor
     .clone()
-    .multiplyScalar(Math.max(opacity * 0.92, 1))
+    .multiplyScalar(Math.max(opacity * 0.92 * activeBoost, 1))
     .getHexString()}`;
 
   useEffect(
@@ -212,6 +215,12 @@ export function ObjectRotateController({
   const interactionState = useUiStore((state) => state.interactionState);
   const rotateUiOpacity = useUiStore((state) => state.rotateUiOpacity);
   const rotateUiRadiusPx = useUiStore((state) => state.rotateUiRadiusPx);
+  const rotateGizmoRingColor = useUiStore(
+    (state) => state.rotateGizmoRingColor,
+  );
+  const rotateGizmoSphereColor = useUiStore(
+    (state) => state.rotateGizmoSphereColor,
+  );
   const objectsById = useSceneStore((state) => state.objectsById);
   const setInteractionState = useUiStore((state) => state.setInteractionState);
   const updateObjectRotation = useSceneStore(
@@ -653,6 +662,8 @@ export function ObjectRotateController({
       onPointerDown={handleGizmoPointerDown}
       opacity={MathUtils.clamp(rotateUiOpacity, 0.05, 1)}
       radiusWorld={radiusWorld}
+      ringColor={rotateGizmoRingColor}
+      sphereColor={rotateGizmoSphereColor}
     />
   ) : null;
 }

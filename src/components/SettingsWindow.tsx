@@ -192,6 +192,12 @@ export function SettingsWindow() {
   const floorColor = useUiStore((state) => state.floorColor);
   const floorRestitution = useUiStore((state) => state.floorRestitution);
   const fogColor = useUiStore((state) => state.fogColor);
+  const generalSelectionOutlineColor = useUiStore(
+    (state) => state.generalSelectionOutlineColor,
+  );
+  const generalSelectionOutlineThickness = useUiStore(
+    (state) => state.generalSelectionOutlineThickness,
+  );
   const gravityY = useUiStore((state) => state.gravityY);
   const gridMajorColor = useUiStore((state) => state.gridMajorColor);
   const gridMinorColor = useUiStore((state) => state.gridMinorColor);
@@ -221,6 +227,12 @@ export function SettingsWindow() {
     (state) => state.sceneBackgroundColor,
   );
   const rotateTwistAxis = useUiStore((state) => state.rotateTwistAxis);
+  const rotateGizmoRingColor = useUiStore(
+    (state) => state.rotateGizmoRingColor,
+  );
+  const rotateGizmoSphereColor = useUiStore(
+    (state) => state.rotateGizmoSphereColor,
+  );
   const rotateUiOpacity = useUiStore((state) => state.rotateUiOpacity);
   const rotateUiRadiusPx = useUiStore((state) => state.rotateUiRadiusPx);
   const rotateWheelDirection = useUiStore(
@@ -240,6 +252,12 @@ export function SettingsWindow() {
   const setFloorColor = useUiStore((state) => state.setFloorColor);
   const setFloorRestitution = useUiStore((state) => state.setFloorRestitution);
   const setFogColor = useUiStore((state) => state.setFogColor);
+  const setGeneralSelectionOutlineColor = useUiStore(
+    (state) => state.setGeneralSelectionOutlineColor,
+  );
+  const setGeneralSelectionOutlineThickness = useUiStore(
+    (state) => state.setGeneralSelectionOutlineThickness,
+  );
   const setGravityY = useUiStore((state) => state.setGravityY);
   const setGridMajorColor = useUiStore((state) => state.setGridMajorColor);
   const setGridMinorColor = useUiStore((state) => state.setGridMinorColor);
@@ -277,6 +295,12 @@ export function SettingsWindow() {
     (state) => state.setSceneBackgroundColor,
   );
   const setRotateTwistAxis = useUiStore((state) => state.setRotateTwistAxis);
+  const setRotateGizmoRingColor = useUiStore(
+    (state) => state.setRotateGizmoRingColor,
+  );
+  const setRotateGizmoSphereColor = useUiStore(
+    (state) => state.setRotateGizmoSphereColor,
+  );
   const setRotateUiOpacity = useUiStore((state) => state.setRotateUiOpacity);
   const setRotateUiRadiusPx = useUiStore((state) => state.setRotateUiRadiusPx);
   const setRotateWheelDirection = useUiStore(
@@ -398,6 +422,25 @@ export function SettingsWindow() {
                         label="Fog Color / フォグ色"
                         onChange={setFogColor}
                         value={fogColor}
+                      />
+                      <ColorField
+                        hint="Selection Outline / 選択枠線。通常のオブジェクト選択アウトラインに反映します。"
+                        id="general-selection-outline-color"
+                        label="Selection Outline / 選択枠線"
+                        onChange={setGeneralSelectionOutlineColor}
+                        value={generalSelectionOutlineColor}
+                      />
+                      <NumberField
+                        hint="Selection Outline Thickness / 選択枠線の太さ。画面投影ベースで反映します。目安 1-8。"
+                        id="general-selection-outline-thickness"
+                        label="Selection Outline Thickness / 選択枠線の太さ"
+                        max="12"
+                        min="1"
+                        onChange={handleNumberChange(
+                          setGeneralSelectionOutlineThickness,
+                        )}
+                        step="1"
+                        value={generalSelectionOutlineThickness}
                       />
                       <ColorField
                         hint="Floor Color / 床面色。床そのものの色に反映します。"
@@ -658,6 +701,20 @@ export function SettingsWindow() {
                   Rotate UI: 画面基準の turntable 回転とホイール twist
                   の感度を調整します。
                 </SectionNote>
+                <ColorField
+                  hint="Gizmo Sphere Color / ギズモ球体色。回転 UI の球体シェルに反映します。"
+                  id="rotate-gizmo-sphere-color"
+                  label="Gizmo Sphere Color / ギズモ球体色"
+                  onChange={setRotateGizmoSphereColor}
+                  value={rotateGizmoSphereColor}
+                />
+                <ColorField
+                  hint="Gizmo Ring Color / ギズモリング色。回転 UI のリングに反映します。ドラッグ arc は白固定です。"
+                  id="rotate-gizmo-ring-color"
+                  label="Gizmo Ring Color / ギズモリング色"
+                  onChange={setRotateGizmoRingColor}
+                  value={rotateGizmoRingColor}
+                />
                 <NumberField
                   hint="UI Strength / ギズモ強度。1 を超えるとさらに見やすくします。"
                   id="rotate-ui-opacity"
