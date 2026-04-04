@@ -110,6 +110,7 @@ function ShapeCollider({
 
 type DynamicSceneObjectProps = SceneObject & {
   dragging?: boolean;
+  held?: boolean;
   onPointerDown?: (event: ThreeEvent<PointerEvent>) => void;
   selected?: boolean;
 };
@@ -129,6 +130,7 @@ const syncRigidBody = (
 export function DynamicSceneObject({
   color,
   dragging = false,
+  held = false,
   id,
   kind,
   onPointerDown,
@@ -167,7 +169,7 @@ export function DynamicSceneObject({
   const latestTransformRef = useRef({ quaternion, translation });
   const previousDraggingRef = useRef(dragging);
   const [bodyType, setBodyType] = useState<NonNullable<RigidBodyProps["type"]>>(
-    dragging ? "kinematicPosition" : physicsRigidBodyType,
+    dragging || held ? "kinematicPosition" : physicsRigidBodyType,
   );
   const scaleMultiplier = dragging ? 1.08 : selected ? 1.04 : 1;
   const scaledSize = scale.map(
@@ -178,7 +180,8 @@ export function DynamicSceneObject({
 
   useEffect(() => {
     const rigidBody = rigidBodyRef.current;
-    const nextBodyType = dragging ? "kinematicPosition" : physicsRigidBodyType;
+    const nextBodyType =
+      dragging || held ? "kinematicPosition" : physicsRigidBodyType;
     const { quaternion: latestQuaternion, translation: latestTranslation } =
       latestTransformRef.current;
 
@@ -186,7 +189,7 @@ export function DynamicSceneObject({
       return;
     }
 
-    if (dragging) {
+    if (dragging || held) {
       previousDraggingRef.current = true;
       setBodyType(nextBodyType);
       syncRigidBody(true, rigidBody, latestTranslation, latestQuaternion);
@@ -207,11 +210,11 @@ export function DynamicSceneObject({
     if (nextBodyType === "dynamic") {
       rigidBody.wakeUp();
     }
-  }, [dragging, physicsRigidBodyType]);
+  }, [dragging, held, physicsRigidBodyType]);
 
   useFrame(() => {
     const rigidBody = rigidBodyRef.current;
-    if (!rigidBody || dragging || bodyType !== "dynamic") {
+    if (!rigidBody || dragging || held || bodyType !== "dynamic") {
       return;
     }
 

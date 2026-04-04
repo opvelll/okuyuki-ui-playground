@@ -1,5 +1,6 @@
 import type { ThreeEvent } from "@react-three/fiber";
 import { sceneObjectIds } from "../../data/sceneObjects";
+import { useUiStore } from "../../store/uiStore";
 import type { SceneObject } from "../../types/scene";
 import { DynamicSceneObject } from "./DynamicSceneObject";
 import { SelectableSceneObject } from "./SelectableSceneObject";
@@ -22,6 +23,8 @@ export function SceneObjectLayer({
   physicsEnabled,
   selectedObjectId,
 }: SceneObjectLayerProps) {
+  const interactionMode = useUiStore((state) => state.interactionMode);
+
   return sceneObjectIds.map((objectId) => {
     const sceneObject = objectsById[objectId];
 
@@ -34,6 +37,9 @@ export function SceneObjectLayer({
         <DynamicSceneObject
           {...sceneObject}
           dragging={draggingObjectId === sceneObject.id}
+          held={
+            interactionMode === "rotate" && selectedObjectId === sceneObject.id
+          }
           key={`${objectId}-dynamic`}
           onPointerDown={(event) => onPointerDown(event, sceneObject)}
           selected={selectedObjectId === sceneObject.id}

@@ -10,6 +10,7 @@ import { SceneContents } from "./scene/SceneContents";
 
 export function PrototypeScene() {
   const interactionState = useUiStore((state) => state.interactionState);
+  const interactionMode = useUiStore((state) => state.interactionMode);
   const fogColor = useUiStore((state) => state.fogColor);
   const physicsEnabled = useUiStore((state) => state.physicsEnabled);
   const sceneBackgroundColor = useUiStore(
@@ -39,7 +40,9 @@ export function PrototypeScene() {
         dpr={[1, 1.8]}
         onPointerMissed={() => {
           if (useUiStore.getState().interactionState !== "dragging") {
-            clearSelection();
+            if (interactionMode === "rotate") {
+              clearSelection();
+            }
           }
         }}
         shadows

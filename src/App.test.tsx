@@ -243,7 +243,30 @@ describe("App", () => {
     expect(screen.getByLabelText(/UI Strength/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/UI Radius Px/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Wheel Rotate Step/i)).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(/Drag Release Behavior \/ ドラッグ後の選択/i),
+    ).toBeInTheDocument();
     expect(screen.getByLabelText(/Twist Axis/i)).toBeInTheDocument();
+  });
+
+  it("persists the rotate drag release behavior", async () => {
+    const user = userEvent.setup();
+    const App = await loadApp();
+
+    render(<App />);
+
+    await user.click(screen.getAllByRole("button", { name: /Rotate UI/i })[1]);
+    await user.selectOptions(
+      screen.getByLabelText(/Drag Release Behavior \/ ドラッグ後の選択/i),
+      "clear-selection",
+    );
+
+    const persistedState = window.localStorage.getItem(UI_STORE_PERSIST_KEY);
+
+    expect(persistedState).not.toBeNull();
+    expect(persistedState).toContain(
+      '"rotateDragReleaseBehavior":"clear-selection"',
+    );
   });
 
   it("shows the new move workflow toggles in move settings", async () => {

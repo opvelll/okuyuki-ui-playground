@@ -220,6 +220,9 @@ export function ObjectRotateController({
   const rotateArcballSensitivity = useUiStore(
     (state) => state.rotateArcballSensitivity,
   );
+  const rotateDragReleaseBehavior = useUiStore(
+    (state) => state.rotateDragReleaseBehavior,
+  );
   const rotateGizmoRingColor = useUiStore(
     (state) => state.rotateGizmoRingColor,
   );
@@ -228,6 +231,7 @@ export function ObjectRotateController({
   );
   const objectsById = useSceneStore((state) => state.objectsById);
   const setInteractionState = useUiStore((state) => state.setInteractionState);
+  const clearSelection = useUiStore((state) => state.clearSelection);
   const updateObjectRotation = useSceneStore(
     (state) => state.updateObjectRotation,
   );
@@ -368,8 +372,20 @@ export function ObjectRotateController({
       // ignore pointer-capture races during teardown
     }
     setControlsEnabled(true);
+    if (rotateDragReleaseBehavior === "clear-selection") {
+      clearSelection();
+      return;
+    }
+
     setInteractionState(selectedObjectId ? "active" : "idle");
-  }, [gl, selectedObjectId, setControlsEnabled, setInteractionState]);
+  }, [
+    clearSelection,
+    gl,
+    rotateDragReleaseBehavior,
+    selectedObjectId,
+    setControlsEnabled,
+    setInteractionState,
+  ]);
 
   const handleGizmoPointerDown = useCallback(
     (event: ThreeEvent<PointerEvent>) => {

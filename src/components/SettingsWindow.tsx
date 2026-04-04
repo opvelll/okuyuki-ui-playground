@@ -3,6 +3,7 @@ import {
   type MoveDepthWheelDirection,
   type MoveOverlayDisplayMode,
   type PhysicsRigidBodyType,
+  type RotateDragReleaseBehavior,
   type RotateTwistAxis,
   type RotateWheelDirection,
   type SettingsMenu,
@@ -58,6 +59,11 @@ const rotateTwistAxisOptions = [
   { label: "+Z", value: "+z" },
 ] as const;
 
+const rotateDragReleaseBehaviorOptions = [
+  { label: "keep selected", value: "keep-selected" },
+  { label: "clear selection", value: "clear-selection" },
+] as const;
+
 const rigidBodyOptions = [
   { label: "Dynamic", value: "dynamic" },
   { label: "Fixed", value: "fixed" },
@@ -75,6 +81,11 @@ const isRotateDirection = (value: string): value is RotateWheelDirection =>
 
 const isRotateTwistAxis = (value: string): value is RotateTwistAxis =>
   rotateTwistAxisOptions.some((option) => option.value === value);
+
+const isRotateDragReleaseBehavior = (
+  value: string,
+): value is RotateDragReleaseBehavior =>
+  rotateDragReleaseBehaviorOptions.some((option) => option.value === value);
 
 const isRigidBodyType = (value: string): value is PhysicsRigidBodyType =>
   rigidBodyOptions.some((option) => option.value === value);
@@ -240,6 +251,9 @@ export function SettingsWindow() {
   const rotateArcballSensitivity = useUiStore(
     (state) => state.rotateArcballSensitivity,
   );
+  const rotateDragReleaseBehavior = useUiStore(
+    (state) => state.rotateDragReleaseBehavior,
+  );
   const rotateUiOpacity = useUiStore((state) => state.rotateUiOpacity);
   const rotateUiRadiusPx = useUiStore((state) => state.rotateUiRadiusPx);
   const rotateWheelDirection = useUiStore(
@@ -313,6 +327,9 @@ export function SettingsWindow() {
   );
   const setRotateArcballSensitivity = useUiStore(
     (state) => state.setRotateArcballSensitivity,
+  );
+  const setRotateDragReleaseBehavior = useUiStore(
+    (state) => state.setRotateDragReleaseBehavior,
   );
   const setRotateUiOpacity = useUiStore((state) => state.setRotateUiOpacity);
   const setRotateUiRadiusPx = useUiStore((state) => state.setRotateUiRadiusPx);
@@ -789,6 +806,33 @@ export function SettingsWindow() {
                   step="1"
                   value={rotateWheelRotateStepDeg}
                 />
+                <label
+                  className="grid gap-2 text-sm text-slate-100/90"
+                  htmlFor="rotate-drag-release-behavior"
+                >
+                  <span>Drag Release Behavior / ドラッグ後の選択</span>
+                  <select
+                    className={fieldClasses}
+                    id="rotate-drag-release-behavior"
+                    onChange={(event) => {
+                      const nextBehavior = event.target.value;
+                      if (isRotateDragReleaseBehavior(nextBehavior)) {
+                        setRotateDragReleaseBehavior(nextBehavior);
+                      }
+                    }}
+                    value={rotateDragReleaseBehavior}
+                  >
+                    {rotateDragReleaseBehaviorOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <span className={fieldHintClasses}>
+                    keep selected: ドラッグ後も選択と空間固定を維持。clear
+                    selection: ドラッグ終了で解除。
+                  </span>
+                </label>
                 <label
                   className="grid gap-2 text-sm text-slate-100/90"
                   htmlFor="rotate-wheel-direction"

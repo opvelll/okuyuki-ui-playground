@@ -16,6 +16,7 @@ export type MoveOverlayDisplayMode =
   | "modes-1-2-3";
 export type RotateWheelDirection = "normal" | "reverse";
 export type RotateTwistAxis = "+x" | "+y" | "+z";
+export type RotateDragReleaseBehavior = "keep-selected" | "clear-selection";
 export type SettingsMenu = "general" | "physics" | "move-ui" | "rotate-ui";
 export type PhysicsRigidBodyType = "dynamic" | "fixed" | "kinematicPosition";
 export type AxisMagnetTarget = {
@@ -52,6 +53,7 @@ type PersistedUiState = {
   rotateGizmoRingColor: string;
   rotateGizmoSphereColor: string;
   rotateArcballSensitivity: number;
+  rotateDragReleaseBehavior: RotateDragReleaseBehavior;
   rotateTwistAxis: RotateTwistAxis;
   rotateUiOpacity: number;
   rotateUiRadiusPx: number;
@@ -100,6 +102,7 @@ type UiState = PersistedUiState & {
   setRotateGizmoRingColor: (value: string) => void;
   setRotateGizmoSphereColor: (value: string) => void;
   setRotateArcballSensitivity: (value: number) => void;
+  setRotateDragReleaseBehavior: (value: RotateDragReleaseBehavior) => void;
   setRotateTwistAxis: (axis: RotateTwistAxis) => void;
   setRotateUiOpacity: (value: number) => void;
   setRotateUiRadiusPx: (value: number) => void;
@@ -141,6 +144,7 @@ export const createDefaultPersistedUiState = (): PersistedUiState => ({
   rotateGizmoRingColor: "#7dd3fc",
   rotateGizmoSphereColor: "#7dd3fc",
   rotateArcballSensitivity: 1,
+  rotateDragReleaseBehavior: "keep-selected",
   rotateTwistAxis: "+y",
   rotateUiOpacity: 1.2,
   rotateUiRadiusPx: 140,
@@ -187,6 +191,7 @@ const createInitialUiState = (): Omit<
   | "setRotateGizmoRingColor"
   | "setRotateGizmoSphereColor"
   | "setRotateArcballSensitivity"
+  | "setRotateDragReleaseBehavior"
   | "setRotateTwistAxis"
   | "setRotateUiOpacity"
   | "setRotateUiRadiusPx"
@@ -262,13 +267,24 @@ export const useUiStore = create<UiState>()(
         set((state) => ({
           axisMagnetTarget: null,
           interactionMode: mode,
-          interactionState: state.selectedObjectId ? "active" : "idle",
+          interactionState:
+            state.interactionMode === "rotate" && mode === "move"
+              ? "idle"
+              : state.selectedObjectId
+                ? "active"
+                : "idle",
+          selectedObjectId:
+            state.interactionMode === "rotate" && mode === "move"
+              ? null
+              : state.selectedObjectId,
         })),
       setRotateGizmoRingColor: (value) => set({ rotateGizmoRingColor: value }),
       setRotateGizmoSphereColor: (value) =>
         set({ rotateGizmoSphereColor: value }),
       setRotateArcballSensitivity: (value) =>
         set({ rotateArcballSensitivity: value }),
+      setRotateDragReleaseBehavior: (value) =>
+        set({ rotateDragReleaseBehavior: value }),
       setRotateTwistAxis: (axis) => set({ rotateTwistAxis: axis }),
       setRotateUiOpacity: (value) => set({ rotateUiOpacity: value }),
       setRotateUiRadiusPx: (value) => set({ rotateUiRadiusPx: value }),
@@ -314,6 +330,7 @@ export const useUiStore = create<UiState>()(
         rotateGizmoRingColor: state.rotateGizmoRingColor,
         rotateGizmoSphereColor: state.rotateGizmoSphereColor,
         rotateArcballSensitivity: state.rotateArcballSensitivity,
+        rotateDragReleaseBehavior: state.rotateDragReleaseBehavior,
         rotateTwistAxis: state.rotateTwistAxis,
         rotateUiOpacity: state.rotateUiOpacity,
         rotateUiRadiusPx: state.rotateUiRadiusPx,
