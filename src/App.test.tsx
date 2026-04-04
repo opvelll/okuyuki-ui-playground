@@ -158,6 +158,11 @@ describe("App", () => {
     await user.click(screen.getByLabelText(/Show FPS \/ FPS表示/i));
 
     expect(screen.queryByText("FPS")).not.toBeInTheDocument();
+
+    const persistedState = window.localStorage.getItem(UI_STORE_PERSIST_KEY);
+
+    expect(persistedState).not.toBeNull();
+    expect(persistedState).toContain('"showFps":false');
   });
 
   it("collapses grouped color settings in general section", async () => {

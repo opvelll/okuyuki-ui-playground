@@ -320,6 +320,7 @@ export const useUiStore = create<UiState>()(
         rotateWheelDirection: state.rotateWheelDirection,
         rotateWheelRotateStepDeg: state.rotateWheelRotateStepDeg,
         selectedSettingsMenu: state.selectedSettingsMenu,
+        showFps: state.showFps,
         settingsOpen: state.settingsOpen,
         suppressObjectRotation: state.suppressObjectRotation,
       }),
