@@ -14,6 +14,7 @@ const fieldClasses =
   "min-h-11 w-full rounded-2xl border border-white/12 bg-slate-900/80 px-3 text-sm text-slate-50 outline-none transition focus:border-sky-200/60 focus:ring-2 focus:ring-sky-300/40";
 const toggleLabelClasses =
   "grid grid-cols-[1fr_auto] items-center gap-4 text-sm text-slate-100/90";
+const fieldHintClasses = "text-xs leading-5 text-slate-300/72";
 
 const settingsMenuItems = [
   { description: "app-wide defaults", key: "general", label: "全体" },
@@ -89,6 +90,7 @@ function ToggleField({
 }
 
 function NumberField({
+  hint,
   id,
   label,
   max,
@@ -97,6 +99,7 @@ function NumberField({
   step,
   value,
 }: {
+  hint?: string;
   id: string;
   label: string;
   max?: string;
@@ -118,8 +121,13 @@ function NumberField({
         type="number"
         value={value}
       />
+      {hint ? <span className={fieldHintClasses}>{hint}</span> : null}
     </label>
   );
+}
+
+function SectionNote({ children }: { children: string }) {
+  return <p className={fieldHintClasses}>{children}</p>;
 }
 
 export function SettingsWindow() {
@@ -264,9 +272,10 @@ export function SettingsWindow() {
                   label="Physics"
                   onChange={setPhysicsEnabled}
                 />
-                <p className="text-sm text-slate-300/75">
-                  シーン全体で物理演算を使うかどうかを切り替えます。
-                </p>
+                <SectionNote>
+                  Physics: 物理演算全体の有効化。OFF
+                  で静的編集モードに切り替えます。
+                </SectionNote>
               </section>
             ) : null}
             {selectedSettingsMenu === "physics" ? (
@@ -277,11 +286,15 @@ export function SettingsWindow() {
                 <h2 className={sectionHeadingClasses} id="physics-settings">
                   物理演算
                 </h2>
+                <SectionNote>
+                  推奨値は Rapier / react-three-rapier の公式 docs
+                  を基準にした目安です。
+                </SectionNote>
                 <label
                   className="grid gap-2 text-sm text-slate-100/90"
                   htmlFor="rigid-body-type"
                 >
-                  <span>Rigid Body Mode</span>
+                  <span>Rigid Body Mode / 剛体モード</span>
                   <select
                     className={fieldClasses}
                     id="rigid-body-type"
@@ -299,25 +312,34 @@ export function SettingsWindow() {
                       </option>
                     ))}
                   </select>
+                  <span className={fieldHintClasses}>
+                    Dynamic: 通常の物理対象。Fixed: 固定物。Kinematic:
+                    ユーザー移動主体。通常は Dynamic 推奨。
+                  </span>
                 </label>
                 <ToggleField
                   checked={suppressObjectRotation}
                   id="suppress-object-rotation"
-                  label="Suppress Object Rotation"
+                  label="Suppress Object Rotation / 回転抑制"
                   onChange={setSuppressObjectRotation}
                 />
+                <SectionNote>
+                  OFF で自然回転を許可。固定したいオブジェクトだけ ON を推奨。
+                </SectionNote>
                 <NumberField
+                  hint="Object Friction / 物体摩擦。公式では 0 で無摩擦、1 以上で強い摩擦。目安 0.2-1.5。"
                   id="object-friction"
-                  label="Object Friction"
-                  max="3"
+                  label="Object Friction / 物体摩擦"
+                  max="10"
                   min="0"
                   onChange={handleNumberChange(setObjectFriction)}
                   step="0.05"
                   value={objectFriction}
                 />
                 <NumberField
+                  hint="Object Restitution / 物体反発。公式レンジは 0-1。目安 0-0.3、よく跳ねさせるなら 0.6+。"
                   id="object-restitution"
-                  label="Object Restitution"
+                  label="Object Restitution / 物体反発"
                   max="1"
                   min="0"
                   onChange={handleNumberChange(setObjectRestitution)}
@@ -325,26 +347,29 @@ export function SettingsWindow() {
                   value={objectRestitution}
                 />
                 <NumberField
+                  hint="Object Linear Damping / 並進減衰。公式では 0 が無減衰で、大きいほど減速。目安 0-2。"
                   id="object-linear-damping"
-                  label="Object Linear Damping"
-                  max="4"
+                  label="Object Linear Damping / 並進減衰"
+                  max="10"
                   min="0"
                   onChange={handleNumberChange(setObjectLinearDamping)}
                   step="0.05"
                   value={objectLinearDamping}
                 />
                 <NumberField
+                  hint="Object Angular Damping / 回転減衰。公式では 0 が無減衰で、大きいほど回転が止まりやすい。目安 0-2。"
                   id="object-angular-damping"
-                  label="Object Angular Damping"
-                  max="4"
+                  label="Object Angular Damping / 回転減衰"
+                  max="10"
                   min="0"
                   onChange={handleNumberChange(setObjectAngularDamping)}
                   step="0.05"
                   value={objectAngularDamping}
                 />
                 <NumberField
+                  hint="Gravity Y / 重力 Y。Rapier 例では -9.81 が標準。目安 -4 から -20。"
                   id="gravity-y"
-                  label="Gravity Y"
+                  label="Gravity Y / 重力 Y"
                   max="0"
                   min="-30"
                   onChange={handleNumberChange(setGravityY)}
@@ -352,17 +377,19 @@ export function SettingsWindow() {
                   value={gravityY}
                 />
                 <NumberField
+                  hint="Floor Friction / 床摩擦。公式では 1 未満が一般的で、1 以上は強い摩擦。目安 0.4-2。"
                   id="floor-friction"
-                  label="Floor Friction"
-                  max="3"
+                  label="Floor Friction / 床摩擦"
+                  max="10"
                   min="0"
                   onChange={handleNumberChange(setFloorFriction)}
                   step="0.05"
                   value={floorFriction}
                 />
                 <NumberField
+                  hint="Floor Restitution / 床反発。公式レンジは 0-1。床は 0-0.2 目安。"
                   id="floor-restitution"
-                  label="Floor Restitution"
+                  label="Floor Restitution / 床反発"
                   max="1"
                   min="0"
                   onChange={handleNumberChange(setFloorRestitution)}
@@ -376,11 +403,15 @@ export function SettingsWindow() {
                 <h2 className={sectionHeadingClasses} id="move-settings">
                   Move UI
                 </h2>
+                <SectionNote>
+                  Move UI:
+                  オブジェクト移動操作の見え方とステップ量を調整します。
+                </SectionNote>
                 <label
                   className="grid gap-2 text-sm text-slate-100/90"
                   htmlFor="overlay-display-mode"
                 >
-                  <span>Overlay Display</span>
+                  <span>Overlay Display / オーバーレイ表示</span>
                   <select
                     className={fieldClasses}
                     id="overlay-display-mode"
@@ -398,10 +429,15 @@ export function SettingsWindow() {
                       </option>
                     ))}
                   </select>
+                  <span className={fieldHintClasses}>
+                    操作用オーバーレイの表示モード。通常は 1 か 2 + 3
+                    が扱いやすいです。
+                  </span>
                 </label>
                 <NumberField
+                  hint="Shift Depth Step / Shift 精密移動量。目安 0.02-0.2。"
                   id="precision-step"
-                  label="Shift Depth Step"
+                  label="Shift Depth Step / Shift 精密移動量"
                   max="2"
                   min="0.01"
                   onChange={handleNumberChange(setMovePrecisionStep)}
@@ -409,8 +445,9 @@ export function SettingsWindow() {
                   value={movePrecisionStep}
                 />
                 <NumberField
+                  hint="Ctrl Grid Snap Step / Ctrl グリッド吸着。目安 0.1-1。"
                   id="grid-snap-step"
-                  label="Ctrl Grid Snap Step"
+                  label="Ctrl Grid Snap Step / Ctrl グリッド吸着"
                   max="4"
                   min="0.01"
                   onChange={handleNumberChange(setMoveGridSnapStep)}
@@ -418,8 +455,9 @@ export function SettingsWindow() {
                   value={moveGridSnapStep}
                 />
                 <NumberField
+                  hint="Overlay Radius Multiplier / オーバーレイ半径倍率。目安 1-1.5。"
                   id="overlay-radius-multiplier"
-                  label="Overlay Radius Multiplier"
+                  label="Overlay Radius Multiplier / オーバーレイ半径倍率"
                   max="4"
                   min="1"
                   onChange={handleNumberChange(setMoveOverlayRadiusMultiplier)}
@@ -427,8 +465,9 @@ export function SettingsWindow() {
                   value={moveOverlayRadiusMultiplier}
                 />
                 <NumberField
+                  hint="Depth Wheel Step / ホイール前後移動量。目安 0.05-0.4。"
                   id="depth-step"
-                  label="Depth Wheel Step"
+                  label="Depth Wheel Step / ホイール前後移動量"
                   max="2"
                   min="0.01"
                   onChange={handleNumberChange(setMoveDepthWheelStep)}
@@ -439,7 +478,7 @@ export function SettingsWindow() {
                   className="grid gap-2 text-sm text-slate-100/90"
                   htmlFor="depth-direction"
                 >
-                  <span>Depth Wheel Direction</span>
+                  <span>Depth Wheel Direction / ホイール方向</span>
                   <select
                     className={fieldClasses}
                     id="depth-direction"
@@ -457,6 +496,9 @@ export function SettingsWindow() {
                       </option>
                     ))}
                   </select>
+                  <span className={fieldHintClasses}>
+                    normal: 通常方向。inverted: 反転方向。
+                  </span>
                 </label>
               </section>
             ) : null}
