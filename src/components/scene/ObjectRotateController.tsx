@@ -16,9 +16,12 @@ import {
 } from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { useSceneStore } from "../../store/sceneStore";
-import { type RotateTwistAxis, useUiStore } from "../../store/uiStore";
+import {
+  type InteractionMode,
+  type RotateTwistAxis,
+  useUiStore,
+} from "../../store/uiStore";
 import type { SceneObject } from "../../types/scene";
-import { SceneObjectLayer } from "./SceneObjectLayer";
 
 const MIN_ROTATE_UI_RADIUS_PX = 8;
 const ARC_SAMPLE_MIN = 24;
@@ -197,10 +200,10 @@ function RotateGizmo({
 
 export function ObjectRotateController({
   controlsRef,
-  physicsEnabled,
+  interactionMode,
 }: {
   controlsRef: RefObject<OrbitControlsImpl | null>;
-  physicsEnabled: boolean;
+  interactionMode: InteractionMode;
 }) {
   const camera = useThree((state) => state.camera);
   const gl = useThree((state) => state.gl);
@@ -210,7 +213,6 @@ export function ObjectRotateController({
   const rotateUiOpacity = useUiStore((state) => state.rotateUiOpacity);
   const rotateUiRadiusPx = useUiStore((state) => state.rotateUiRadiusPx);
   const objectsById = useSceneStore((state) => state.objectsById);
-  const selectObject = useUiStore((state) => state.selectObject);
   const setInteractionState = useUiStore((state) => state.setInteractionState);
   const updateObjectRotation = useSceneStore(
     (state) => state.updateObjectRotation,
@@ -374,21 +376,14 @@ export function ObjectRotateController({
     setInteractionState(selectedObjectId ? "active" : "idle");
   }, [gl, selectedObjectId, setControlsEnabled, setInteractionState]);
 
-  const handleObjectPointerDown = useCallback(
-    (event: ThreeEvent<PointerEvent>, sceneObject: SceneObject) => {
-      if (event.button !== 0) {
-        return;
-      }
-
-      event.stopPropagation();
-      selectObject(sceneObject.id);
-    },
-    [selectObject],
-  );
-
   const handleGizmoPointerDown = useCallback(
     (event: ThreeEvent<PointerEvent>) => {
-      if (event.button !== 0 || !selectedObject || !pivot) {
+      if (
+        interactionMode !== "rotate" ||
+        event.button !== 0 ||
+        !selectedObject ||
+        !pivot
+      ) {
         return;
       }
 
@@ -425,6 +420,7 @@ export function ObjectRotateController({
     [
       computeRaySphereHit,
       gl,
+      interactionMode,
       pivot,
       selectedObject,
       setControlsEnabled,
@@ -435,7 +431,7 @@ export function ObjectRotateController({
   const handleWheelTwist = useCallback(
     (event: WheelEvent) => {
       const currentObjectId = selectedObjectId;
-      if (!currentObjectId) {
+      if (interactionMode !== "rotate" || !currentObjectId) {
         return;
       }
 
@@ -500,6 +496,7 @@ export function ObjectRotateController({
     [
       applyRotationFromSession,
       computeRaySphereHit,
+      interactionMode,
       selectedObjectId,
       updateObjectRotation,
     ],
@@ -585,6 +582,14 @@ export function ObjectRotateController({
     [setControlsEnabled],
   );
 
+  useEffect(() => {
+    if (interactionMode === "rotate" || !rotateSessionRef.current) {
+      return;
+    }
+
+    finishDrag();
+  }, [finishDrag, interactionMode]);
+
   const arcPoints = useMemo(() => {
     const rotateSession = rotateSessionRef.current;
     if (
@@ -636,27 +641,18 @@ export function ObjectRotateController({
     return points;
   }, [camera, getSwingQuaternion, interactionState, pivot, radiusWorld]);
 
-  return (
-    <>
-      <SceneObjectLayer
-        draggingObjectId={
-          interactionState === "dragging" ? selectedObjectId : null
-        }
-        objectsById={objectsById}
-        onPointerDown={handleObjectPointerDown}
-        physicsEnabled={physicsEnabled}
-        selectedObjectId={selectedObjectId}
-      />
-      {selectedObject && pivot && radiusWorld > 0 ? (
-        <RotateGizmo
-          active={interactionState === "dragging"}
-          arcPoints={arcPoints}
-          center={pivot}
-          onPointerDown={handleGizmoPointerDown}
-          opacity={MathUtils.clamp(rotateUiOpacity, 0.05, 1)}
-          radiusWorld={radiusWorld}
-        />
-      ) : null}
-    </>
-  );
+  if (interactionMode !== "rotate") {
+    return null;
+  }
+
+  return selectedObject && pivot && radiusWorld > 0 ? (
+    <RotateGizmo
+      active={interactionState === "dragging"}
+      arcPoints={arcPoints}
+      center={pivot}
+      onPointerDown={handleGizmoPointerDown}
+      opacity={MathUtils.clamp(rotateUiOpacity, 0.05, 1)}
+      radiusWorld={radiusWorld}
+    />
+  ) : null;
 }

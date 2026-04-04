@@ -54,6 +54,7 @@ export function useObjectDragSession({
   const camera = useThree((state) => state.camera);
   const gl = useThree((state) => state.gl);
   const raycaster = useThree((state) => state.raycaster);
+  const interactionMode = useUiStore((state) => state.interactionMode);
   const clearSelection = useUiStore((state) => state.clearSelection);
   const setAxisMagnetTarget = useUiStore((state) => state.setAxisMagnetTarget);
   const setInteractionState = useUiStore((state) => state.setInteractionState);
@@ -189,7 +190,7 @@ export function useObjectDragSession({
 
   const handlePointerDown = useCallback(
     (event: ThreeEvent<PointerEvent>, sceneObject: SceneObject) => {
-      if (event.button !== 0) {
+      if (interactionMode !== "move" || event.button !== 0) {
         return;
       }
 
@@ -232,6 +233,7 @@ export function useObjectDragSession({
     },
     [
       camera,
+      interactionMode,
       projectClientPointToPlane,
       selectObject,
       setControlsEnabled,
@@ -239,6 +241,14 @@ export function useObjectDragSession({
       syncOverlayState,
     ],
   );
+
+  useEffect(() => {
+    if (interactionMode === "move" || !dragSessionRef.current) {
+      return;
+    }
+
+    finishDrag(useUiStore.getState().selectedObjectId ? "active" : "idle");
+  }, [finishDrag, interactionMode]);
 
   useEffect(() => {
     const handlePointerMove = (event: PointerEvent) => {

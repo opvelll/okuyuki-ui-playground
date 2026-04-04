@@ -1,4 +1,4 @@
-import { Edges } from "@react-three/drei";
+import { Outlines } from "@react-three/drei";
 import type { ShapeKind } from "../../types/scene";
 
 type ShapeMeshProps = {
@@ -49,7 +49,14 @@ export function ShapeMesh({
         roughness={dragging ? 0.26 : 0.38}
       />
       {selected ? (
-        <Edges color="#f8fafc" lineWidth={2.4} scale={1.06} threshold={20} />
+        <Outlines
+          angle={Math.PI}
+          color="#f8fafc"
+          opacity={0.96}
+          thickness={0.08}
+          toneMapped={false}
+          transparent
+        />
       ) : null}
     </mesh>
   );
