@@ -2,6 +2,8 @@ import {
   type MoveDepthWheelDirection,
   type MoveOverlayDisplayMode,
   type PhysicsRigidBodyType,
+  type RotateTwistAxis,
+  type RotateWheelDirection,
   type SettingsMenu,
   useUiStore,
 } from "../store/uiStore";
@@ -20,6 +22,7 @@ const settingsMenuItems = [
   { description: "app-wide defaults", key: "general", label: "全体" },
   { description: "rapier tuning", key: "physics", label: "物理演算" },
   { description: "screen-depth drag", key: "move-ui", label: "Move UI" },
+  { description: "turntable rotate", key: "rotate-ui", label: "Rotate UI" },
 ] as const satisfies ReadonlyArray<{
   description: string;
   key: SettingsMenu;
@@ -39,6 +42,17 @@ const depthDirectionOptions = [
   { label: "inverted", value: "inverted" },
 ] as const;
 
+const rotateDirectionOptions = [
+  { label: "normal", value: "normal" },
+  { label: "reverse", value: "reverse" },
+] as const;
+
+const rotateTwistAxisOptions = [
+  { label: "+X", value: "+x" },
+  { label: "+Y", value: "+y" },
+  { label: "+Z", value: "+z" },
+] as const;
+
 const rigidBodyOptions = [
   { label: "Dynamic", value: "dynamic" },
   { label: "Fixed", value: "fixed" },
@@ -50,6 +64,12 @@ const isOverlayDisplayMode = (value: string): value is MoveOverlayDisplayMode =>
 
 const isDepthDirection = (value: string): value is MoveDepthWheelDirection =>
   depthDirectionOptions.some((option) => option.value === value);
+
+const isRotateDirection = (value: string): value is RotateWheelDirection =>
+  rotateDirectionOptions.some((option) => option.value === value);
+
+const isRotateTwistAxis = (value: string): value is RotateTwistAxis =>
+  rotateTwistAxisOptions.some((option) => option.value === value);
 
 const isRigidBodyType = (value: string): value is PhysicsRigidBodyType =>
   rigidBodyOptions.some((option) => option.value === value);
@@ -156,6 +176,15 @@ export function SettingsWindow() {
   const physicsRigidBodyType = useUiStore(
     (state) => state.physicsRigidBodyType,
   );
+  const rotateTwistAxis = useUiStore((state) => state.rotateTwistAxis);
+  const rotateUiOpacity = useUiStore((state) => state.rotateUiOpacity);
+  const rotateUiRadiusPx = useUiStore((state) => state.rotateUiRadiusPx);
+  const rotateWheelDirection = useUiStore(
+    (state) => state.rotateWheelDirection,
+  );
+  const rotateWheelRotateStepDeg = useUiStore(
+    (state) => state.rotateWheelRotateStepDeg,
+  );
   const selectedSettingsMenu = useUiStore(
     (state) => state.selectedSettingsMenu,
   );
@@ -195,6 +224,15 @@ export function SettingsWindow() {
   const setPhysicsEnabled = useUiStore((state) => state.setPhysicsEnabled);
   const setPhysicsRigidBodyType = useUiStore(
     (state) => state.setPhysicsRigidBodyType,
+  );
+  const setRotateTwistAxis = useUiStore((state) => state.setRotateTwistAxis);
+  const setRotateUiOpacity = useUiStore((state) => state.setRotateUiOpacity);
+  const setRotateUiRadiusPx = useUiStore((state) => state.setRotateUiRadiusPx);
+  const setRotateWheelDirection = useUiStore(
+    (state) => state.setRotateWheelDirection,
+  );
+  const setRotateWheelRotateStepDeg = useUiStore(
+    (state) => state.setRotateWheelRotateStepDeg,
   );
   const setSelectedSettingsMenu = useUiStore(
     (state) => state.setSelectedSettingsMenu,
@@ -498,6 +536,99 @@ export function SettingsWindow() {
                   </select>
                   <span className={fieldHintClasses}>
                     normal: 通常方向。inverted: 反転方向。
+                  </span>
+                </label>
+              </section>
+            ) : null}
+            {selectedSettingsMenu === "rotate-ui" ? (
+              <section aria-labelledby="rotate-settings" className="grid gap-3">
+                <h2 className={sectionHeadingClasses} id="rotate-settings">
+                  Rotate UI
+                </h2>
+                <SectionNote>
+                  Rotate UI: 画面基準の turntable 回転とホイール twist
+                  の感度を調整します。
+                </SectionNote>
+                <NumberField
+                  hint="UI Opacity / ギズモ濃度。目安 0.2-1.0。"
+                  id="rotate-ui-opacity"
+                  label="UI Opacity / ギズモ濃度"
+                  max="1"
+                  min="0.05"
+                  onChange={handleNumberChange(setRotateUiOpacity)}
+                  step="0.01"
+                  value={rotateUiOpacity}
+                />
+                <NumberField
+                  hint="UI Radius Px / 画面上のギズモ半径。目安 96-220。"
+                  id="rotate-ui-radius"
+                  label="UI Radius Px / ギズモ半径"
+                  max="320"
+                  min="8"
+                  onChange={handleNumberChange(setRotateUiRadiusPx)}
+                  step="1"
+                  value={rotateUiRadiusPx}
+                />
+                <NumberField
+                  hint="Wheel Rotate Step / ホイール 1 ステップごとの twist 量。目安 4-30 deg。"
+                  id="rotate-wheel-step"
+                  label="Wheel Rotate Step / ホイール回転量"
+                  max="90"
+                  min="1"
+                  onChange={handleNumberChange(setRotateWheelRotateStepDeg)}
+                  step="1"
+                  value={rotateWheelRotateStepDeg}
+                />
+                <label
+                  className="grid gap-2 text-sm text-slate-100/90"
+                  htmlFor="rotate-wheel-direction"
+                >
+                  <span>Wheel Direction / ホイール方向</span>
+                  <select
+                    className={fieldClasses}
+                    id="rotate-wheel-direction"
+                    onChange={(event) => {
+                      const nextDirection = event.target.value;
+                      if (isRotateDirection(nextDirection)) {
+                        setRotateWheelDirection(nextDirection);
+                      }
+                    }}
+                    value={rotateWheelDirection}
+                  >
+                    {rotateDirectionOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <span className={fieldHintClasses}>
+                    normal: 通常方向。reverse: 反転方向。
+                  </span>
+                </label>
+                <label
+                  className="grid gap-2 text-sm text-slate-100/90"
+                  htmlFor="rotate-twist-axis"
+                >
+                  <span>Twist Axis / Twist 基準軸</span>
+                  <select
+                    className={fieldClasses}
+                    id="rotate-twist-axis"
+                    onChange={(event) => {
+                      const nextAxis = event.target.value;
+                      if (isRotateTwistAxis(nextAxis)) {
+                        setRotateTwistAxis(nextAxis);
+                      }
+                    }}
+                    value={rotateTwistAxis}
+                  >
+                    {rotateTwistAxisOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <span className={fieldHintClasses}>
+                    twist を追従させるローカル基準軸。通常は +Y 推奨です。
                   </span>
                 </label>
               </section>

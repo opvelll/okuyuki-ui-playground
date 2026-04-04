@@ -341,8 +341,20 @@ export function useObjectDragSession({
       window.removeEventListener("pointerup", handlePointerUp);
       window.removeEventListener("pointercancel", handlePointerCancel);
       window.removeEventListener("wheel", handleWheel);
+      if (dragSessionRef.current) {
+        dragSessionRef.current = null;
+        setAxisMagnetTarget(null);
+        setOverlayState(null);
+        setControlsEnabled(true);
+      }
     };
-  }, [applyModifiers, finishDrag, updateDraggedObjectPosition]);
+  }, [
+    applyModifiers,
+    finishDrag,
+    setAxisMagnetTarget,
+    setControlsEnabled,
+    updateDraggedObjectPosition,
+  ]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {

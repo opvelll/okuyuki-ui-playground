@@ -1,4 +1,5 @@
 import { Suspense, lazy } from "react";
+import { InteractionModeToolbar } from "./components/InteractionModeToolbar";
 import { PrototypeSceneFallback } from "./components/PrototypeSceneFallback";
 import { SceneStatusHud } from "./components/SceneStatusHud";
 import { SettingsWindow } from "./components/SettingsWindow";
@@ -26,6 +27,7 @@ export default function App() {
         <Suspense fallback={<PrototypeSceneFallback />}>
           <PrototypeScene />
         </Suspense>
+        <InteractionModeToolbar />
         <SettingsWindow />
         <SceneStatusHud />
       </section>

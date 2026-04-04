@@ -3,6 +3,7 @@ import { createJSONStorage, persist } from "zustand/middleware";
 
 export type MoveDepthWheelDirection = "normal" | "inverted";
 export type InteractionState = "idle" | "active" | "dragging";
+export type InteractionMode = "move" | "rotate";
 export type MoveOverlayOrientationMode =
   | "camera-facing"
   | "screen-vertical"
@@ -13,7 +14,9 @@ export type MoveOverlayDisplayMode =
   | "mode-3"
   | "modes-2-3"
   | "modes-1-2-3";
-export type SettingsMenu = "general" | "physics" | "move-ui";
+export type RotateWheelDirection = "normal" | "reverse";
+export type RotateTwistAxis = "+x" | "+y" | "+z";
+export type SettingsMenu = "general" | "physics" | "move-ui" | "rotate-ui";
 export type PhysicsRigidBodyType = "dynamic" | "fixed" | "kinematicPosition";
 export type AxisMagnetTarget = {
   axis: "x" | "y" | "z";
@@ -38,9 +41,15 @@ type PersistedUiState = {
   objectRestitution: number;
   physicsEnabled: boolean;
   physicsRigidBodyType: PhysicsRigidBodyType;
+  rotateTwistAxis: RotateTwistAxis;
+  rotateUiOpacity: number;
+  rotateUiRadiusPx: number;
+  rotateWheelDirection: RotateWheelDirection;
+  rotateWheelRotateStepDeg: number;
   selectedSettingsMenu: SettingsMenu;
   settingsOpen: boolean;
   suppressObjectRotation: boolean;
+  interactionMode: InteractionMode;
 };
 
 type UiState = PersistedUiState & {
@@ -67,6 +76,12 @@ type UiState = PersistedUiState & {
   setObjectRestitution: (value: number) => void;
   setPhysicsEnabled: (enabled: boolean) => void;
   setPhysicsRigidBodyType: (value: PhysicsRigidBodyType) => void;
+  setInteractionMode: (mode: InteractionMode) => void;
+  setRotateTwistAxis: (axis: RotateTwistAxis) => void;
+  setRotateUiOpacity: (value: number) => void;
+  setRotateUiRadiusPx: (value: number) => void;
+  setRotateWheelDirection: (direction: RotateWheelDirection) => void;
+  setRotateWheelRotateStepDeg: (value: number) => void;
   setSelectedSettingsMenu: (menu: SettingsMenu) => void;
   setSettingsOpen: (open: boolean) => void;
   setSuppressObjectRotation: (value: boolean) => void;
@@ -91,9 +106,15 @@ export const createDefaultPersistedUiState = (): PersistedUiState => ({
   objectRestitution: 0.02,
   physicsEnabled: true,
   physicsRigidBodyType: "dynamic",
+  rotateTwistAxis: "+y",
+  rotateUiOpacity: 0.72,
+  rotateUiRadiusPx: 140,
+  rotateWheelDirection: "reverse",
+  rotateWheelRotateStepDeg: 16,
   selectedSettingsMenu: "general",
   settingsOpen: true,
   suppressObjectRotation: false,
+  interactionMode: "move",
 });
 
 const createInitialUiState = (): Omit<
@@ -118,6 +139,12 @@ const createInitialUiState = (): Omit<
   | "setObjectRestitution"
   | "setPhysicsEnabled"
   | "setPhysicsRigidBodyType"
+  | "setInteractionMode"
+  | "setRotateTwistAxis"
+  | "setRotateUiOpacity"
+  | "setRotateUiRadiusPx"
+  | "setRotateWheelDirection"
+  | "setRotateWheelRotateStepDeg"
   | "setSelectedSettingsMenu"
   | "setSettingsOpen"
   | "setSuppressObjectRotation"
@@ -172,6 +199,19 @@ export const useUiStore = create<UiState>()(
           selectedObjectId: null,
         }),
       setPhysicsRigidBodyType: (value) => set({ physicsRigidBodyType: value }),
+      setInteractionMode: (mode) =>
+        set((state) => ({
+          axisMagnetTarget: null,
+          interactionMode: mode,
+          interactionState: state.selectedObjectId ? "active" : "idle",
+        })),
+      setRotateTwistAxis: (axis) => set({ rotateTwistAxis: axis }),
+      setRotateUiOpacity: (value) => set({ rotateUiOpacity: value }),
+      setRotateUiRadiusPx: (value) => set({ rotateUiRadiusPx: value }),
+      setRotateWheelDirection: (direction) =>
+        set({ rotateWheelDirection: direction }),
+      setRotateWheelRotateStepDeg: (value) =>
+        set({ rotateWheelRotateStepDeg: value }),
       setSelectedSettingsMenu: (menu) => set({ selectedSettingsMenu: menu }),
       setSettingsOpen: (open) => set({ settingsOpen: open }),
       setSuppressObjectRotation: (value) =>
@@ -196,6 +236,12 @@ export const useUiStore = create<UiState>()(
         objectRestitution: state.objectRestitution,
         physicsEnabled: state.physicsEnabled,
         physicsRigidBodyType: state.physicsRigidBodyType,
+        interactionMode: state.interactionMode,
+        rotateTwistAxis: state.rotateTwistAxis,
+        rotateUiOpacity: state.rotateUiOpacity,
+        rotateUiRadiusPx: state.rotateUiRadiusPx,
+        rotateWheelDirection: state.rotateWheelDirection,
+        rotateWheelRotateStepDeg: state.rotateWheelRotateStepDeg,
         selectedSettingsMenu: state.selectedSettingsMenu,
         settingsOpen: state.settingsOpen,
         suppressObjectRotation: state.suppressObjectRotation,

@@ -5,6 +5,7 @@ import type { SceneObject, Vector3Tuple } from "../types/scene";
 type SceneState = {
   objectsById: Record<string, SceneObject>;
   resetScene: () => void;
+  updateObjectRotation: (id: string, rotation: Vector3Tuple) => void;
   updateObjectTransform: (
     id: string,
     transform: Pick<SceneObject, "position" | "rotation">,
@@ -40,6 +41,23 @@ const createInitialSceneState = () => ({
 export const useSceneStore = create<SceneState>((set) => ({
   ...createInitialSceneState(),
   resetScene: () => set(createInitialSceneState()),
+  updateObjectRotation: (id, rotation) =>
+    set((state) => {
+      const targetObject = state.objectsById[id];
+      if (!targetObject || rotationsMatch(targetObject.rotation, rotation)) {
+        return state;
+      }
+
+      return {
+        objectsById: {
+          ...state.objectsById,
+          [id]: {
+            ...targetObject,
+            rotation,
+          },
+        },
+      };
+    }),
   updateObjectTransform: (id, transform) =>
     set((state) => {
       const targetObject = state.objectsById[id];

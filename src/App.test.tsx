@@ -68,8 +68,9 @@ describe("App", () => {
     expect(
       screen.getByRole("button", { name: /物理演算/i }),
     ).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /Move UI/i })).toHaveLength(2);
     expect(
-      screen.getByRole("button", { name: /Move UI/i }),
+      screen.getByRole("button", { name: /Switch to Rotate UI tool/i }),
     ).toBeInTheDocument();
     expect(screen.getByLabelText(/Physics/i)).toBeInTheDocument();
     expect(
@@ -108,7 +109,7 @@ describe("App", () => {
       screen.getByRole("button", { name: /Expand settings/i }),
     ).toHaveAttribute("aria-expanded", "false");
     expect(
-      screen.queryByRole("button", { name: /Move UI/i }),
+      screen.queryByRole("button", { name: /^全体$/i }),
     ).not.toBeInTheDocument();
   });
 
@@ -130,5 +131,39 @@ describe("App", () => {
     expect(persistedState).not.toBeNull();
     expect(persistedState).toContain('"selectedSettingsMenu":"physics"');
     expect(persistedState).toContain('"settingsOpen":false');
+  });
+
+  it("switches the active tool mode from the left toolbar", async () => {
+    const user = userEvent.setup();
+    const App = await loadApp();
+
+    render(<App />);
+
+    await user.click(
+      screen.getByRole("button", { name: /Switch to Rotate UI tool/i }),
+    );
+
+    expect(screen.getByText(/Object Rotate/i)).toBeInTheDocument();
+    expect(screen.getByText(/Rotate mode:/i)).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /Rotate UI/i })).toHaveLength(
+      2,
+    );
+    expect(
+      screen.getByRole("button", { name: /Switch to Rotate UI tool/i }),
+    ).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("shows rotate settings when the section is selected", async () => {
+    const user = userEvent.setup();
+    const App = await loadApp();
+
+    render(<App />);
+
+    await user.click(screen.getAllByRole("button", { name: /Rotate UI/i })[1]);
+
+    expect(screen.getByLabelText(/UI Opacity/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/UI Radius Px/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Wheel Rotate Step/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Twist Axis/i)).toBeInTheDocument();
   });
 });
