@@ -195,6 +195,9 @@ describe("App", () => {
 
     expect(screen.getByLabelText(/Gizmo Sphere Color/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Gizmo Ring Color/i)).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(/Arcball Sensitivity \/ arcball倍率/i),
+    ).toBeInTheDocument();
     expect(screen.getByLabelText(/UI Strength/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/UI Radius Px/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Wheel Rotate Step/i)).toBeInTheDocument();

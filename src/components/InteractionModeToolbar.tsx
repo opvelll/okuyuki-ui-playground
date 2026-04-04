@@ -8,7 +8,7 @@ const toolButtons = [
     mode: "move",
   },
   {
-    description: "turntable rotate",
+    description: "arcball rotate",
     label: "Rotate UI",
     mode: "rotate",
   },

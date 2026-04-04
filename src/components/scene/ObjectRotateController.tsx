@@ -10,8 +10,6 @@ import {
   OrthographicCamera,
   type PerspectiveCamera,
   Quaternion,
-  Sphere,
-  Vector2,
   Vector3,
 } from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
@@ -22,6 +20,10 @@ import {
   useUiStore,
 } from "../../store/uiStore";
 import type { SceneObject } from "../../types/scene";
+import {
+  createArcballQuaternion,
+  mapPointerToArcballVector,
+} from "./objectRotateArcball";
 
 const MIN_ROTATE_UI_RADIUS_PX = 8;
 const ARC_SAMPLE_MIN = 24;
@@ -31,12 +33,13 @@ const WORLD_RIGHT = new Vector3(1, 0, 0);
 const WORLD_FORWARD = new Vector3(0, 0, 1);
 
 type RotateSession = {
+  arcballCenterClientX: number;
+  arcballCenterClientY: number;
+  arcballRadiusPx: number;
   objectId: string;
   pointerId: number;
-  startClientX: number;
-  startClientY: number;
+  startArcballVecCamera: Vector3;
   startObjectQuat: Quaternion;
-  startVecWorld: Vector3;
   twistAngleRad: number;
 };
 
@@ -210,11 +213,13 @@ export function ObjectRotateController({
 }) {
   const camera = useThree((state) => state.camera);
   const gl = useThree((state) => state.gl);
-  const raycaster = useThree((state) => state.raycaster);
   const selectedObjectId = useUiStore((state) => state.selectedObjectId);
   const interactionState = useUiStore((state) => state.interactionState);
   const rotateUiOpacity = useUiStore((state) => state.rotateUiOpacity);
   const rotateUiRadiusPx = useUiStore((state) => state.rotateUiRadiusPx);
+  const rotateArcballSensitivity = useUiStore(
+    (state) => state.rotateArcballSensitivity,
+  );
   const rotateGizmoRingColor = useUiStore(
     (state) => state.rotateGizmoRingColor,
   );
@@ -226,7 +231,6 @@ export function ObjectRotateController({
   const updateObjectRotation = useSceneStore(
     (state) => state.updateObjectRotation,
   );
-  const pointerVector = useMemo(() => new Vector2(), []);
   const rotateSessionRef = useRef<RotateSession | null>(null);
   const latestPointerRef = useRef({ clientX: 0, clientY: 0 });
 
@@ -272,7 +276,7 @@ export function ObjectRotateController({
     [controlsRef],
   );
 
-  const computeRaySphereHit = useCallback(
+  const computeArcballPointerState = useCallback(
     (clientX: number, clientY: number) => {
       if (!pivot || radiusWorld <= 0) {
         return null;
@@ -283,67 +287,49 @@ export function ObjectRotateController({
         return null;
       }
 
-      pointerVector.set(
-        ((clientX - bounds.left) / bounds.width) * 2 - 1,
-        -((clientY - bounds.top) / bounds.height) * 2 + 1,
-      );
-      raycaster.setFromCamera(pointerVector, camera);
-
-      const sphere = new Sphere(pivot, radiusWorld);
-      const hitPoint = new Vector3();
-      if (!raycaster.ray.intersectSphere(sphere, hitPoint)) {
+      const projectedPivot = pivot.clone().project(camera);
+      if (projectedPivot.z < -1 || projectedPivot.z > 1) {
         return null;
       }
 
-      return hitPoint;
-    },
-    [camera, gl, pivot, pointerVector, radiusWorld, raycaster],
-  );
-
-  const getSwingQuaternion = useCallback(
-    (
-      startClientX: number,
-      startClientY: number,
-      clientX: number,
-      clientY: number,
-    ) => {
       const radiusPx = Math.max(MIN_ROTATE_UI_RADIUS_PX, rotateUiRadiusPx);
-      const dx = clientX - startClientX;
-      const dy = clientY - startClientY;
-      const yawAngle = (dx / radiusPx) * (Math.PI * 0.5);
-      const pitchAngle = (dy / radiusPx) * (Math.PI * 0.5);
-      const cameraUp = WORLD_UP.clone()
-        .applyQuaternion(camera.quaternion)
-        .normalize();
-      const cameraRight = WORLD_RIGHT.clone()
-        .applyQuaternion(camera.quaternion)
-        .normalize();
-      const yawQuaternion = new Quaternion().setFromAxisAngle(
-        cameraUp,
-        yawAngle,
-      );
-      const pitchQuaternion = new Quaternion().setFromAxisAngle(
-        cameraRight,
-        pitchAngle,
+      const centerClientX =
+        (projectedPivot.x + 1) * 0.5 * bounds.width + bounds.left;
+      const centerClientY =
+        (1 - projectedPivot.y) * 0.5 * bounds.height + bounds.top;
+      const vector = mapPointerToArcballVector(
+        clientX,
+        clientY,
+        centerClientX,
+        centerClientY,
+        radiusPx,
       );
 
       return {
-        pitchAngle,
-        quaternion: yawQuaternion.multiply(pitchQuaternion).normalize(),
-        yawAngle,
+        centerClientX,
+        centerClientY,
+        radiusPx,
+        vector,
       };
     },
-    [camera, rotateUiRadiusPx],
+    [camera, gl, pivot, radiusWorld, rotateUiRadiusPx],
   );
 
   const applyRotationFromSession = useCallback(
     (rotateSession: RotateSession, clientX: number, clientY: number) => {
-      const { rotateTwistAxis } = useUiStore.getState();
-      const { quaternion: swingQuaternion } = getSwingQuaternion(
-        rotateSession.startClientX,
-        rotateSession.startClientY,
+      const currentArcballVecCamera = mapPointerToArcballVector(
         clientX,
         clientY,
+        rotateSession.arcballCenterClientX,
+        rotateSession.arcballCenterClientY,
+        rotateSession.arcballRadiusPx,
+      );
+      const { rotateTwistAxis } = useUiStore.getState();
+      const swingQuaternion = createArcballQuaternion(
+        rotateSession.startArcballVecCamera,
+        currentArcballVecCamera,
+        camera.quaternion,
+        rotateArcballSensitivity,
       );
       const orientationAfterSwing = swingQuaternion
         .clone()
@@ -366,7 +352,7 @@ export function ObjectRotateController({
         quaternionToRotationTuple(targetQuaternion),
       );
     },
-    [getSwingQuaternion, updateObjectRotation],
+    [camera.quaternion, rotateArcballSensitivity, updateObjectRotation],
   );
 
   const finishDrag = useCallback(() => {
@@ -398,11 +384,11 @@ export function ObjectRotateController({
 
       event.stopPropagation();
 
-      const hitPoint = computeRaySphereHit(
+      const arcballPointerState = computeArcballPointerState(
         event.nativeEvent.clientX,
         event.nativeEvent.clientY,
       );
-      if (!hitPoint) {
+      if (!arcballPointerState) {
         return;
       }
 
@@ -410,12 +396,13 @@ export function ObjectRotateController({
         tupleToEuler(selectedObject.rotation),
       );
       rotateSessionRef.current = {
+        arcballCenterClientX: arcballPointerState.centerClientX,
+        arcballCenterClientY: arcballPointerState.centerClientY,
+        arcballRadiusPx: arcballPointerState.radiusPx,
         objectId: selectedObject.id,
         pointerId: event.pointerId,
-        startClientX: event.nativeEvent.clientX,
-        startClientY: event.nativeEvent.clientY,
+        startArcballVecCamera: arcballPointerState.vector,
         startObjectQuat,
-        startVecWorld: hitPoint.sub(pivot).normalize(),
         twistAngleRad: 0,
       };
       latestPointerRef.current = {
@@ -427,7 +414,7 @@ export function ObjectRotateController({
       setInteractionState("dragging");
     },
     [
-      computeRaySphereHit,
+      computeArcballPointerState,
       gl,
       interactionMode,
       pivot,
@@ -452,7 +439,7 @@ export function ObjectRotateController({
 
       const rotateSession = rotateSessionRef.current;
       if (!rotateSession) {
-        if (!computeRaySphereHit(event.clientX, event.clientY)) {
+        if (!computeArcballPointerState(event.clientX, event.clientY)) {
           return;
         }
       }
@@ -504,7 +491,7 @@ export function ObjectRotateController({
     },
     [
       applyRotationFromSession,
-      computeRaySphereHit,
+      computeArcballPointerState,
       interactionMode,
       selectedObjectId,
       updateObjectRotation,
@@ -610,45 +597,42 @@ export function ObjectRotateController({
       return null;
     }
 
-    const { pitchAngle, yawAngle } = getSwingQuaternion(
-      rotateSession.startClientX,
-      rotateSession.startClientY,
+    const currentArcballVecCamera = mapPointerToArcballVector(
       latestPointerRef.current.clientX,
       latestPointerRef.current.clientY,
+      rotateSession.arcballCenterClientX,
+      rotateSession.arcballCenterClientY,
+      rotateSession.arcballRadiusPx,
+    );
+    const startArcballVecWorld = rotateSession.startArcballVecCamera
+      .clone()
+      .applyQuaternion(camera.quaternion)
+      .normalize();
+    const currentArcballVecWorld = currentArcballVecCamera
+      .clone()
+      .applyQuaternion(camera.quaternion)
+      .normalize();
+    const angle = Math.acos(
+      MathUtils.clamp(startArcballVecWorld.dot(currentArcballVecWorld), -1, 1),
     );
     const sampleCount = Math.max(
       ARC_SAMPLE_MIN,
-      Math.ceil(((Math.abs(yawAngle) + Math.abs(pitchAngle)) / Math.PI) * 64),
+      Math.ceil((angle / Math.PI) * 64),
     );
-    const cameraUp = WORLD_UP.clone()
-      .applyQuaternion(camera.quaternion)
-      .normalize();
-    const cameraRight = WORLD_RIGHT.clone()
-      .applyQuaternion(camera.quaternion)
-      .normalize();
     const points: Vector3[] = [];
 
     for (let index = 0; index <= sampleCount; index += 1) {
       const t = index / sampleCount;
-      const sampleYaw = new Quaternion().setFromAxisAngle(
-        cameraUp,
-        yawAngle * t,
-      );
-      const samplePitch = new Quaternion().setFromAxisAngle(
-        cameraRight,
-        pitchAngle * t,
-      );
-      const sampleVector = rotateSession.startVecWorld
+      const sampleVector = startArcballVecWorld
         .clone()
-        .applyQuaternion(samplePitch)
-        .applyQuaternion(sampleYaw)
+        .lerp(currentArcballVecWorld, t)
         .normalize()
         .multiplyScalar(radiusWorld);
       points.push(sampleVector);
     }
 
     return points;
-  }, [camera, getSwingQuaternion, interactionState, pivot, radiusWorld]);
+  }, [camera, interactionState, pivot, radiusWorld]);
 
   if (interactionMode !== "rotate") {
     return null;

@@ -42,6 +42,9 @@ export function SceneStatusHud() {
   const movePrecisionStep = useUiStore((state) => state.movePrecisionStep);
   const physicsEnabled = useUiStore((state) => state.physicsEnabled);
   const rotateTwistAxis = useUiStore((state) => state.rotateTwistAxis);
+  const rotateArcballSensitivity = useUiStore(
+    (state) => state.rotateArcballSensitivity,
+  );
   const rotateUiOpacity = useUiStore((state) => state.rotateUiOpacity);
   const rotateUiRadiusPx = useUiStore((state) => state.rotateUiRadiusPx);
   const rotateWheelDirection = useUiStore(
@@ -62,7 +65,7 @@ export function SceneStatusHud() {
           ? "Drag to move on screen plane. Wheel changes camera depth. Shift reduces wheel depth step, Ctrl snaps XYZ to the floor grid, and Shift + Ctrl magnetizes one axis to another object."
           : "Select an object to start screen-depth-drag editing."
       : selectedObjectId
-        ? "Rotate mode: drag the sphere gizmo for turntable rotation and use the wheel for twist. Escape clears the selection."
+        ? "Rotate mode: drag the sphere gizmo for arcball rotation and use the wheel for twist. Escape clears the selection."
         : "Rotate mode: select an object to show the sphere gizmo.";
 
   useEffect(() => {
@@ -141,6 +144,10 @@ export function SceneStatusHud() {
           </>
         ) : (
           <>
+            <div className="grid grid-cols-[5rem_1fr] gap-3">
+              <dt className="text-slate-300/70">Arcball</dt>
+              <dd>{rotateArcballSensitivity.toFixed(2)}x</dd>
+            </div>
             <div className="grid grid-cols-[5rem_1fr] gap-3">
               <dt className="text-slate-300/70">Radius</dt>
               <dd>{rotateUiRadiusPx.toFixed(0)} px</dd>

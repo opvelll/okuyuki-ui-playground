@@ -28,7 +28,7 @@ test("shows the 3d prototype screen", async ({ page }) => {
     page.getByRole("button", { name: /Move UI screen-depth drag/i }),
   ).toBeVisible();
   await expect(
-    page.getByRole("button", { name: /Rotate UI turntable rotate/i }),
+    page.getByRole("button", { name: /Rotate UI arcball rotate/i }),
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: /Switch to Rotate UI tool/i }),
@@ -73,11 +73,10 @@ test("switches tool mode and opens rotate settings", async ({ page }) => {
   await expect(page.getByText(/Object Rotate/i)).toBeVisible();
   await expect(page.getByText(/Rotate mode:/i)).toBeVisible();
 
-  await page
-    .getByRole("button", { name: /Rotate UI turntable rotate/i })
-    .click();
+  await page.getByRole("button", { name: /Rotate UI arcball rotate/i }).click();
 
   await expect(page.getByLabel("UI Strength")).toBeVisible();
+  await expect(page.getByLabel("Arcball Sensitivity")).toBeVisible();
   await expect(page.getByLabel("UI Radius Px")).toBeVisible();
   await expect(page.getByLabel("Wheel Rotate Step")).toBeVisible();
   await expect(page.getByLabel("Twist Axis")).toBeVisible();

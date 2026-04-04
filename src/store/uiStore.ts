@@ -50,6 +50,7 @@ type PersistedUiState = {
   sceneBackgroundColor: string;
   rotateGizmoRingColor: string;
   rotateGizmoSphereColor: string;
+  rotateArcballSensitivity: number;
   rotateTwistAxis: RotateTwistAxis;
   rotateUiOpacity: number;
   rotateUiRadiusPx: number;
@@ -95,6 +96,7 @@ type UiState = PersistedUiState & {
   setInteractionMode: (mode: InteractionMode) => void;
   setRotateGizmoRingColor: (value: string) => void;
   setRotateGizmoSphereColor: (value: string) => void;
+  setRotateArcballSensitivity: (value: number) => void;
   setRotateTwistAxis: (axis: RotateTwistAxis) => void;
   setRotateUiOpacity: (value: number) => void;
   setRotateUiRadiusPx: (value: number) => void;
@@ -133,6 +135,7 @@ export const createDefaultPersistedUiState = (): PersistedUiState => ({
   sceneBackgroundColor: "#dbe7f3",
   rotateGizmoRingColor: "#7dd3fc",
   rotateGizmoSphereColor: "#7dd3fc",
+  rotateArcballSensitivity: 1,
   rotateTwistAxis: "+y",
   rotateUiOpacity: 1.2,
   rotateUiRadiusPx: 140,
@@ -176,6 +179,7 @@ const createInitialUiState = (): Omit<
   | "setInteractionMode"
   | "setRotateGizmoRingColor"
   | "setRotateGizmoSphereColor"
+  | "setRotateArcballSensitivity"
   | "setRotateTwistAxis"
   | "setRotateUiOpacity"
   | "setRotateUiRadiusPx"
@@ -253,6 +257,8 @@ export const useUiStore = create<UiState>()(
       setRotateGizmoRingColor: (value) => set({ rotateGizmoRingColor: value }),
       setRotateGizmoSphereColor: (value) =>
         set({ rotateGizmoSphereColor: value }),
+      setRotateArcballSensitivity: (value) =>
+        set({ rotateArcballSensitivity: value }),
       setRotateTwistAxis: (axis) => set({ rotateTwistAxis: axis }),
       setRotateUiOpacity: (value) => set({ rotateUiOpacity: value }),
       setRotateUiRadiusPx: (value) => set({ rotateUiRadiusPx: value }),
@@ -295,6 +301,7 @@ export const useUiStore = create<UiState>()(
         interactionMode: state.interactionMode,
         rotateGizmoRingColor: state.rotateGizmoRingColor,
         rotateGizmoSphereColor: state.rotateGizmoSphereColor,
+        rotateArcballSensitivity: state.rotateArcballSensitivity,
         rotateTwistAxis: state.rotateTwistAxis,
         rotateUiOpacity: state.rotateUiOpacity,
         rotateUiRadiusPx: state.rotateUiRadiusPx,

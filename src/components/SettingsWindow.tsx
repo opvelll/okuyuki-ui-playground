@@ -27,7 +27,7 @@ const settingsMenuItems = [
   { description: "app-wide defaults", key: "general", label: "全体" },
   { description: "rapier tuning", key: "physics", label: "物理演算" },
   { description: "screen-depth drag", key: "move-ui", label: "Move UI" },
-  { description: "turntable rotate", key: "rotate-ui", label: "Rotate UI" },
+  { description: "arcball rotate", key: "rotate-ui", label: "Rotate UI" },
 ] as const satisfies ReadonlyArray<{
   description: string;
   key: SettingsMenu;
@@ -233,6 +233,9 @@ export function SettingsWindow() {
   const rotateGizmoSphereColor = useUiStore(
     (state) => state.rotateGizmoSphereColor,
   );
+  const rotateArcballSensitivity = useUiStore(
+    (state) => state.rotateArcballSensitivity,
+  );
   const rotateUiOpacity = useUiStore((state) => state.rotateUiOpacity);
   const rotateUiRadiusPx = useUiStore((state) => state.rotateUiRadiusPx);
   const rotateWheelDirection = useUiStore(
@@ -300,6 +303,9 @@ export function SettingsWindow() {
   );
   const setRotateGizmoSphereColor = useUiStore(
     (state) => state.setRotateGizmoSphereColor,
+  );
+  const setRotateArcballSensitivity = useUiStore(
+    (state) => state.setRotateArcballSensitivity,
   );
   const setRotateUiOpacity = useUiStore((state) => state.setRotateUiOpacity);
   const setRotateUiRadiusPx = useUiStore((state) => state.setRotateUiRadiusPx);
@@ -698,7 +704,7 @@ export function SettingsWindow() {
                   Rotate UI
                 </h2>
                 <SectionNote>
-                  Rotate UI: 画面基準の turntable 回転とホイール twist
+                  Rotate UI: 画面基準の arcball 回転とホイール twist
                   の感度を調整します。
                 </SectionNote>
                 <ColorField
@@ -714,6 +720,16 @@ export function SettingsWindow() {
                   label="Gizmo Ring Color / ギズモリング色"
                   onChange={setRotateGizmoRingColor}
                   value={rotateGizmoRingColor}
+                />
+                <NumberField
+                  hint="Arcball Sensitivity / arcball ドラッグ回転の倍率。1x が基準、0.5-2.0x くらいが扱いやすい範囲です。"
+                  id="rotate-arcball-sensitivity"
+                  label="Arcball Sensitivity / arcball倍率"
+                  max="4"
+                  min="0.1"
+                  onChange={handleNumberChange(setRotateArcballSensitivity)}
+                  step="0.05"
+                  value={rotateArcballSensitivity}
                 />
                 <NumberField
                   hint="UI Strength / ギズモ強度。1 を超えるとさらに見やすくします。"
