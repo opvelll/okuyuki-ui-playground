@@ -2,6 +2,8 @@ import { CuboidCollider, Physics, RigidBody } from "@react-three/rapier";
 import { type ReactNode, Suspense } from "react";
 import { useUiStore } from "../../store/uiStore";
 
+const FLOOR_CONTACT_SKIN = 0.005;
+
 export function SceneContents({
   children,
   physicsEnabled,
@@ -23,6 +25,7 @@ export function SceneContents({
         <RigidBody type="fixed">
           <CuboidCollider
             args={[9, 0.08, 9]}
+            contactSkin={FLOOR_CONTACT_SKIN}
             friction={floorFriction}
             position={[0, -0.08, 0]}
             restitution={floorRestitution}

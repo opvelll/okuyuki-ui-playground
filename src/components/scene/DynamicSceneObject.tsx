@@ -1,7 +1,15 @@
 import { useFrame } from "@react-three/fiber";
 import type { ThreeEvent } from "@react-three/fiber";
 import type { RapierRigidBody } from "@react-three/rapier";
-import { RigidBody, type RigidBodyProps } from "@react-three/rapier";
+import {
+  BallCollider,
+  CapsuleCollider,
+  ConeCollider,
+  CuboidCollider,
+  CylinderCollider,
+  RigidBody,
+  type RigidBodyProps,
+} from "@react-three/rapier";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Euler, Quaternion, Vector3 } from "three";
 import { useSceneStore } from "../../store/sceneStore";
@@ -12,6 +20,93 @@ import { ShapeMesh } from "./ShapeMesh";
 const ZERO_VELOCITY = { x: 0, y: 0, z: 0 };
 const POSITION_SYNC_EPSILON = 0.0001;
 const ROTATION_SYNC_EPSILON = 0.0001;
+const COLLIDER_CONTACT_SKIN = 0.005;
+const TORUS_COLLIDER_SEGMENTS = 8;
+
+function ShapeCollider({
+  friction,
+  kind,
+  restitution,
+  scale,
+}: Pick<SceneObject, "kind" | "scale"> & {
+  friction: number;
+  restitution: number;
+}) {
+  const [scaleX, scaleY, scaleZ] = scale;
+  const radialScale = Math.max(scaleX, scaleZ);
+  const sharedColliderProps = {
+    contactSkin: COLLIDER_CONTACT_SKIN,
+    friction,
+    restitution,
+  };
+
+  if (kind === "box") {
+    return (
+      <CuboidCollider
+        args={[0.45 * scaleX, 0.45 * scaleY, 0.45 * scaleZ]}
+        {...sharedColliderProps}
+      />
+    );
+  }
+
+  if (kind === "sphere") {
+    return (
+      <BallCollider args={[0.55 * radialScale]} {...sharedColliderProps} />
+    );
+  }
+
+  if (kind === "cone") {
+    return (
+      <ConeCollider
+        args={[0.54 * scaleY, 0.52 * radialScale]}
+        {...sharedColliderProps}
+      />
+    );
+  }
+
+  if (kind === "cylinder") {
+    return (
+      <CylinderCollider
+        args={[0.575 * scaleY, 0.4 * radialScale]}
+        {...sharedColliderProps}
+      />
+    );
+  }
+
+  if (kind === "torus") {
+    const majorRadiusX = 0.5 * scaleX;
+    const majorRadiusY = 0.5 * scaleY;
+    const tubeRadius = 0.18 * Math.max(scaleX, scaleY, scaleZ);
+
+    return (
+      <>
+        {Array.from({ length: TORUS_COLLIDER_SEGMENTS }, (_, index) => {
+          const angle = (index / TORUS_COLLIDER_SEGMENTS) * Math.PI * 2;
+
+          return (
+            <BallCollider
+              args={[tubeRadius]}
+              key={angle}
+              position={[
+                Math.cos(angle) * majorRadiusX,
+                Math.sin(angle) * majorRadiusY,
+                0,
+              ]}
+              {...sharedColliderProps}
+            />
+          );
+        })}
+      </>
+    );
+  }
+
+  return (
+    <CapsuleCollider
+      args={[0.375 * scaleY, 0.3 * radialScale]}
+      {...sharedColliderProps}
+    />
+  );
+}
 
 type DynamicSceneObjectProps = SceneObject & {
   dragging?: boolean;
@@ -159,9 +254,11 @@ export function DynamicSceneObject({
   });
 
   const rigidBodyProps: RigidBodyProps = {
+    additionalSolverIterations: 4,
     angularDamping: objectAngularDamping,
     canSleep: true,
-    colliders: "hull",
+    ccd: true,
+    colliders: false,
     friction: objectFriction,
     linearDamping: objectLinearDamping,
     lockRotations: suppressObjectRotation,
@@ -174,6 +271,12 @@ export function DynamicSceneObject({
 
   return (
     <RigidBody ref={rigidBodyRef} {...rigidBodyProps}>
+      <ShapeCollider
+        friction={objectFriction}
+        kind={kind}
+        restitution={objectRestitution}
+        scale={scale}
+      />
       <group scale={scaledSize} onPointerDown={onPointerDown}>
         <ShapeMesh
           color={color}
