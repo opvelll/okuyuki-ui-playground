@@ -17,7 +17,9 @@ test("shows the 3d prototype screen", async ({ page }) => {
   await expect(page.getByLabel("Shift Depth Step")).toBeVisible();
   await expect(page.getByLabel("Ctrl Grid Snap Step")).toBeVisible();
   await expect(
-    page.getByText(/Physics enabled: object dragging is paused/i),
+    page.getByText(
+      /Physics enabled: select an object to start screen-depth-drag editing/i,
+    ),
   ).toBeVisible();
 });
 

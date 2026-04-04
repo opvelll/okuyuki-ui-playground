@@ -71,7 +71,9 @@ describe("App", () => {
     expect(screen.getByLabelText(/Overlay Display/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Depth Wheel Step/i)).toBeInTheDocument();
     expect(
-      screen.getByText(/Physics enabled: object dragging is paused/i),
+      screen.getByText(
+        /Physics enabled: select an object to start screen-depth-drag editing/i,
+      ),
     ).toBeInTheDocument();
     expect(await screen.findByLabelText(/three-scene/i)).toBeInTheDocument();
   });

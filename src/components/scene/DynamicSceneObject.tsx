@@ -1,11 +1,21 @@
+import { useFrame } from "@react-three/fiber";
+import type { ThreeEvent } from "@react-three/fiber";
 import type { RapierRigidBody } from "@react-three/rapier";
 import { RigidBody, type RigidBodyProps } from "@react-three/rapier";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Euler, Quaternion, Vector3 } from "three";
+import { useSceneStore } from "../../store/sceneStore";
 import type { SceneObject } from "../../types/scene";
 import { ShapeMesh } from "./ShapeMesh";
 
 const ZERO_VELOCITY = { x: 0, y: 0, z: 0 };
+const POSITION_SYNC_EPSILON = 0.0001;
+
+type DynamicSceneObjectProps = SceneObject & {
+  dragging?: boolean;
+  onPointerDown?: (event: ThreeEvent<PointerEvent>) => void;
+  selected?: boolean;
+};
 
 const syncRigidBody = (
   wakeUp: boolean,
@@ -21,14 +31,27 @@ const syncRigidBody = (
 
 export function DynamicSceneObject({
   color,
+  dragging = false,
+  id,
   kind,
+  onPointerDown,
   position,
   rotation,
   scale,
-}: SceneObject) {
+  selected = false,
+}: DynamicSceneObjectProps) {
+  const updateObjectPosition = useSceneStore(
+    (state) => state.updateObjectPosition,
+  );
   const rigidBodyRef = useRef<RapierRigidBody | null>(null);
-  const [bodyType, setBodyType] =
-    useState<NonNullable<RigidBodyProps["type"]>>("kinematicPosition");
+  const previousDraggingRef = useRef(dragging);
+  const [bodyType, setBodyType] = useState<NonNullable<RigidBodyProps["type"]>>(
+    dragging ? "kinematicPosition" : "dynamic",
+  );
+  const scaleMultiplier = dragging ? 1.08 : selected ? 1.04 : 1;
+  const scaledSize = scale.map(
+    (value) => value * scaleMultiplier,
+  ) as SceneObject["scale"];
 
   const translation = useMemo(
     () => new Vector3(position[0], position[1], position[2]),
@@ -48,37 +71,49 @@ export function DynamicSceneObject({
       return;
     }
 
-    syncRigidBody(false, rigidBody, translation, quaternion);
+    if (dragging) {
+      previousDraggingRef.current = true;
+      setBodyType("kinematicPosition");
+      syncRigidBody(true, rigidBody, translation, quaternion);
+      return;
+    }
 
-    const releaseTimer = window.setTimeout(() => {
+    if (previousDraggingRef.current) {
+      previousDraggingRef.current = false;
+      syncRigidBody(true, rigidBody, translation, quaternion);
       setBodyType("dynamic");
-    }, 160);
-
-    return () => window.clearTimeout(releaseTimer);
-  }, [quaternion, translation]);
-
-  useEffect(() => {
-    const rigidBody = rigidBodyRef.current;
-    if (!rigidBody) {
-      return;
-    }
-
-    syncRigidBody(true, rigidBody, translation, quaternion);
-
-    if (bodyType === "dynamic") {
       rigidBody.wakeUp();
+    }
+  }, [dragging, quaternion, translation]);
+
+  useFrame(() => {
+    const rigidBody = rigidBodyRef.current;
+    if (!rigidBody || dragging || bodyType !== "dynamic") {
       return;
     }
 
-    rigidBody.sleep();
-  }, [bodyType, quaternion, translation]);
+    const currentTranslation = rigidBody.translation();
+    if (
+      Math.abs(currentTranslation.x - position[0]) < POSITION_SYNC_EPSILON &&
+      Math.abs(currentTranslation.y - position[1]) < POSITION_SYNC_EPSILON &&
+      Math.abs(currentTranslation.z - position[2]) < POSITION_SYNC_EPSILON
+    ) {
+      return;
+    }
+
+    updateObjectPosition(id, [
+      currentTranslation.x,
+      currentTranslation.y,
+      currentTranslation.z,
+    ]);
+  });
 
   const rigidBodyProps: RigidBodyProps = {
-    angularDamping: 5.4,
+    angularDamping: 0.9,
     canSleep: true,
     colliders: "hull",
-    friction: 1.8,
-    linearDamping: 3.6,
+    friction: 0.9,
+    linearDamping: 0.45,
     position,
     restitution: 0.02,
     rotation,
@@ -88,7 +123,14 @@ export function DynamicSceneObject({
 
   return (
     <RigidBody ref={rigidBodyRef} {...rigidBodyProps}>
-      <ShapeMesh color={color} kind={kind} />
+      <group scale={scaledSize} onPointerDown={onPointerDown}>
+        <ShapeMesh
+          color={color}
+          dragging={dragging}
+          kind={kind}
+          selected={selected}
+        />
+      </group>
     </RigidBody>
   );
 }

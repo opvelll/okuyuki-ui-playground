@@ -18,7 +18,6 @@ export function ObjectMoveController({
   const objectsById = useSceneStore((state) => state.objectsById);
   const { handlePointerDown, overlayState } = useObjectDragSession({
     controlsRef,
-    physicsEnabled,
   });
 
   return (
@@ -32,7 +31,7 @@ export function ObjectMoveController({
         physicsEnabled={physicsEnabled}
         selectedObjectId={selectedObjectId}
       />
-      {!physicsEnabled && interactionState === "dragging" && overlayState ? (
+      {interactionState === "dragging" && overlayState ? (
         <DragPlaneOverlay overlayState={overlayState} />
       ) : null}
     </>

@@ -48,10 +48,8 @@ const tupleFromVector = ({ x, y, z }: Vector3): Vector3Tuple => [x, y, z];
 
 export function useObjectDragSession({
   controlsRef,
-  physicsEnabled,
 }: {
   controlsRef: RefObject<OrbitControlsImpl | null>;
-  physicsEnabled: boolean;
 }) {
   const camera = useThree((state) => state.camera);
   const gl = useThree((state) => state.gl);
@@ -198,10 +196,6 @@ export function useObjectDragSession({
       event.stopPropagation();
       selectObject(sceneObject.id);
 
-      if (physicsEnabled) {
-        return;
-      }
-
       const planeNormal = camera.getWorldDirection(new Vector3()).normalize();
       const objectPosition = vectorFromTuple(sceneObject.position);
       const plane = new Plane().setFromNormalAndCoplanarPoint(
@@ -238,7 +232,6 @@ export function useObjectDragSession({
     },
     [
       camera,
-      physicsEnabled,
       projectClientPointToPlane,
       selectObject,
       setControlsEnabled,
@@ -350,18 +343,6 @@ export function useObjectDragSession({
       window.removeEventListener("wheel", handleWheel);
     };
   }, [applyModifiers, finishDrag, updateDraggedObjectPosition]);
-
-  useEffect(() => {
-    if (!physicsEnabled) {
-      return;
-    }
-
-    if (dragSessionRef.current) {
-      finishDrag("idle");
-    } else {
-      setControlsEnabled(true);
-    }
-  }, [finishDrag, physicsEnabled, setControlsEnabled]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {

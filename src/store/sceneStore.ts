@@ -8,6 +8,14 @@ type SceneState = {
   updateObjectPosition: (id: string, position: Vector3Tuple) => void;
 };
 
+const positionsMatch = (
+  currentPosition: Vector3Tuple,
+  nextPosition: Vector3Tuple,
+) =>
+  currentPosition[0] === nextPosition[0] &&
+  currentPosition[1] === nextPosition[1] &&
+  currentPosition[2] === nextPosition[2];
+
 const createObjectsById = () =>
   Object.fromEntries(
     initialSceneObjects.map((sceneObject) => [sceneObject.id, sceneObject]),
@@ -23,7 +31,7 @@ export const useSceneStore = create<SceneState>((set) => ({
   updateObjectPosition: (id, position) =>
     set((state) => {
       const targetObject = state.objectsById[id];
-      if (!targetObject) {
+      if (!targetObject || positionsMatch(targetObject.position, position)) {
         return state;
       }
 

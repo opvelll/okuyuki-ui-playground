@@ -31,7 +31,13 @@ export function SceneObjectLayer({
 
     if (physicsEnabled) {
       return (
-        <DynamicSceneObject key={`${objectId}-dynamic`} {...sceneObject} />
+        <DynamicSceneObject
+          {...sceneObject}
+          dragging={draggingObjectId === sceneObject.id}
+          key={`${objectId}-dynamic`}
+          onPointerDown={(event) => onPointerDown(event, sceneObject)}
+          selected={selectedObjectId === sceneObject.id}
+        />
       );
     }
 

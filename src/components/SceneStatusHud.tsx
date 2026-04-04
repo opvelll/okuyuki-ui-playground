@@ -36,7 +36,9 @@ export function SceneStatusHud() {
   const selectedObjectId = useUiStore((state) => state.selectedObjectId);
 
   const helperText = physicsEnabled
-    ? "Physics enabled: object dragging is paused."
+    ? selectedObjectId
+      ? "Physics enabled: drag to move on the screen plane and use the wheel for depth. Released objects rejoin the simulation."
+      : "Physics enabled: select an object to start screen-depth-drag editing."
     : selectedObjectId
       ? "Drag to move on screen plane. Wheel changes camera depth. Shift reduces wheel depth step, Ctrl snaps XYZ to the floor grid, and Shift + Ctrl magnetizes one axis to another object."
       : "Select an object to start screen-depth-drag editing.";
