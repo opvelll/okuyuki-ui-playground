@@ -54,6 +54,7 @@ export function SceneStatusHud() {
     (state) => state.rotateWheelRotateStepDeg,
   );
   const selectedObjectId = useUiStore((state) => state.selectedObjectId);
+  const showFps = useUiStore((state) => state.showFps);
 
   const helperText =
     interactionMode === "move"
@@ -107,10 +108,12 @@ export function SceneStatusHud() {
           <dt className="text-slate-300/70">State</dt>
           <dd>{interactionState}</dd>
         </div>
-        <div className="grid grid-cols-[5rem_1fr] gap-3">
-          <dt className="text-slate-300/70">FPS</dt>
-          <dd>{fps}</dd>
-        </div>
+        {showFps ? (
+          <div className="grid grid-cols-[5rem_1fr] gap-3">
+            <dt className="text-slate-300/70">FPS</dt>
+            <dd>{fps}</dd>
+          </div>
+        ) : null}
         {interactionMode === "move" ? (
           <>
             <div className="grid grid-cols-[5rem_1fr] gap-3">

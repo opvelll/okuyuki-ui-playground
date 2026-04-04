@@ -226,6 +226,7 @@ export function SettingsWindow() {
   const sceneBackgroundColor = useUiStore(
     (state) => state.sceneBackgroundColor,
   );
+  const showFps = useUiStore((state) => state.showFps);
   const rotateTwistAxis = useUiStore((state) => state.rotateTwistAxis);
   const rotateGizmoRingColor = useUiStore(
     (state) => state.rotateGizmoRingColor,
@@ -318,6 +319,7 @@ export function SettingsWindow() {
   const setSelectedSettingsMenu = useUiStore(
     (state) => state.setSelectedSettingsMenu,
   );
+  const setShowFps = useUiStore((state) => state.setShowFps);
   const setSettingsOpen = useUiStore((state) => state.setSettingsOpen);
   const setSuppressObjectRotation = useUiStore(
     (state) => state.setSuppressObjectRotation,
@@ -394,6 +396,16 @@ export function SettingsWindow() {
                 <SectionNote>
                   Physics: 物理演算全体の有効化。OFF
                   で静的編集モードに切り替えます。
+                </SectionNote>
+                <ToggleField
+                  checked={showFps}
+                  id="show-fps-toggle"
+                  label="Show FPS / FPS表示"
+                  onChange={setShowFps}
+                />
+                <SectionNote>
+                  Show FPS: 左下 HUD の FPS 行を表示します。OFF でもほかの HUD
+                  情報はそのまま表示します。
                 </SectionNote>
                 <div className="grid gap-3 rounded-[1.1rem] border border-white/8 bg-white/[0.02] p-3">
                   <button

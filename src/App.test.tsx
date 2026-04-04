@@ -58,6 +58,7 @@ describe("App", () => {
     ).toBeInTheDocument();
 
     expect(screen.getByLabelText(/Physics/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Show FPS \/ FPS表示/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Scene Background/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Fog Color/i)).toBeInTheDocument();
     expect(
@@ -142,6 +143,19 @@ describe("App", () => {
     expect(persistedState).not.toBeNull();
     expect(persistedState).toContain('"selectedSettingsMenu":"physics"');
     expect(persistedState).toContain('"settingsOpen":false');
+  });
+
+  it("toggles FPS visibility from general settings", async () => {
+    const user = userEvent.setup();
+    const App = await loadApp();
+
+    render(<App />);
+
+    expect(screen.getByText("FPS")).toBeInTheDocument();
+
+    await user.click(screen.getByLabelText(/Show FPS \/ FPS表示/i));
+
+    expect(screen.queryByText("FPS")).not.toBeInTheDocument();
   });
 
   it("collapses grouped color settings in general section", async () => {

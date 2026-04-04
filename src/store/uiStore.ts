@@ -57,6 +57,7 @@ type PersistedUiState = {
   rotateWheelDirection: RotateWheelDirection;
   rotateWheelRotateStepDeg: number;
   selectedSettingsMenu: SettingsMenu;
+  showFps: boolean;
   settingsOpen: boolean;
   suppressObjectRotation: boolean;
   interactionMode: InteractionMode;
@@ -103,6 +104,7 @@ type UiState = PersistedUiState & {
   setRotateWheelDirection: (direction: RotateWheelDirection) => void;
   setRotateWheelRotateStepDeg: (value: number) => void;
   setSelectedSettingsMenu: (menu: SettingsMenu) => void;
+  setShowFps: (value: boolean) => void;
   setSettingsOpen: (open: boolean) => void;
   setSuppressObjectRotation: (value: boolean) => void;
 };
@@ -142,6 +144,7 @@ export const createDefaultPersistedUiState = (): PersistedUiState => ({
   rotateWheelDirection: "reverse",
   rotateWheelRotateStepDeg: 16,
   selectedSettingsMenu: "general",
+  showFps: true,
   settingsOpen: true,
   suppressObjectRotation: false,
   interactionMode: "move",
@@ -186,6 +189,7 @@ const createInitialUiState = (): Omit<
   | "setRotateWheelDirection"
   | "setRotateWheelRotateStepDeg"
   | "setSelectedSettingsMenu"
+  | "setShowFps"
   | "setSettingsOpen"
   | "setSuppressObjectRotation"
 > => ({
@@ -267,6 +271,7 @@ export const useUiStore = create<UiState>()(
       setRotateWheelRotateStepDeg: (value) =>
         set({ rotateWheelRotateStepDeg: value }),
       setSelectedSettingsMenu: (menu) => set({ selectedSettingsMenu: menu }),
+      setShowFps: (value) => set({ showFps: value }),
       setSettingsOpen: (open) => set({ settingsOpen: open }),
       setSuppressObjectRotation: (value) =>
         set({ suppressObjectRotation: value }),

@@ -14,6 +14,7 @@ test("shows the 3d prototype screen", async ({ page }) => {
   ).toBeVisible();
   await expect(page.getByLabel("Scene loading")).toBeVisible();
   await expect(page.getByLabel("Physics")).toBeVisible();
+  await expect(page.getByLabel("Show FPS / FPS表示")).toBeVisible();
   await expect(page.getByLabel("Scene Background")).toBeVisible();
   await expect(page.getByLabel("Fog Color")).toBeVisible();
   await expect(page.getByLabel("Floor Color")).toBeVisible();
@@ -38,7 +39,7 @@ test("shows the 3d prototype screen", async ({ page }) => {
       /Physics enabled: select an object to start screen-depth-drag editing/i,
     ),
   ).toBeVisible();
-  await expect(page.getByText("FPS")).toBeVisible();
+  await expect(page.getByText("FPS", { exact: true })).toBeVisible();
 });
 
 test("collapses the settings window", async ({ page }) => {
