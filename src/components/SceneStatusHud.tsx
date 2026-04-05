@@ -69,7 +69,7 @@ export function SceneStatusHud() {
           ? "Drag to move on screen plane. Wheel changes camera depth. Shift reduces wheel depth step, Ctrl snaps XYZ to the floor grid, and Shift + Ctrl magnetizes one axis to another object."
           : "Select an object to start screen-depth-drag editing."
       : selectedObjectId
-        ? "Rotate mode: drag the sphere gizmo for arcball rotation and use the wheel for twist. Selection is cleared by clicking empty space, pressing Escape, or switching to Move UI."
+        ? "Rotate mode: drag the sphere gizmo for arcball rotation, hold Ctrl to snap the arc to an XYZ ring, and use the wheel for twist. Selection is cleared by clicking empty space, pressing Escape, or switching to Move UI."
         : "Rotate mode: select an object to show the sphere gizmo.";
 
   useEffect(() => {

@@ -21,8 +21,11 @@ import {
 } from "../../store/uiStore";
 import type { SceneObject } from "../../types/scene";
 import {
+  type ArcballSnapRingAxis,
   createArcballQuaternion,
+  createSnapRingQuaternion,
   mapPointerToArcballVector,
+  selectArcballSnapRingAxisFromDrag,
 } from "./objectRotateArcball";
 
 const MIN_ROTATE_UI_RADIUS_PX = 8;
@@ -38,6 +41,7 @@ type RotateSession = {
   arcballRadiusPx: number;
   objectId: string;
   pointerId: number;
+  snapRingAxis: ArcballSnapRingAxis | null;
   startArcballVecCamera: Vector3;
   startObjectQuat: Quaternion;
   twistAngleRad: number;
@@ -56,6 +60,16 @@ const getTwistAxisVector = (axis: RotateTwistAxis) => {
     return WORLD_RIGHT;
   }
   if (axis === "+z") {
+    return WORLD_FORWARD;
+  }
+  return WORLD_UP;
+};
+
+const getPrincipalAxisVector = (axis: ArcballSnapRingAxis) => {
+  if (axis === "x") {
+    return WORLD_RIGHT;
+  }
+  if (axis === "z") {
     return WORLD_FORWARD;
   }
   return WORLD_UP;
@@ -320,7 +334,12 @@ export function ObjectRotateController({
   );
 
   const applyRotationFromSession = useCallback(
-    (rotateSession: RotateSession, clientX: number, clientY: number) => {
+    (
+      rotateSession: RotateSession,
+      clientX: number,
+      clientY: number,
+      snapToRing: boolean,
+    ) => {
       const currentArcballVecCamera = mapPointerToArcballVector(
         clientX,
         clientY,
@@ -329,12 +348,30 @@ export function ObjectRotateController({
         rotateSession.arcballRadiusPx,
       );
       const { rotateTwistAxis } = useUiStore.getState();
-      const swingQuaternion = createArcballQuaternion(
-        rotateSession.startArcballVecCamera,
-        currentArcballVecCamera,
-        camera.quaternion,
-        rotateArcballSensitivity,
-      );
+      const swingQuaternion = snapToRing
+        ? (() => {
+            rotateSession.snapRingAxis = selectArcballSnapRingAxisFromDrag({
+              cameraQuaternion: camera.quaternion,
+              currentVector: currentArcballVecCamera,
+              startVector: rotateSession.startArcballVecCamera,
+            });
+            return createSnapRingQuaternion(
+              rotateSession.startArcballVecCamera,
+              currentArcballVecCamera,
+              camera.quaternion,
+              rotateSession.snapRingAxis,
+              rotateArcballSensitivity,
+            );
+          })()
+        : (() => {
+            rotateSession.snapRingAxis = null;
+            return createArcballQuaternion(
+              rotateSession.startArcballVecCamera,
+              currentArcballVecCamera,
+              camera.quaternion,
+              rotateArcballSensitivity,
+            );
+          })();
       const orientationAfterSwing = swingQuaternion
         .clone()
         .multiply(rotateSession.startObjectQuat);
@@ -417,6 +454,7 @@ export function ObjectRotateController({
         arcballRadiusPx: arcballPointerState.radiusPx,
         objectId: selectedObject.id,
         pointerId: event.pointerId,
+        snapRingAxis: null,
         startArcballVecCamera: arcballPointerState.vector,
         startObjectQuat,
         twistAngleRad: 0,
@@ -484,6 +522,7 @@ export function ObjectRotateController({
           rotateSession,
           latestPointerRef.current.clientX,
           latestPointerRef.current.clientY,
+          event.ctrlKey,
         );
         return;
       }
@@ -526,7 +565,12 @@ export function ObjectRotateController({
         return;
       }
 
-      applyRotationFromSession(rotateSession, event.clientX, event.clientY);
+      applyRotationFromSession(
+        rotateSession,
+        event.clientX,
+        event.clientY,
+        event.ctrlKey,
+      );
     };
 
     const handlePointerUp = (event: PointerEvent) => {
@@ -547,8 +591,23 @@ export function ObjectRotateController({
       finishDrag();
     };
 
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") {
+    const handleKeyEvent = (event: KeyboardEvent) => {
+      if (event.key === "Control") {
+        const rotateSession = rotateSessionRef.current;
+        if (!rotateSession || event.repeat) {
+          return;
+        }
+
+        applyRotationFromSession(
+          rotateSession,
+          latestPointerRef.current.clientX,
+          latestPointerRef.current.clientY,
+          event.type === "keydown",
+        );
+        return;
+      }
+
+      if (event.key !== "Escape" || event.type !== "keydown") {
         return;
       }
 
@@ -568,14 +627,16 @@ export function ObjectRotateController({
     window.addEventListener("pointermove", handlePointerMove);
     window.addEventListener("pointerup", handlePointerUp);
     window.addEventListener("pointercancel", handlePointerCancel);
-    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keydown", handleKeyEvent);
+    window.addEventListener("keyup", handleKeyEvent);
     window.addEventListener("wheel", handleWheelTwist, { passive: false });
 
     return () => {
       window.removeEventListener("pointermove", handlePointerMove);
       window.removeEventListener("pointerup", handlePointerUp);
       window.removeEventListener("pointercancel", handlePointerCancel);
-      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keydown", handleKeyEvent);
+      window.removeEventListener("keyup", handleKeyEvent);
       window.removeEventListener("wheel", handleWheelTwist);
     };
   }, [
@@ -628,9 +689,54 @@ export function ObjectRotateController({
       .clone()
       .applyQuaternion(camera.quaternion)
       .normalize();
-    const angle = Math.acos(
-      MathUtils.clamp(startArcballVecWorld.dot(currentArcballVecWorld), -1, 1),
-    );
+    const snapRingAxis = rotateSession.snapRingAxis;
+    const snapAxisWorld = snapRingAxis
+      ? getPrincipalAxisVector(snapRingAxis)
+      : null;
+    const projectToSnapRing = (vector: Vector3) => {
+      if (!snapAxisWorld) {
+        return vector.clone().normalize();
+      }
+
+      const projected = vector
+        .clone()
+        .sub(snapAxisWorld.clone().multiplyScalar(vector.dot(snapAxisWorld)));
+
+      if (projected.lengthSq() > 0.000001) {
+        return projected.normalize();
+      }
+
+      if (snapRingAxis === "x") {
+        return new Vector3(0, 1, 0);
+      }
+      if (snapRingAxis === "y") {
+        return new Vector3(1, 0, 0);
+      }
+      return new Vector3(1, 0, 0);
+    };
+    const displayStartVecWorld = projectToSnapRing(startArcballVecWorld);
+    const displayCurrentVecWorld = projectToSnapRing(currentArcballVecWorld);
+    const signedAngle = snapAxisWorld
+      ? Math.atan2(
+          snapAxisWorld.dot(
+            displayStartVecWorld.clone().cross(displayCurrentVecWorld),
+          ),
+          MathUtils.clamp(
+            displayStartVecWorld.dot(displayCurrentVecWorld),
+            -1,
+            1,
+          ),
+        )
+      : 0;
+    const angle = snapAxisWorld
+      ? Math.abs(signedAngle)
+      : Math.acos(
+          MathUtils.clamp(
+            displayStartVecWorld.dot(displayCurrentVecWorld),
+            -1,
+            1,
+          ),
+        );
     const sampleCount = Math.max(
       ARC_SAMPLE_MIN,
       Math.ceil((angle / Math.PI) * 64),
@@ -639,11 +745,17 @@ export function ObjectRotateController({
 
     for (let index = 0; index <= sampleCount; index += 1) {
       const t = index / sampleCount;
-      const sampleVector = startArcballVecWorld
-        .clone()
-        .lerp(currentArcballVecWorld, t)
-        .normalize()
-        .multiplyScalar(radiusWorld);
+      const sampleVector = snapAxisWorld
+        ? displayStartVecWorld
+            .clone()
+            .applyAxisAngle(snapAxisWorld, signedAngle * t)
+            .normalize()
+            .multiplyScalar(radiusWorld)
+        : displayStartVecWorld
+            .clone()
+            .lerp(displayCurrentVecWorld, t)
+            .normalize()
+            .multiplyScalar(radiusWorld);
       points.push(sampleVector);
     }
 

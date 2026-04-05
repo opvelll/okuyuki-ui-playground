@@ -2,7 +2,10 @@ import { Quaternion, Vector3 } from "three";
 import { describe, expect, it } from "vitest";
 import {
   createArcballQuaternion,
+  createSnapRingQuaternion,
   mapPointerToArcballVector,
+  selectArcballSnapRingAxisFromDrag,
+  selectClosestArcballSnapRingAxis,
 } from "./objectRotateArcball";
 
 describe("mapPointerToArcballVector", () => {
@@ -77,5 +80,78 @@ describe("createArcballQuaternion", () => {
     const amplifiedAngle = 2 * Math.acos(amplifiedQuaternion.w);
 
     expect(amplifiedAngle).toBeGreaterThan(baseAngle);
+  });
+});
+
+describe("selectClosestArcballSnapRingAxis", () => {
+  it("chooses the nearest principal ring from the smallest axis component", () => {
+    const axis = selectClosestArcballSnapRingAxis(
+      new Vector3(0.62, 0.78, 0.04),
+    );
+
+    expect(axis).toBe("z");
+  });
+});
+
+describe("selectArcballSnapRingAxisFromDrag", () => {
+  it("chooses the dominant component of the arc rotation axis", () => {
+    const axis = selectArcballSnapRingAxisFromDrag({
+      cameraQuaternion: new Quaternion(),
+      startVector: new Vector3(0, 0, 1),
+      currentVector: new Vector3(0.65, 0.72, 0.24).normalize(),
+    });
+
+    expect(axis).toBe("x");
+  });
+
+  it("switches axes when the arc rotation axis changes", () => {
+    const axis = selectArcballSnapRingAxisFromDrag({
+      cameraQuaternion: new Quaternion(),
+      startVector: new Vector3(0, 0, 1),
+      currentVector: new Vector3(0.82, 0.22, 0.52).normalize(),
+    });
+
+    expect(axis).toBe("y");
+  });
+
+  it("falls back to the nearest ring when the drag barely rotates", () => {
+    const axis = selectArcballSnapRingAxisFromDrag({
+      cameraQuaternion: new Quaternion(),
+      startVector: new Vector3(0.12, 0.98, 0.08).normalize(),
+      currentVector: new Vector3(0.12, 0.98, 0.08).normalize(),
+    });
+
+    expect(axis).toBe("z");
+  });
+});
+
+describe("createSnapRingQuaternion", () => {
+  it("rotates along the requested principal ring", () => {
+    const quaternion = createSnapRingQuaternion(
+      new Vector3(0, 0, 1),
+      new Vector3(1, 0, 0),
+      new Quaternion(),
+      "y",
+    );
+
+    const rotated = new Vector3(0, 0, 1).applyQuaternion(quaternion);
+
+    expect(rotated.x).toBeCloseTo(1);
+    expect(rotated.y).toBeCloseTo(0);
+    expect(rotated.z).toBeCloseTo(0);
+  });
+
+  it("keeps the rotation on the snapped ring even when the pointer drifts off it", () => {
+    const quaternion = createSnapRingQuaternion(
+      new Vector3(0, 0, 1),
+      new Vector3(0.8, 0.35, 0.48).normalize(),
+      new Quaternion(),
+      "y",
+    );
+
+    const rotated = new Vector3(0, 0, 1).applyQuaternion(quaternion);
+
+    expect(rotated.y).toBeCloseTo(0);
+    expect(rotated.length()).toBeCloseTo(1);
   });
 });
