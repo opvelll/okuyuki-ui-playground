@@ -1,5 +1,6 @@
 import { useState } from "react";
 import {
+  type MoveAxisMagnetReferenceFrame,
   type MoveDepthWheelDirection,
   type MoveOverlayDisplayMode,
   type PhysicsRigidBodyType,
@@ -48,6 +49,11 @@ const depthDirectionOptions = [
   { label: "inverted", value: "inverted" },
 ] as const;
 
+const axisMagnetReferenceFrameOptions = [
+  { label: "local xyz", value: "local" },
+  { label: "world xyz", value: "world" },
+] as const;
+
 const rotateDirectionOptions = [
   { label: "normal", value: "normal" },
   { label: "reverse", value: "reverse" },
@@ -75,6 +81,11 @@ const isOverlayDisplayMode = (value: string): value is MoveOverlayDisplayMode =>
 
 const isDepthDirection = (value: string): value is MoveDepthWheelDirection =>
   depthDirectionOptions.some((option) => option.value === value);
+
+const isAxisMagnetReferenceFrame = (
+  value: string,
+): value is MoveAxisMagnetReferenceFrame =>
+  axisMagnetReferenceFrameOptions.some((option) => option.value === value);
 
 const isRotateDirection = (value: string): value is RotateWheelDirection =>
   rotateDirectionOptions.some((option) => option.value === value);
@@ -215,6 +226,12 @@ export function SettingsWindow() {
   const moveDepthWheelDirection = useUiStore(
     (state) => state.moveDepthWheelDirection,
   );
+  const moveAxisMagnetAlwaysEnabled = useUiStore(
+    (state) => state.moveAxisMagnetAlwaysEnabled,
+  );
+  const moveAxisMagnetReferenceFrame = useUiStore(
+    (state) => state.moveAxisMagnetReferenceFrame,
+  );
   const moveDepthWheelStep = useUiStore((state) => state.moveDepthWheelStep);
   const moveGridSnapStep = useUiStore((state) => state.moveGridSnapStep);
   const moveOverlayDisplayMode = useUiStore(
@@ -284,6 +301,12 @@ export function SettingsWindow() {
   const setGridMinorColor = useUiStore((state) => state.setGridMinorColor);
   const setMoveDepthWheelDirection = useUiStore(
     (state) => state.setMoveDepthWheelDirection,
+  );
+  const setMoveAxisMagnetAlwaysEnabled = useUiStore(
+    (state) => state.setMoveAxisMagnetAlwaysEnabled,
+  );
+  const setMoveAxisMagnetReferenceFrame = useUiStore(
+    (state) => state.setMoveAxisMagnetReferenceFrame,
   );
   const setMoveDepthWheelStep = useUiStore(
     (state) => state.setMoveDepthWheelStep,
@@ -695,6 +718,43 @@ export function SettingsWindow() {
                   step="0.01"
                   value={moveGridSnapStep}
                 />
+                <ToggleField
+                  checked={moveAxisMagnetAlwaysEnabled}
+                  id="move-axis-magnet-always-enabled"
+                  label="Always Magnet Snap / 常時軸吸着"
+                  onChange={setMoveAxisMagnetAlwaysEnabled}
+                />
+                <SectionNote>
+                  ON で通常ドラッグ中も他オブジェクトの軸に常時吸着します。Ctrl
+                  単独は従来どおりグリッド吸着を優先します。
+                </SectionNote>
+                <label
+                  className="grid gap-2 text-sm text-slate-100/90"
+                  htmlFor="move-axis-magnet-reference-frame"
+                >
+                  <span>Magnet Axis Space / 軸吸着の基準</span>
+                  <select
+                    className={fieldClasses}
+                    id="move-axis-magnet-reference-frame"
+                    onChange={(event) => {
+                      const nextReferenceFrame = event.target.value;
+                      if (isAxisMagnetReferenceFrame(nextReferenceFrame)) {
+                        setMoveAxisMagnetReferenceFrame(nextReferenceFrame);
+                      }
+                    }}
+                    value={moveAxisMagnetReferenceFrame}
+                  >
+                    {axisMagnetReferenceFrameOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <span className={fieldHintClasses}>
+                    local xyz: 対象オブジェクトの回転後ローカル軸。world xyz:
+                    ワールド固定軸。
+                  </span>
+                </label>
                 <NumberField
                   hint="Overlay Radius Multiplier / オーバーレイ半径倍率。目安 1-1.5。"
                   id="overlay-radius-multiplier"

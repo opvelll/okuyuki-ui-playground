@@ -17,6 +17,10 @@ const AXIS_DIRECTION_LABELS = {
   negative: "-",
   positive: "+",
 } as const;
+const AXIS_REFERENCE_FRAME_LABELS = {
+  local: "local",
+  world: "world",
+} as const;
 const ROTATE_TWIST_AXIS_LABELS = {
   "+x": "+X",
   "+y": "+Y",
@@ -30,6 +34,12 @@ export function SceneStatusHud() {
   const interactionState = useUiStore((state) => state.interactionState);
   const moveDepthWheelDirection = useUiStore(
     (state) => state.moveDepthWheelDirection,
+  );
+  const moveAxisMagnetAlwaysEnabled = useUiStore(
+    (state) => state.moveAxisMagnetAlwaysEnabled,
+  );
+  const moveAxisMagnetReferenceFrame = useUiStore(
+    (state) => state.moveAxisMagnetReferenceFrame,
   );
   const moveGridSnapStep = useUiStore((state) => state.moveGridSnapStep);
   const moveOverlayDisplayMode = useUiStore(
@@ -66,7 +76,7 @@ export function SceneStatusHud() {
           ? "Physics enabled: drag to move on the screen plane and use the wheel for depth. Released objects rejoin the simulation."
           : "Physics enabled: select an object to start screen-depth-drag editing."
         : selectedObjectId
-          ? "Drag to move on screen plane. Wheel changes camera depth. Shift reduces wheel depth step, Ctrl snaps XYZ to the floor grid, and Shift + Ctrl magnetizes one axis to another object."
+          ? "Drag to move on screen plane. Wheel changes camera depth. Shift reduces wheel depth step, Ctrl snaps XYZ to the floor grid, and Shift + Ctrl magnetizes one axis to another object. Move UI settings can keep magnet snapping always on."
           : "Select an object to start screen-depth-drag editing."
       : selectedObjectId
         ? "Rotate mode: drag the sphere gizmo for arcball rotation, hold Ctrl to snap the arc to an XYZ ring, and use the wheel for twist. Selection is cleared by clicking empty space, pressing Escape, or switching to Move UI."
@@ -136,8 +146,8 @@ export function SceneStatusHud() {
               <dt className="text-slate-300/70">Magnet</dt>
               <dd>
                 {axisMagnetTarget
-                  ? `${axisMagnetTarget.objectId} / ${axisMagnetTarget.axis}${AXIS_DIRECTION_LABELS[axisMagnetTarget.direction]}`
-                  : "none"}
+                  ? `${axisMagnetTarget.objectId} / ${AXIS_REFERENCE_FRAME_LABELS[moveAxisMagnetReferenceFrame]} ${axisMagnetTarget.axis}${AXIS_DIRECTION_LABELS[axisMagnetTarget.direction]}`
+                  : `none / ${moveAxisMagnetAlwaysEnabled ? "always-on" : "shortcut"} / ${AXIS_REFERENCE_FRAME_LABELS[moveAxisMagnetReferenceFrame]}`}
               </dd>
             </div>
             <div className="grid grid-cols-[5rem_1fr] gap-3">

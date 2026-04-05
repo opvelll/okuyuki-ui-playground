@@ -52,6 +52,9 @@ export function DragPlaneOverlay({
     (state) => state.moveOverlayDisplayMode,
   );
   const axisMagnetTarget = useUiStore((state) => state.axisMagnetTarget);
+  const moveAxisMagnetReferenceFrame = useUiStore(
+    (state) => state.moveAxisMagnetReferenceFrame,
+  );
   const moveOverlayRadiusMultiplier = useUiStore(
     (state) => state.moveOverlayRadiusMultiplier,
   );
@@ -107,10 +110,16 @@ export function DragPlaneOverlay({
     () =>
       calculateAxisMagnetLinePoints(
         axisMagnetTarget,
+        moveAxisMagnetReferenceFrame,
         objectsById,
         overlayState.currentPoint,
       ),
-    [axisMagnetTarget, objectsById, overlayState.currentPoint],
+    [
+      axisMagnetTarget,
+      moveAxisMagnetReferenceFrame,
+      objectsById,
+      overlayState.currentPoint,
+    ],
   );
 
   return (

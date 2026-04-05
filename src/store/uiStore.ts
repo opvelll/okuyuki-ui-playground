@@ -4,6 +4,7 @@ import { createJSONStorage, persist } from "zustand/middleware";
 export type MoveDepthWheelDirection = "normal" | "inverted";
 export type InteractionState = "idle" | "active" | "dragging";
 export type InteractionMode = "move" | "rotate";
+export type MoveAxisMagnetReferenceFrame = "local" | "world";
 export type MoveOverlayOrientationMode =
   | "camera-facing"
   | "screen-vertical"
@@ -32,6 +33,8 @@ type PersistedUiState = {
   gridMinorColor: string;
   floorRestitution: number;
   gravityY: number;
+  moveAxisMagnetAlwaysEnabled: boolean;
+  moveAxisMagnetReferenceFrame: MoveAxisMagnetReferenceFrame;
   moveDepthWheelDirection: MoveDepthWheelDirection;
   moveDepthWheelStep: number;
   moveGridSnapStep: number;
@@ -80,6 +83,10 @@ type UiState = PersistedUiState & {
   setGravityY: (value: number) => void;
   setGridMajorColor: (value: string) => void;
   setGridMinorColor: (value: string) => void;
+  setMoveAxisMagnetAlwaysEnabled: (value: boolean) => void;
+  setMoveAxisMagnetReferenceFrame: (
+    value: MoveAxisMagnetReferenceFrame,
+  ) => void;
   setInteractionState: (state: InteractionState) => void;
   setMoveDepthWheelDirection: (direction: MoveDepthWheelDirection) => void;
   setMoveDepthWheelStep: (step: number) => void;
@@ -127,6 +134,8 @@ export const createDefaultPersistedUiState = (): PersistedUiState => ({
   generalSelectionOutlineColor: "#f8fafc",
   generalSelectionOutlineThickness: 4,
   gravityY: -9.81,
+  moveAxisMagnetAlwaysEnabled: false,
+  moveAxisMagnetReferenceFrame: "local",
   moveDepthWheelDirection: "normal",
   moveDepthWheelStep: 0.24,
   moveGridSnapStep: 0.5,
@@ -170,6 +179,8 @@ const createInitialUiState = (): Omit<
   | "setGravityY"
   | "setGridMajorColor"
   | "setGridMinorColor"
+  | "setMoveAxisMagnetAlwaysEnabled"
+  | "setMoveAxisMagnetReferenceFrame"
   | "setInteractionState"
   | "setMoveDepthWheelDirection"
   | "setMoveDepthWheelStep"
@@ -239,6 +250,10 @@ export const useUiStore = create<UiState>()(
       setGridMajorColor: (value) => set({ gridMajorColor: value }),
       setGridMinorColor: (value) => set({ gridMinorColor: value }),
       setGravityY: (value) => set({ gravityY: value }),
+      setMoveAxisMagnetAlwaysEnabled: (value) =>
+        set({ moveAxisMagnetAlwaysEnabled: value }),
+      setMoveAxisMagnetReferenceFrame: (value) =>
+        set({ moveAxisMagnetReferenceFrame: value }),
       setInteractionState: (state) => set({ interactionState: state }),
       setMoveDepthWheelDirection: (direction) =>
         set({ moveDepthWheelDirection: direction }),
@@ -325,6 +340,8 @@ export const useUiStore = create<UiState>()(
         generalSelectionOutlineThickness:
           state.generalSelectionOutlineThickness,
         gravityY: state.gravityY,
+        moveAxisMagnetAlwaysEnabled: state.moveAxisMagnetAlwaysEnabled,
+        moveAxisMagnetReferenceFrame: state.moveAxisMagnetReferenceFrame,
         moveDepthWheelDirection: state.moveDepthWheelDirection,
         moveDepthWheelStep: state.moveDepthWheelStep,
         moveGridSnapStep: state.moveGridSnapStep,

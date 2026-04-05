@@ -280,9 +280,15 @@ describe("App", () => {
     expect(
       screen.getByLabelText(/Vertical Drop Guide \/ 落下ガイド線/i),
     ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(/Always Magnet Snap \/ 常時軸吸着/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(/Magnet Axis Space \/ 軸吸着の基準/i),
+    ).toBeInTheDocument();
   });
 
-  it("persists the vertical drop guide toggle", async () => {
+  it("persists move magnet settings", async () => {
     const user = userEvent.setup();
     const App = await loadApp();
 
@@ -290,12 +296,17 @@ describe("App", () => {
 
     await user.click(screen.getAllByRole("button", { name: /Move UI/i })[1]);
     await user.click(
-      screen.getByLabelText(/Vertical Drop Guide \/ 落下ガイド線/i),
+      screen.getByLabelText(/Always Magnet Snap \/ 常時軸吸着/i),
+    );
+    await user.selectOptions(
+      screen.getByLabelText(/Magnet Axis Space \/ 軸吸着の基準/i),
+      "world",
     );
 
     const persistedState = window.localStorage.getItem(UI_STORE_PERSIST_KEY);
 
     expect(persistedState).not.toBeNull();
-    expect(persistedState).toContain('"moveVerticalDropGuide":false');
+    expect(persistedState).toContain('"moveAxisMagnetAlwaysEnabled":true');
+    expect(persistedState).toContain('"moveAxisMagnetReferenceFrame":"world"');
   });
 });

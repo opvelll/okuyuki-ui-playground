@@ -20,6 +20,14 @@ const objectsById: Record<string, SceneObject> = {
     rotation: [0, 0, 0] as [number, number, number],
     scale: [1, 1, 1] as [number, number, number],
   },
+  "violet-cylinder": {
+    color: "#8b5cf6",
+    id: "violet-cylinder",
+    kind: "cylinder",
+    position: [2, 2, 0] as [number, number, number],
+    rotation: [0, 0, Math.PI / 2] as [number, number, number],
+    scale: [1, 1, 1] as [number, number, number],
+  },
 };
 
 describe("applyScreenDepthDragModifiers", () => {
@@ -106,5 +114,67 @@ describe("applyScreenDepthDragModifiers", () => {
       objectId: "gold-sphere",
     });
     expect(result.position.toArray()).toEqual([-0.28, 0.55, 1.1]);
+  });
+
+  it("magnetizes during normal drag when always-on snapping is enabled", () => {
+    const result = applyScreenDepthDragModifiers({
+      axisMagnetAlwaysEnabled: true,
+      axisMagnetThreshold: 0.2,
+      ctrlKey: false,
+      gridSnapStep: 0.5,
+      objectId: "amber-box",
+      objectsById,
+      position: new Vector3(-0.5, 0.57, 1.13),
+      shiftKey: false,
+    });
+
+    expect(result.axisMagnetTarget).toEqual({
+      axis: "x",
+      direction: "positive",
+      objectId: "gold-sphere",
+    });
+    expect(result.position.toArray()).toEqual([-0.5, 0.55, 1.1]);
+  });
+
+  it("uses rotated local axes when the magnet space is local", () => {
+    const result = applyScreenDepthDragModifiers({
+      axisMagnetAlwaysEnabled: true,
+      axisMagnetReferenceFrame: "local",
+      axisMagnetThreshold: 0.1,
+      ctrlKey: false,
+      gridSnapStep: 0.5,
+      objectId: "amber-box",
+      objectsById,
+      position: new Vector3(2.02, 2.6, 0),
+      shiftKey: false,
+    });
+
+    expect(result.axisMagnetTarget).toEqual({
+      axis: "x",
+      direction: "positive",
+      objectId: "violet-cylinder",
+    });
+    expect(result.position.toArray()).toEqual([2, 2.6, 0]);
+  });
+
+  it("uses world axes when the magnet space is world", () => {
+    const result = applyScreenDepthDragModifiers({
+      axisMagnetAlwaysEnabled: true,
+      axisMagnetReferenceFrame: "world",
+      axisMagnetThreshold: 0.1,
+      ctrlKey: false,
+      gridSnapStep: 0.5,
+      objectId: "amber-box",
+      objectsById,
+      position: new Vector3(2.6, 2.02, 0),
+      shiftKey: false,
+    });
+
+    expect(result.axisMagnetTarget).toEqual({
+      axis: "x",
+      direction: "positive",
+      objectId: "violet-cylinder",
+    });
+    expect(result.position.toArray()).toEqual([2.6, 2, 0]);
   });
 });

@@ -1,5 +1,8 @@
 import { Euler, Quaternion, Vector3 } from "three";
-import type { AxisMagnetTarget } from "../../store/uiStore";
+import type {
+  AxisMagnetTarget,
+  MoveAxisMagnetReferenceFrame,
+} from "../../store/uiStore";
 import type { SceneObject } from "../../types/scene";
 
 const AXES = ["x", "y", "z"] as const;
@@ -15,6 +18,8 @@ type AxisName = (typeof AXES)[number];
 
 type ApplyScreenDepthDragModifiersParams = {
   axisMagnetThreshold?: number;
+  axisMagnetAlwaysEnabled?: boolean;
+  axisMagnetReferenceFrame?: MoveAxisMagnetReferenceFrame;
   currentAxisMagnetTarget?: AxisMagnetTarget | null;
   ctrlKey: boolean;
   objectId: string;
@@ -60,11 +65,15 @@ const getAxisDirectionVector = (
   sceneObject: SceneObject,
   axis: AxisName,
   direction: AxisMagnetTarget["direction"],
+  referenceFrame: MoveAxisMagnetReferenceFrame,
 ) => {
-  const directionVector = AXIS_DIRECTION_VECTORS[axis]
-    .clone()
-    .applyQuaternion(getSceneObjectQuaternion(sceneObject))
-    .normalize();
+  const directionVector = AXIS_DIRECTION_VECTORS[axis].clone();
+
+  if (referenceFrame === "local") {
+    directionVector.applyQuaternion(getSceneObjectQuaternion(sceneObject));
+  }
+
+  directionVector.normalize();
 
   if (direction === "negative") {
     directionVector.negate();
@@ -95,6 +104,7 @@ const snapPositionToSingleAxisMagnet = (
   position: Vector3,
   objectId: string,
   objectsById: Record<string, SceneObject>,
+  referenceFrame: MoveAxisMagnetReferenceFrame,
   threshold: number,
   currentAxisMagnetTarget: AxisMagnetTarget | null,
 ): ApplyScreenDepthDragModifiersResult => {
@@ -106,6 +116,7 @@ const snapPositionToSingleAxisMagnet = (
         stickyObject,
         currentAxisMagnetTarget.axis,
         currentAxisMagnetTarget.direction,
+        referenceFrame,
       );
       const stickySnap = snapPositionToAxisRay(
         position,
@@ -144,6 +155,7 @@ const snapPositionToSingleAxisMagnet = (
           sceneObject,
           axis,
           direction,
+          referenceFrame,
         );
         const snapped = snapPositionToAxisRay(
           position,
@@ -182,6 +194,8 @@ const snapPositionToSingleAxisMagnet = (
 
 export function applyScreenDepthDragModifiers({
   axisMagnetThreshold = DEFAULT_AXIS_MAGNET_THRESHOLD,
+  axisMagnetAlwaysEnabled = false,
+  axisMagnetReferenceFrame = "local",
   currentAxisMagnetTarget = null,
   ctrlKey,
   objectId,
@@ -195,6 +209,7 @@ export function applyScreenDepthDragModifiers({
       position,
       objectId,
       objectsById,
+      axisMagnetReferenceFrame,
       axisMagnetThreshold,
       currentAxisMagnetTarget,
     );
@@ -207,6 +222,17 @@ export function applyScreenDepthDragModifiers({
     };
   }
 
+  if (axisMagnetAlwaysEnabled) {
+    return snapPositionToSingleAxisMagnet(
+      position,
+      objectId,
+      objectsById,
+      axisMagnetReferenceFrame,
+      axisMagnetThreshold,
+      currentAxisMagnetTarget,
+    );
+  }
+
   return {
     axisMagnetTarget: null,
     position: position.clone(),
@@ -215,6 +241,7 @@ export function applyScreenDepthDragModifiers({
 
 export function calculateAxisMagnetLinePoints(
   axisMagnetTarget: AxisMagnetTarget | null,
+  axisMagnetReferenceFrame: MoveAxisMagnetReferenceFrame,
   objectsById: Record<string, SceneObject>,
   currentPoint: Vector3,
   minLength = 1.6,
@@ -233,6 +260,7 @@ export function calculateAxisMagnetLinePoints(
     targetObject,
     axisMagnetTarget.axis,
     axisMagnetTarget.direction,
+    axisMagnetReferenceFrame,
   );
   const length = Math.max(origin.distanceTo(currentPoint), minLength);
 
