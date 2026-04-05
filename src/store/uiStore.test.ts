@@ -57,4 +57,28 @@ describe("uiStore", () => {
     expect(useUiStore.getState().selectedObjectId).toBe("amber-box");
     expect(useUiStore.getState().interactionState).toBe("active");
   });
+
+  it("keeps dragging state when setting the current interaction mode again", () => {
+    useUiStore.setState({
+      axisMagnetTarget: {
+        axis: "z",
+        direction: "negative",
+        objectId: "amber-box",
+      },
+      interactionMode: "move",
+      interactionState: "dragging",
+      selectedObjectId: "amber-box",
+    });
+
+    useUiStore.getState().setInteractionMode("move");
+
+    expect(useUiStore.getState().interactionMode).toBe("move");
+    expect(useUiStore.getState().interactionState).toBe("dragging");
+    expect(useUiStore.getState().selectedObjectId).toBe("amber-box");
+    expect(useUiStore.getState().axisMagnetTarget).toEqual({
+      axis: "z",
+      direction: "negative",
+      objectId: "amber-box",
+    });
+  });
 });

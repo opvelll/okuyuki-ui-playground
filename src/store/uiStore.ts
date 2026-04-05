@@ -272,20 +272,26 @@ export const useUiStore = create<UiState>()(
         set({ generalSelectionOutlineThickness: value }),
       setSceneBackgroundColor: (value) => set({ sceneBackgroundColor: value }),
       setInteractionMode: (mode) =>
-        set((state) => ({
-          axisMagnetTarget: null,
-          interactionMode: mode,
-          interactionState:
-            state.interactionMode === "rotate" && mode === "move"
-              ? "idle"
-              : state.selectedObjectId
-                ? "active"
-                : "idle",
-          selectedObjectId:
-            state.interactionMode === "rotate" && mode === "move"
-              ? null
-              : state.selectedObjectId,
-        })),
+        set((state) => {
+          if (state.interactionMode === mode) {
+            return state;
+          }
+
+          return {
+            axisMagnetTarget: null,
+            interactionMode: mode,
+            interactionState:
+              state.interactionMode === "rotate" && mode === "move"
+                ? "idle"
+                : state.selectedObjectId
+                  ? "active"
+                  : "idle",
+            selectedObjectId:
+              state.interactionMode === "rotate" && mode === "move"
+                ? null
+                : state.selectedObjectId,
+          };
+        }),
       setRotateGizmoRingColor: (value) => set({ rotateGizmoRingColor: value }),
       setRotateGizmoSphereColor: (value) =>
         set({ rotateGizmoSphereColor: value }),
