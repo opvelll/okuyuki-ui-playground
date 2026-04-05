@@ -2,6 +2,10 @@
 
 React + Three.js + TypeScript + Tailwind CSS + Biome + Vitest + Playwright の開発環境です。
 
+## Demo
+
+![naname_ui demo](./doc/demo.gif)
+
 ## セットアップ
 
 ```bash
