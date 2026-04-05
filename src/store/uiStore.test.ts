@@ -25,6 +25,25 @@ describe("uiStore", () => {
     expect(useUiStore.getState().interactionState).toBe("idle");
   });
 
+  it("clears selection when a move drag completes", () => {
+    useUiStore.setState({
+      axisMagnetTarget: {
+        axis: "x",
+        direction: "positive",
+        objectId: "cobalt-cylinder",
+      },
+      interactionMode: "move",
+      interactionState: "dragging",
+      selectedObjectId: "amber-box",
+    });
+
+    useUiStore.getState().completeMoveDrag();
+
+    expect(useUiStore.getState().axisMagnetTarget).toBeNull();
+    expect(useUiStore.getState().interactionState).toBe("idle");
+    expect(useUiStore.getState().selectedObjectId).toBeNull();
+  });
+
   it("keeps the selection when changing into rotate mode", () => {
     useUiStore.setState({
       interactionMode: "move",

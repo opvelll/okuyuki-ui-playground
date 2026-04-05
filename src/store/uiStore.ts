@@ -70,6 +70,7 @@ type UiState = PersistedUiState & {
   axisMagnetTarget: AxisMagnetTarget | null;
   interactionState: InteractionState;
   selectedObjectId: string | null;
+  completeMoveDrag: () => void;
   clearSelection: () => void;
   selectObject: (objectId: string) => void;
   setAxisMagnetTarget: (target: AxisMagnetTarget | null) => void;
@@ -159,6 +160,7 @@ export const createDefaultPersistedUiState = (): PersistedUiState => ({
 
 const createInitialUiState = (): Omit<
   UiState,
+  | "completeMoveDrag"
   | "clearSelection"
   | "selectObject"
   | "setAxisMagnetTarget"
@@ -212,6 +214,12 @@ export const useUiStore = create<UiState>()(
   persist(
     (set) => ({
       ...createInitialUiState(),
+      completeMoveDrag: () =>
+        set({
+          axisMagnetTarget: null,
+          interactionState: "idle",
+          selectedObjectId: null,
+        }),
       clearSelection: () =>
         set({
           axisMagnetTarget: null,

@@ -55,6 +55,7 @@ export function useObjectDragSession({
   const gl = useThree((state) => state.gl);
   const raycaster = useThree((state) => state.raycaster);
   const interactionMode = useUiStore((state) => state.interactionMode);
+  const completeMoveDrag = useUiStore((state) => state.completeMoveDrag);
   const clearSelection = useUiStore((state) => state.clearSelection);
   const setAxisMagnetTarget = useUiStore((state) => state.setAxisMagnetTarget);
   const setInteractionState = useUiStore((state) => state.setInteractionState);
@@ -269,7 +270,8 @@ export function useObjectDragSession({
         return;
       }
 
-      finishDrag("active");
+      finishDrag("idle");
+      completeMoveDrag();
     };
 
     const handlePointerCancel = () => {
@@ -360,6 +362,7 @@ export function useObjectDragSession({
     };
   }, [
     applyModifiers,
+    completeMoveDrag,
     finishDrag,
     setAxisMagnetTarget,
     setControlsEnabled,
