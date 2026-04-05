@@ -205,6 +205,13 @@ export function applyScreenDepthDragModifiers({
   shiftKey,
 }: ApplyScreenDepthDragModifiersParams): ApplyScreenDepthDragModifiersResult {
   if (shiftKey && ctrlKey) {
+    return {
+      axisMagnetTarget: null,
+      position: snapPositionToGrid(position, gridSnapStep),
+    };
+  }
+
+  if (ctrlKey) {
     return snapPositionToSingleAxisMagnet(
       position,
       objectId,
@@ -213,13 +220,6 @@ export function applyScreenDepthDragModifiers({
       axisMagnetThreshold,
       currentAxisMagnetTarget,
     );
-  }
-
-  if (ctrlKey) {
-    return {
-      axisMagnetTarget: null,
-      position: snapPositionToGrid(position, gridSnapStep),
-    };
   }
 
   if (axisMagnetAlwaysEnabled) {

@@ -709,9 +709,9 @@ export function SettingsWindow() {
                   value={movePrecisionStep}
                 />
                 <NumberField
-                  hint="Ctrl Grid Snap Step / Ctrl グリッド吸着。目安 0.1-1。"
+                  hint="Ctrl + Shift Grid Snap Step / Ctrl + Shift グリッド吸着。目安 0.1-1。"
                   id="grid-snap-step"
-                  label="Ctrl Grid Snap Step / Ctrl グリッド吸着"
+                  label="Ctrl + Shift Grid Snap Step / Ctrl + Shift グリッド吸着"
                   max="4"
                   min="0.01"
                   onChange={handleNumberChange(setMoveGridSnapStep)}
@@ -726,7 +726,7 @@ export function SettingsWindow() {
                 />
                 <SectionNote>
                   ON で通常ドラッグ中も他オブジェクトの軸に常時吸着します。Ctrl
-                  単独は従来どおりグリッド吸着を優先します。
+                  単独は軸吸着ショートカット、Ctrl + Shift はグリッド吸着です。
                 </SectionNote>
                 <label
                   className="grid gap-2 text-sm text-slate-100/90"

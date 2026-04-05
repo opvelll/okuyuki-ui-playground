@@ -59,21 +59,7 @@ describe("applyScreenDepthDragModifiers", () => {
     expect(result.position.toArray()).toEqual([1.26, 0.63, -0.71]);
   });
 
-  it("snaps absolute position on xyz while ctrl is pressed", () => {
-    const result = applyScreenDepthDragModifiers({
-      ctrlKey: true,
-      gridSnapStep: 0.5,
-      objectId: "amber-box",
-      objectsById,
-      position: new Vector3(1.26, 0.63, -0.71),
-      shiftKey: false,
-    });
-
-    expect(result.axisMagnetTarget).toBeNull();
-    expect(result.position.toArray()).toEqual([1.5, 0.5, -0.5]);
-  });
-
-  it("magnetizes to only the nearest single axis while shift and ctrl are pressed", () => {
+  it("magnetizes to only the nearest single axis while ctrl is pressed", () => {
     const result = applyScreenDepthDragModifiers({
       axisMagnetThreshold: 0.2,
       ctrlKey: true,
@@ -81,7 +67,7 @@ describe("applyScreenDepthDragModifiers", () => {
       objectId: "amber-box",
       objectsById,
       position: new Vector3(-0.5, 0.57, 1.13),
-      shiftKey: true,
+      shiftKey: false,
     });
 
     expect(result.axisMagnetTarget).toEqual({
@@ -90,6 +76,20 @@ describe("applyScreenDepthDragModifiers", () => {
       objectId: "gold-sphere",
     });
     expect(result.position.toArray()).toEqual([-0.5, 0.55, 1.1]);
+  });
+
+  it("snaps absolute position on xyz while shift and ctrl are pressed", () => {
+    const result = applyScreenDepthDragModifiers({
+      ctrlKey: true,
+      gridSnapStep: 0.5,
+      objectId: "amber-box",
+      objectsById,
+      position: new Vector3(1.26, 0.63, -0.71),
+      shiftKey: true,
+    });
+
+    expect(result.axisMagnetTarget).toBeNull();
+    expect(result.position.toArray()).toEqual([1.5, 0.5, -0.5]);
   });
 
   it("keeps the current magnet target while it stays within the stickiness range", () => {
@@ -105,7 +105,7 @@ describe("applyScreenDepthDragModifiers", () => {
       objectId: "amber-box",
       objectsById,
       position: new Vector3(-0.28, 0.61, 1.35),
-      shiftKey: true,
+      shiftKey: false,
     });
 
     expect(result.axisMagnetTarget).toEqual({

@@ -76,7 +76,7 @@ export function SceneStatusHud() {
           ? "Physics enabled: drag to move on the screen plane and use the wheel for depth. Released objects rejoin the simulation."
           : "Physics enabled: select an object to start screen-depth-drag editing."
         : selectedObjectId
-          ? "Drag to move on screen plane. Wheel changes camera depth. Shift reduces wheel depth step, Ctrl snaps XYZ to the floor grid, and Shift + Ctrl magnetizes one axis to another object. Move UI settings can keep magnet snapping always on."
+          ? "Drag to move on screen plane. Wheel changes camera depth. Shift reduces wheel depth step, Ctrl magnetizes one axis to another object, and Shift + Ctrl snaps XYZ to the floor grid. Move UI settings can keep magnet snapping always on."
           : "Select an object to start screen-depth-drag editing."
       : selectedObjectId
         ? "Rotate mode: drag the sphere gizmo for arcball rotation, hold Ctrl to snap the arc to an XYZ ring, and use the wheel for twist. Selection is cleared by clicking empty space, pressing Escape, or switching to Move UI."
@@ -138,7 +138,7 @@ export function SceneStatusHud() {
             <div className="grid grid-cols-[5rem_1fr] gap-3">
               <dt className="text-slate-300/70">Snap</dt>
               <dd>
-                shift {movePrecisionStep.toFixed(2)} / ctrl{" "}
+                shift {movePrecisionStep.toFixed(2)} / ctrl + shift{" "}
                 {moveGridSnapStep.toFixed(2)}
               </dd>
             </div>
