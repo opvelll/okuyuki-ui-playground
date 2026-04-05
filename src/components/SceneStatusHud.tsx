@@ -21,6 +21,15 @@ const AXIS_REFERENCE_FRAME_LABELS = {
   local: "local",
   world: "world",
 } as const;
+const ALWAYS_SNAP_MODE_LABELS = {
+  "axis-magnet": "axis",
+  grid: "interval",
+  off: "off",
+} as const;
+const GRID_SNAP_PATTERN_LABELS = {
+  xyz: "xyz",
+  xz: "xz",
+} as const;
 const ROTATE_TWIST_AXIS_LABELS = {
   "+x": "+X",
   "+y": "+Y",
@@ -35,12 +44,11 @@ export function SceneStatusHud() {
   const moveDepthWheelDirection = useUiStore(
     (state) => state.moveDepthWheelDirection,
   );
-  const moveAxisMagnetAlwaysEnabled = useUiStore(
-    (state) => state.moveAxisMagnetAlwaysEnabled,
-  );
+  const moveAlwaysSnapMode = useUiStore((state) => state.moveAlwaysSnapMode);
   const moveAxisMagnetReferenceFrame = useUiStore(
     (state) => state.moveAxisMagnetReferenceFrame,
   );
+  const moveGridSnapPattern = useUiStore((state) => state.moveGridSnapPattern);
   const moveGridSnapStep = useUiStore((state) => state.moveGridSnapStep);
   const moveOverlayDisplayMode = useUiStore(
     (state) => state.moveOverlayDisplayMode,
@@ -76,7 +84,7 @@ export function SceneStatusHud() {
           ? "Physics enabled: drag to move on the screen plane and use the wheel for depth. Released objects rejoin the simulation."
           : "Physics enabled: select an object to start screen-depth-drag editing."
         : selectedObjectId
-          ? "Drag to move on screen plane. Wheel changes camera depth. Shift reduces wheel depth step, Ctrl magnetizes one axis to another object, and Shift + Ctrl snaps XYZ to the floor grid. Move UI settings can keep magnet snapping always on."
+          ? "Drag to move on screen plane. Wheel changes camera depth. Shift reduces wheel depth step, Ctrl magnetizes one axis to another object, and Shift + Ctrl applies interval snap. Move UI settings can keep either axis or interval snapping always on."
           : "Select an object to start screen-depth-drag editing."
       : selectedObjectId
         ? "Rotate mode: drag the sphere gizmo for arcball rotation, hold Ctrl to snap the arc to an XYZ ring, and use the wheel for twist. Selection is cleared by clicking empty space, pressing Escape, or switching to Move UI."
@@ -138,8 +146,9 @@ export function SceneStatusHud() {
             <div className="grid grid-cols-[5rem_1fr] gap-3">
               <dt className="text-slate-300/70">Snap</dt>
               <dd>
-                shift {movePrecisionStep.toFixed(2)} / ctrl + shift{" "}
-                {moveGridSnapStep.toFixed(2)}
+                shift {movePrecisionStep.toFixed(2)} / interval{" "}
+                {moveGridSnapStep.toFixed(2)} (
+                {GRID_SNAP_PATTERN_LABELS[moveGridSnapPattern]})
               </dd>
             </div>
             <div className="grid grid-cols-[5rem_1fr] gap-3">
@@ -147,7 +156,7 @@ export function SceneStatusHud() {
               <dd>
                 {axisMagnetTarget
                   ? `${axisMagnetTarget.objectId} / ${AXIS_REFERENCE_FRAME_LABELS[moveAxisMagnetReferenceFrame]} ${axisMagnetTarget.axis}${AXIS_DIRECTION_LABELS[axisMagnetTarget.direction]}`
-                  : `none / ${moveAxisMagnetAlwaysEnabled ? "always-on" : "shortcut"} / ${AXIS_REFERENCE_FRAME_LABELS[moveAxisMagnetReferenceFrame]}`}
+                  : `none / ${ALWAYS_SNAP_MODE_LABELS[moveAlwaysSnapMode]} / ${AXIS_REFERENCE_FRAME_LABELS[moveAxisMagnetReferenceFrame]}`}
               </dd>
             </div>
             <div className="grid grid-cols-[5rem_1fr] gap-3">

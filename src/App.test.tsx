@@ -281,22 +281,30 @@ describe("App", () => {
       screen.getByLabelText(/Vertical Drop Guide \/ 落下ガイド線/i),
     ).toBeInTheDocument();
     expect(
-      screen.getByLabelText(/Always Magnet Snap \/ 常時軸吸着/i),
+      screen.getByLabelText(/Always Snap \/ 常時スナップ/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(/Interval Snap Pattern \/ 一定間隔パターン/i),
     ).toBeInTheDocument();
     expect(
       screen.getByLabelText(/Magnet Axis Space \/ 軸吸着の基準/i),
     ).toBeInTheDocument();
   });
 
-  it("persists move magnet settings", async () => {
+  it("persists move snap settings", async () => {
     const user = userEvent.setup();
     const App = await loadApp();
 
     render(<App />);
 
     await user.click(screen.getAllByRole("button", { name: /Move UI/i })[1]);
-    await user.click(
-      screen.getByLabelText(/Always Magnet Snap \/ 常時軸吸着/i),
+    await user.selectOptions(
+      screen.getByLabelText(/Always Snap \/ 常時スナップ/i),
+      "grid",
+    );
+    await user.selectOptions(
+      screen.getByLabelText(/Interval Snap Pattern \/ 一定間隔パターン/i),
+      "xz",
     );
     await user.selectOptions(
       screen.getByLabelText(/Magnet Axis Space \/ 軸吸着の基準/i),
@@ -306,7 +314,38 @@ describe("App", () => {
     const persistedState = window.localStorage.getItem(UI_STORE_PERSIST_KEY);
 
     expect(persistedState).not.toBeNull();
-    expect(persistedState).toContain('"moveAxisMagnetAlwaysEnabled":true');
+    expect(persistedState).toContain('"moveAlwaysSnapMode":"grid"');
+    expect(persistedState).toContain('"moveGridSnapPattern":"xz"');
     expect(persistedState).toContain('"moveAxisMagnetReferenceFrame":"world"');
+  });
+
+  it("lets users choose axis magnet as the always-on snap mode", async () => {
+    const user = userEvent.setup();
+    const App = await loadApp();
+
+    render(<App />);
+
+    await user.click(screen.getAllByRole("button", { name: /Move UI/i })[1]);
+    await user.selectOptions(
+      screen.getByLabelText(/Always Snap \/ 常時スナップ/i),
+      "axis-magnet",
+    );
+
+    expect(screen.getByLabelText(/Always Snap \/ 常時スナップ/i)).toHaveValue(
+      "axis-magnet",
+    );
+  });
+
+  it("shows magnet axis settings in move settings", async () => {
+    const user = userEvent.setup();
+    const App = await loadApp();
+
+    render(<App />);
+
+    await user.click(screen.getAllByRole("button", { name: /Move UI/i })[1]);
+
+    expect(
+      screen.getByLabelText(/Magnet Axis Space \/ 軸吸着の基準/i),
+    ).toBeInTheDocument();
   });
 });

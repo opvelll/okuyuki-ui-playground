@@ -1,7 +1,9 @@
 import { useState } from "react";
 import {
+  type MoveAlwaysSnapMode,
   type MoveAxisMagnetReferenceFrame,
   type MoveDepthWheelDirection,
+  type MoveGridSnapPattern,
   type MoveOverlayDisplayMode,
   type PhysicsRigidBodyType,
   type RotateDragReleaseBehavior,
@@ -54,6 +56,17 @@ const axisMagnetReferenceFrameOptions = [
   { label: "world xyz", value: "world" },
 ] as const;
 
+const alwaysSnapModeOptions = [
+  { label: "off", value: "off" },
+  { label: "other object axis", value: "axis-magnet" },
+  { label: "fixed interval", value: "grid" },
+] as const;
+
+const gridSnapPatternOptions = [
+  { label: "xyz", value: "xyz" },
+  { label: "xz plane", value: "xz" },
+] as const;
+
 const rotateDirectionOptions = [
   { label: "normal", value: "normal" },
   { label: "reverse", value: "reverse" },
@@ -86,6 +99,12 @@ const isAxisMagnetReferenceFrame = (
   value: string,
 ): value is MoveAxisMagnetReferenceFrame =>
   axisMagnetReferenceFrameOptions.some((option) => option.value === value);
+
+const isAlwaysSnapMode = (value: string): value is MoveAlwaysSnapMode =>
+  alwaysSnapModeOptions.some((option) => option.value === value);
+
+const isGridSnapPattern = (value: string): value is MoveGridSnapPattern =>
+  gridSnapPatternOptions.some((option) => option.value === value);
 
 const isRotateDirection = (value: string): value is RotateWheelDirection =>
   rotateDirectionOptions.some((option) => option.value === value);
@@ -226,13 +245,12 @@ export function SettingsWindow() {
   const moveDepthWheelDirection = useUiStore(
     (state) => state.moveDepthWheelDirection,
   );
-  const moveAxisMagnetAlwaysEnabled = useUiStore(
-    (state) => state.moveAxisMagnetAlwaysEnabled,
-  );
+  const moveAlwaysSnapMode = useUiStore((state) => state.moveAlwaysSnapMode);
   const moveAxisMagnetReferenceFrame = useUiStore(
     (state) => state.moveAxisMagnetReferenceFrame,
   );
   const moveDepthWheelStep = useUiStore((state) => state.moveDepthWheelStep);
+  const moveGridSnapPattern = useUiStore((state) => state.moveGridSnapPattern);
   const moveGridSnapStep = useUiStore((state) => state.moveGridSnapStep);
   const moveOverlayDisplayMode = useUiStore(
     (state) => state.moveOverlayDisplayMode,
@@ -302,14 +320,17 @@ export function SettingsWindow() {
   const setMoveDepthWheelDirection = useUiStore(
     (state) => state.setMoveDepthWheelDirection,
   );
-  const setMoveAxisMagnetAlwaysEnabled = useUiStore(
-    (state) => state.setMoveAxisMagnetAlwaysEnabled,
+  const setMoveAlwaysSnapMode = useUiStore(
+    (state) => state.setMoveAlwaysSnapMode,
   );
   const setMoveAxisMagnetReferenceFrame = useUiStore(
     (state) => state.setMoveAxisMagnetReferenceFrame,
   );
   const setMoveDepthWheelStep = useUiStore(
     (state) => state.setMoveDepthWheelStep,
+  );
+  const setMoveGridSnapPattern = useUiStore(
+    (state) => state.setMoveGridSnapPattern,
   );
   const setMoveGridSnapStep = useUiStore((state) => state.setMoveGridSnapStep);
   const setMoveOverlayDisplayMode = useUiStore(
@@ -709,24 +730,46 @@ export function SettingsWindow() {
                   value={movePrecisionStep}
                 />
                 <NumberField
-                  hint="Ctrl + Shift Grid Snap Step / Ctrl + Shift グリッド吸着。目安 0.1-1。"
+                  hint="Interval Snap Step / 一定間隔スナップ幅。常時スナップと Ctrl + Shift の両方に適用。目安 0.1-1。"
                   id="grid-snap-step"
-                  label="Ctrl + Shift Grid Snap Step / Ctrl + Shift グリッド吸着"
+                  label="Interval Snap Step / 一定間隔スナップ幅"
                   max="4"
                   min="0.01"
                   onChange={handleNumberChange(setMoveGridSnapStep)}
                   step="0.01"
                   value={moveGridSnapStep}
                 />
-                <ToggleField
-                  checked={moveAxisMagnetAlwaysEnabled}
-                  id="move-axis-magnet-always-enabled"
-                  label="Always Magnet Snap / 常時軸吸着"
-                  onChange={setMoveAxisMagnetAlwaysEnabled}
-                />
+                <label
+                  className="grid gap-2 text-sm text-slate-100/90"
+                  htmlFor="move-always-snap-mode"
+                >
+                  <span>Always Snap / 常時スナップ</span>
+                  <select
+                    className={fieldClasses}
+                    id="move-always-snap-mode"
+                    onChange={(event) => {
+                      const nextMode = event.target.value;
+                      if (isAlwaysSnapMode(nextMode)) {
+                        setMoveAlwaysSnapMode(nextMode);
+                      }
+                    }}
+                    value={moveAlwaysSnapMode}
+                  >
+                    {alwaysSnapModeOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <span className={fieldHintClasses}>
+                    通常ドラッグ時に使うスナップ種別。Ctrl は他オブジェクト軸、
+                    Ctrl + Shift は一定間隔スナップを一時的に有効化します。
+                  </span>
+                </label>
                 <SectionNote>
-                  ON で通常ドラッグ中も他オブジェクトの軸に常時吸着します。Ctrl
-                  単独は軸吸着ショートカット、Ctrl + Shift はグリッド吸着です。
+                  一定間隔スナップは xyz 全軸か xz
+                  平面だけかを切り替えできます。 xz を選ぶと高さ y
+                  は保持されます。
                 </SectionNote>
                 <label
                   className="grid gap-2 text-sm text-slate-100/90"
@@ -753,6 +796,33 @@ export function SettingsWindow() {
                   <span className={fieldHintClasses}>
                     local xyz: 対象オブジェクトの回転後ローカル軸。world xyz:
                     ワールド固定軸。
+                  </span>
+                </label>
+                <label
+                  className="grid gap-2 text-sm text-slate-100/90"
+                  htmlFor="move-grid-snap-pattern"
+                >
+                  <span>Interval Snap Pattern / 一定間隔パターン</span>
+                  <select
+                    className={fieldClasses}
+                    id="move-grid-snap-pattern"
+                    onChange={(event) => {
+                      const nextPattern = event.target.value;
+                      if (isGridSnapPattern(nextPattern)) {
+                        setMoveGridSnapPattern(nextPattern);
+                      }
+                    }}
+                    value={moveGridSnapPattern}
+                  >
+                    {gridSnapPatternOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <span className={fieldHintClasses}>
+                    xyz は全軸を刻み幅に合わせます。xz plane は床面だけ揃えて y
+                    高さは維持します。
                   </span>
                 </label>
                 <NumberField

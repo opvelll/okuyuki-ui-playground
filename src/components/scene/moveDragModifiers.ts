@@ -1,7 +1,9 @@
 import { Euler, Quaternion, Vector3 } from "three";
 import type {
   AxisMagnetTarget,
+  MoveAlwaysSnapMode,
   MoveAxisMagnetReferenceFrame,
+  MoveGridSnapPattern,
 } from "../../store/uiStore";
 import type { SceneObject } from "../../types/scene";
 
@@ -18,10 +20,11 @@ type AxisName = (typeof AXES)[number];
 
 type ApplyScreenDepthDragModifiersParams = {
   axisMagnetThreshold?: number;
-  axisMagnetAlwaysEnabled?: boolean;
+  alwaysSnapMode?: MoveAlwaysSnapMode;
   axisMagnetReferenceFrame?: MoveAxisMagnetReferenceFrame;
   currentAxisMagnetTarget?: AxisMagnetTarget | null;
   ctrlKey: boolean;
+  gridSnapPattern?: MoveGridSnapPattern;
   objectId: string;
   objectsById: Record<string, SceneObject>;
   position: Vector3;
@@ -42,10 +45,14 @@ const snapValueToStep = (value: number, step: number) => {
   return Math.round(value / step) * step;
 };
 
-const snapPositionToGrid = (position: Vector3, step: number) =>
+const snapPositionToGrid = (
+  position: Vector3,
+  step: number,
+  pattern: MoveGridSnapPattern,
+) =>
   new Vector3(
     snapValueToStep(position.x, step),
-    snapValueToStep(position.y, step),
+    pattern === "xyz" ? snapValueToStep(position.y, step) : position.y,
     snapValueToStep(position.z, step),
   );
 
@@ -194,10 +201,11 @@ const snapPositionToSingleAxisMagnet = (
 
 export function applyScreenDepthDragModifiers({
   axisMagnetThreshold = DEFAULT_AXIS_MAGNET_THRESHOLD,
-  axisMagnetAlwaysEnabled = false,
+  alwaysSnapMode = "off",
   axisMagnetReferenceFrame = "local",
   currentAxisMagnetTarget = null,
   ctrlKey,
+  gridSnapPattern = "xyz",
   objectId,
   objectsById,
   position,
@@ -207,7 +215,7 @@ export function applyScreenDepthDragModifiers({
   if (shiftKey && ctrlKey) {
     return {
       axisMagnetTarget: null,
-      position: snapPositionToGrid(position, gridSnapStep),
+      position: snapPositionToGrid(position, gridSnapStep, gridSnapPattern),
     };
   }
 
@@ -222,7 +230,7 @@ export function applyScreenDepthDragModifiers({
     );
   }
 
-  if (axisMagnetAlwaysEnabled) {
+  if (alwaysSnapMode === "axis-magnet") {
     return snapPositionToSingleAxisMagnet(
       position,
       objectId,
@@ -231,6 +239,13 @@ export function applyScreenDepthDragModifiers({
       axisMagnetThreshold,
       currentAxisMagnetTarget,
     );
+  }
+
+  if (alwaysSnapMode === "grid") {
+    return {
+      axisMagnetTarget: null,
+      position: snapPositionToGrid(position, gridSnapStep, gridSnapPattern),
+    };
   }
 
   return {

@@ -118,8 +118,8 @@ describe("applyScreenDepthDragModifiers", () => {
 
   it("magnetizes during normal drag when always-on snapping is enabled", () => {
     const result = applyScreenDepthDragModifiers({
-      axisMagnetAlwaysEnabled: true,
       axisMagnetThreshold: 0.2,
+      alwaysSnapMode: "axis-magnet",
       ctrlKey: false,
       gridSnapStep: 0.5,
       objectId: "amber-box",
@@ -138,9 +138,9 @@ describe("applyScreenDepthDragModifiers", () => {
 
   it("uses rotated local axes when the magnet space is local", () => {
     const result = applyScreenDepthDragModifiers({
-      axisMagnetAlwaysEnabled: true,
       axisMagnetReferenceFrame: "local",
       axisMagnetThreshold: 0.1,
+      alwaysSnapMode: "axis-magnet",
       ctrlKey: false,
       gridSnapStep: 0.5,
       objectId: "amber-box",
@@ -159,9 +159,9 @@ describe("applyScreenDepthDragModifiers", () => {
 
   it("uses world axes when the magnet space is world", () => {
     const result = applyScreenDepthDragModifiers({
-      axisMagnetAlwaysEnabled: true,
       axisMagnetReferenceFrame: "world",
       axisMagnetThreshold: 0.1,
+      alwaysSnapMode: "axis-magnet",
       ctrlKey: false,
       gridSnapStep: 0.5,
       objectId: "amber-box",
@@ -176,5 +176,35 @@ describe("applyScreenDepthDragModifiers", () => {
       objectId: "violet-cylinder",
     });
     expect(result.position.toArray()).toEqual([2.6, 2, 0]);
+  });
+
+  it("applies interval snap during normal drag when always snap is grid", () => {
+    const result = applyScreenDepthDragModifiers({
+      alwaysSnapMode: "grid",
+      ctrlKey: false,
+      gridSnapStep: 0.5,
+      objectId: "amber-box",
+      objectsById,
+      position: new Vector3(1.26, 0.63, -0.71),
+      shiftKey: false,
+    });
+
+    expect(result.axisMagnetTarget).toBeNull();
+    expect(result.position.toArray()).toEqual([1.5, 0.5, -0.5]);
+  });
+
+  it("keeps y while snapping only in the xz plane", () => {
+    const result = applyScreenDepthDragModifiers({
+      ctrlKey: true,
+      gridSnapPattern: "xz",
+      gridSnapStep: 0.5,
+      objectId: "amber-box",
+      objectsById,
+      position: new Vector3(1.26, 0.63, -0.71),
+      shiftKey: true,
+    });
+
+    expect(result.axisMagnetTarget).toBeNull();
+    expect(result.position.toArray()).toEqual([1.5, 0.63, -0.5]);
   });
 });

@@ -111,15 +111,17 @@ export function useObjectDragSession({
       modifierState: DragModifierState,
     ) => {
       const {
-        moveAxisMagnetAlwaysEnabled,
+        moveAlwaysSnapMode,
         moveAxisMagnetReferenceFrame,
+        moveGridSnapPattern,
         moveGridSnapStep,
       } = useUiStore.getState();
       const adjustedResult = applyScreenDepthDragModifiers({
-        axisMagnetAlwaysEnabled: moveAxisMagnetAlwaysEnabled,
         axisMagnetReferenceFrame: moveAxisMagnetReferenceFrame,
+        alwaysSnapMode: moveAlwaysSnapMode,
         currentAxisMagnetTarget: dragSession.axisMagnetTarget,
         ctrlKey: modifierState.ctrlKey,
+        gridSnapPattern: moveGridSnapPattern,
         gridSnapStep: moveGridSnapStep,
         objectId: dragSession.objectId,
         objectsById: useSceneStore.getState().objectsById,

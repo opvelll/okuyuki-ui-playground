@@ -4,7 +4,9 @@ import { createJSONStorage, persist } from "zustand/middleware";
 export type MoveDepthWheelDirection = "normal" | "inverted";
 export type InteractionState = "idle" | "active" | "dragging";
 export type InteractionMode = "move" | "rotate";
+export type MoveAlwaysSnapMode = "off" | "axis-magnet" | "grid";
 export type MoveAxisMagnetReferenceFrame = "local" | "world";
+export type MoveGridSnapPattern = "xyz" | "xz";
 export type MoveOverlayOrientationMode =
   | "camera-facing"
   | "screen-vertical"
@@ -33,10 +35,11 @@ type PersistedUiState = {
   gridMinorColor: string;
   floorRestitution: number;
   gravityY: number;
-  moveAxisMagnetAlwaysEnabled: boolean;
+  moveAlwaysSnapMode: MoveAlwaysSnapMode;
   moveAxisMagnetReferenceFrame: MoveAxisMagnetReferenceFrame;
   moveDepthWheelDirection: MoveDepthWheelDirection;
   moveDepthWheelStep: number;
+  moveGridSnapPattern: MoveGridSnapPattern;
   moveGridSnapStep: number;
   moveOverlayDisplayMode: MoveOverlayDisplayMode;
   moveOverlayOrientationMode: MoveOverlayOrientationMode;
@@ -83,13 +86,14 @@ type UiState = PersistedUiState & {
   setGravityY: (value: number) => void;
   setGridMajorColor: (value: string) => void;
   setGridMinorColor: (value: string) => void;
-  setMoveAxisMagnetAlwaysEnabled: (value: boolean) => void;
+  setMoveAlwaysSnapMode: (value: MoveAlwaysSnapMode) => void;
   setMoveAxisMagnetReferenceFrame: (
     value: MoveAxisMagnetReferenceFrame,
   ) => void;
   setInteractionState: (state: InteractionState) => void;
   setMoveDepthWheelDirection: (direction: MoveDepthWheelDirection) => void;
   setMoveDepthWheelStep: (step: number) => void;
+  setMoveGridSnapPattern: (pattern: MoveGridSnapPattern) => void;
   setMoveGridSnapStep: (step: number) => void;
   setMoveOverlayDisplayMode: (mode: MoveOverlayDisplayMode) => void;
   setMoveOverlayOrientationMode: (mode: MoveOverlayOrientationMode) => void;
@@ -134,10 +138,11 @@ export const createDefaultPersistedUiState = (): PersistedUiState => ({
   generalSelectionOutlineColor: "#f8fafc",
   generalSelectionOutlineThickness: 4,
   gravityY: -9.81,
-  moveAxisMagnetAlwaysEnabled: false,
+  moveAlwaysSnapMode: "off",
   moveAxisMagnetReferenceFrame: "local",
   moveDepthWheelDirection: "normal",
   moveDepthWheelStep: 0.24,
+  moveGridSnapPattern: "xyz",
   moveGridSnapStep: 0.5,
   moveOverlayDisplayMode: "mode-1",
   moveOverlayOrientationMode: "camera-facing",
@@ -179,11 +184,12 @@ const createInitialUiState = (): Omit<
   | "setGravityY"
   | "setGridMajorColor"
   | "setGridMinorColor"
-  | "setMoveAxisMagnetAlwaysEnabled"
+  | "setMoveAlwaysSnapMode"
   | "setMoveAxisMagnetReferenceFrame"
   | "setInteractionState"
   | "setMoveDepthWheelDirection"
   | "setMoveDepthWheelStep"
+  | "setMoveGridSnapPattern"
   | "setMoveGridSnapStep"
   | "setMoveOverlayDisplayMode"
   | "setMoveOverlayOrientationMode"
@@ -250,14 +256,15 @@ export const useUiStore = create<UiState>()(
       setGridMajorColor: (value) => set({ gridMajorColor: value }),
       setGridMinorColor: (value) => set({ gridMinorColor: value }),
       setGravityY: (value) => set({ gravityY: value }),
-      setMoveAxisMagnetAlwaysEnabled: (value) =>
-        set({ moveAxisMagnetAlwaysEnabled: value }),
+      setMoveAlwaysSnapMode: (value) => set({ moveAlwaysSnapMode: value }),
       setMoveAxisMagnetReferenceFrame: (value) =>
         set({ moveAxisMagnetReferenceFrame: value }),
       setInteractionState: (state) => set({ interactionState: state }),
       setMoveDepthWheelDirection: (direction) =>
         set({ moveDepthWheelDirection: direction }),
       setMoveDepthWheelStep: (step) => set({ moveDepthWheelStep: step }),
+      setMoveGridSnapPattern: (pattern) =>
+        set({ moveGridSnapPattern: pattern }),
       setMoveGridSnapStep: (step) => set({ moveGridSnapStep: step }),
       setMoveOverlayDisplayMode: (mode) =>
         set({ moveOverlayDisplayMode: mode }),
@@ -340,10 +347,11 @@ export const useUiStore = create<UiState>()(
         generalSelectionOutlineThickness:
           state.generalSelectionOutlineThickness,
         gravityY: state.gravityY,
-        moveAxisMagnetAlwaysEnabled: state.moveAxisMagnetAlwaysEnabled,
+        moveAlwaysSnapMode: state.moveAlwaysSnapMode,
         moveAxisMagnetReferenceFrame: state.moveAxisMagnetReferenceFrame,
         moveDepthWheelDirection: state.moveDepthWheelDirection,
         moveDepthWheelStep: state.moveDepthWheelStep,
+        moveGridSnapPattern: state.moveGridSnapPattern,
         moveGridSnapStep: state.moveGridSnapStep,
         moveOverlayDisplayMode: state.moveOverlayDisplayMode,
         moveOverlayOrientationMode: state.moveOverlayOrientationMode,
