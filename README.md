@@ -1,37 +1,7 @@
-# naname_ui
+# Okuyuki-UI-Playground
 
-React + Three.js + TypeScript + Tailwind CSS + Biome + Vitest + Playwright の開発環境です。
+3Dの奥行き移動にマウスホイールを使うと、どうなるかの遊び場
 
 ## Demo
 
-![naname_ui demo](./doc/demo.gif)
-
-## セットアップ
-
-```bash
-mise use -g node@25.6.0
-pnpm install
-pnpm run e2e:install
-pnpm run dev
-```
-
-## Scripts
-
-```bash
-pnpm run dev
-pnpm run format
-pnpm run lint
-pnpm run build
-pnpm run test
-pnpm run e2e:install
-pnpm run e2e
-pnpm run check
-```
-
-## Git
-
-```bash
-git init
-git add .
-git commit -m "chore: initialize frontend environment"
-```
+![Okuyuki-UI-Playground demo](./doc/demo.gif)
