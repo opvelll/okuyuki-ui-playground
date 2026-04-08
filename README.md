@@ -33,3 +33,9 @@
 
 ## スクショ
 ![画面](<doc/スクリーンショット 2026-04-05 235419.png>)
+
+## GitHub Pages
+
+- `main` に push すると GitHub Actions で GitHub Pages にデプロイされます
+- 公開 URL: `https://opvelll.github.io/okuyuki-ui-playground/`
+- 初回だけ GitHub の `Settings > Pages` で `Build and deployment` を `GitHub Actions` にしてください
