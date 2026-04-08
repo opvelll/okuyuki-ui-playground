@@ -1,7 +1,8 @@
 # Okuyuki-UI-Playground
 
-React Three Fiber で、画面平面ドラッグとホイールによる奥行き操作を試すための 3D UI プロトタイプです。  
-現在は移動だけでなく、回転 UI、Physics 切り替え、各種パラメータ調整用の Settings パネルも含んでいます。
+画面平面ドラッグとホイールによる奥行き操作を試すための 3D UI プロトタイプです。  
+
+GitHub Pages: https://opvelll.github.io/okuyuki-ui-playground/
 
 ## Demo
 
