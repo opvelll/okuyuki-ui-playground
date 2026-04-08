@@ -4,6 +4,8 @@
 
 GitHub Pages: https://opvelll.github.io/okuyuki-ui-playground/
 
+マウスホイールによる奥行き移動に、アークボール式回転、これで直感的な3D空間の操作が可能です。
+
 ## Demo
 
 ![Okuyuki-UI-Playground demo](./doc/demo.gif)
