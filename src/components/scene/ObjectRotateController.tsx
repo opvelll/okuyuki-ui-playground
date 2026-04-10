@@ -27,6 +27,7 @@ import {
   mapPointerToArcballVector,
   selectArcballSnapRingAxisFromDrag,
 } from "./objectRotateArcball";
+import { snapAngleToStep, snapAxisRotationQuaternion } from "./rotateSnap";
 
 const MIN_ROTATE_UI_RADIUS_PX = 8;
 const ARC_SAMPLE_MIN = 24;
@@ -237,6 +238,9 @@ export function ObjectRotateController({
   const rotateDragReleaseBehavior = useUiStore(
     (state) => state.rotateDragReleaseBehavior,
   );
+  const rotateAngleSnapStepDeg = useUiStore(
+    (state) => state.rotateAngleSnapStepDeg,
+  );
   const rotateGizmoRingColor = useUiStore(
     (state) => state.rotateGizmoRingColor,
   );
@@ -339,6 +343,7 @@ export function ObjectRotateController({
       clientX: number,
       clientY: number,
       snapToRing: boolean,
+      snapToAngle: boolean,
     ) => {
       const currentArcballVecCamera = mapPointerToArcballVector(
         clientX,
@@ -348,6 +353,7 @@ export function ObjectRotateController({
         rotateSession.arcballRadiusPx,
       );
       const { rotateTwistAxis } = useUiStore.getState();
+      const snapAngleStepRad = MathUtils.degToRad(rotateAngleSnapStepDeg);
       const swingQuaternion = snapToRing
         ? (() => {
             rotateSession.snapRingAxis = selectArcballSnapRingAxisFromDrag({
@@ -355,13 +361,20 @@ export function ObjectRotateController({
               currentVector: currentArcballVecCamera,
               startVector: rotateSession.startArcballVecCamera,
             });
-            return createSnapRingQuaternion(
+            const snappedQuaternion = createSnapRingQuaternion(
               rotateSession.startArcballVecCamera,
               currentArcballVecCamera,
               camera.quaternion,
               rotateSession.snapRingAxis,
               rotateArcballSensitivity,
             );
+            return snapToAngle
+              ? snapAxisRotationQuaternion(
+                  snappedQuaternion,
+                  getPrincipalAxisVector(rotateSession.snapRingAxis),
+                  snapAngleStepRad,
+                )
+              : snappedQuaternion;
           })()
         : (() => {
             rotateSession.snapRingAxis = null;
@@ -379,9 +392,12 @@ export function ObjectRotateController({
         .clone()
         .applyQuaternion(orientationAfterSwing)
         .normalize();
+      const twistAngleRad = snapToAngle
+        ? snapAngleToStep(rotateSession.twistAngleRad, snapAngleStepRad)
+        : rotateSession.twistAngleRad;
       const twistQuaternion = new Quaternion().setFromAxisAngle(
         twistAxisWorld,
-        rotateSession.twistAngleRad,
+        twistAngleRad,
       );
       const targetQuaternion = twistQuaternion
         .multiply(swingQuaternion)
@@ -393,7 +409,12 @@ export function ObjectRotateController({
         quaternionToRotationTuple(targetQuaternion),
       );
     },
-    [camera.quaternion, rotateArcballSensitivity, updateObjectRotation],
+    [
+      camera.quaternion,
+      rotateAngleSnapStepDeg,
+      rotateArcballSensitivity,
+      updateObjectRotation,
+    ],
   );
 
   const finishDrag = useCallback(() => {
@@ -515,6 +536,7 @@ export function ObjectRotateController({
         MathUtils.degToRad(rotateWheelRotateStepDeg) *
         wheelSteps *
         directionMultiplier;
+      const snapAngleStepRad = MathUtils.degToRad(rotateAngleSnapStepDeg);
 
       if (rotateSession) {
         rotateSession.twistAngleRad += angleDelta;
@@ -523,6 +545,7 @@ export function ObjectRotateController({
           latestPointerRef.current.clientX,
           latestPointerRef.current.clientY,
           event.ctrlKey,
+          event.ctrlKey && event.shiftKey,
         );
         return;
       }
@@ -534,8 +557,12 @@ export function ObjectRotateController({
         .clone()
         .applyQuaternion(currentQuaternion)
         .normalize();
+      const twistAngle =
+        event.ctrlKey && event.shiftKey
+          ? snapAngleToStep(angleDelta, snapAngleStepRad)
+          : angleDelta;
       const nextQuaternion = new Quaternion()
-        .setFromAxisAngle(twistAxisWorld, angleDelta)
+        .setFromAxisAngle(twistAxisWorld, twistAngle)
         .multiply(currentQuaternion)
         .normalize();
 
@@ -548,6 +575,7 @@ export function ObjectRotateController({
       applyRotationFromSession,
       computeArcballPointerState,
       interactionMode,
+      rotateAngleSnapStepDeg,
       selectedObjectId,
       updateObjectRotation,
     ],
@@ -570,6 +598,7 @@ export function ObjectRotateController({
         event.clientX,
         event.clientY,
         event.ctrlKey,
+        event.ctrlKey && event.shiftKey,
       );
     };
 
@@ -592,7 +621,7 @@ export function ObjectRotateController({
     };
 
     const handleKeyEvent = (event: KeyboardEvent) => {
-      if (event.key === "Control") {
+      if (event.key === "Control" || event.key === "Shift") {
         const rotateSession = rotateSessionRef.current;
         if (!rotateSession || event.repeat) {
           return;
@@ -602,7 +631,8 @@ export function ObjectRotateController({
           rotateSession,
           latestPointerRef.current.clientX,
           latestPointerRef.current.clientY,
-          event.type === "keydown",
+          event.ctrlKey,
+          event.ctrlKey && event.shiftKey,
         );
         return;
       }

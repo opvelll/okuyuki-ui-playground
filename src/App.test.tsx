@@ -243,6 +243,7 @@ describe("App", () => {
     expect(screen.getByLabelText(/UI Strength/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/UI Radius Px/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Wheel Rotate Step/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Angle Snap Step/i)).toBeInTheDocument();
     expect(
       screen.getByLabelText(/Drag Release Behavior \/ ドラッグ後の選択/i),
     ).toBeInTheDocument();
@@ -267,6 +268,22 @@ describe("App", () => {
     expect(persistedState).toContain(
       '"rotateDragReleaseBehavior":"clear-selection"',
     );
+  });
+
+  it("persists the rotate angle snap step", async () => {
+    const user = userEvent.setup();
+    const App = await loadApp();
+
+    render(<App />);
+
+    await user.click(screen.getAllByRole("button", { name: /Rotate UI/i })[1]);
+    await user.clear(screen.getByLabelText(/Angle Snap Step/i));
+    await user.type(screen.getByLabelText(/Angle Snap Step/i), "30");
+
+    const persistedState = window.localStorage.getItem(UI_STORE_PERSIST_KEY);
+
+    expect(persistedState).not.toBeNull();
+    expect(persistedState).toContain('"rotateAngleSnapStepDeg":30');
   });
 
   it("shows the new move workflow toggles in move settings", async () => {

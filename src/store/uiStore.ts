@@ -60,6 +60,7 @@ type PersistedUiState = {
   rotateGizmoSphereColor: string;
   rotateArcballSensitivity: number;
   rotateDragReleaseBehavior: RotateDragReleaseBehavior;
+  rotateAngleSnapStepDeg: number;
   rotateTwistAxis: RotateTwistAxis;
   rotateUiOpacity: number;
   rotateUiRadiusPx: number;
@@ -115,6 +116,7 @@ type UiState = PersistedUiState & {
   setRotateGizmoSphereColor: (value: string) => void;
   setRotateArcballSensitivity: (value: number) => void;
   setRotateDragReleaseBehavior: (value: RotateDragReleaseBehavior) => void;
+  setRotateAngleSnapStepDeg: (value: number) => void;
   setRotateTwistAxis: (axis: RotateTwistAxis) => void;
   setRotateUiOpacity: (value: number) => void;
   setRotateUiRadiusPx: (value: number) => void;
@@ -160,6 +162,7 @@ export const createDefaultPersistedUiState = (): PersistedUiState => ({
   rotateGizmoSphereColor: "#7dd3fc",
   rotateArcballSensitivity: 1,
   rotateDragReleaseBehavior: "keep-selected",
+  rotateAngleSnapStepDeg: 15,
   rotateTwistAxis: "+y",
   rotateUiOpacity: 1.2,
   rotateUiRadiusPx: 140,
@@ -211,6 +214,7 @@ const createInitialUiState = (): Omit<
   | "setRotateGizmoSphereColor"
   | "setRotateArcballSensitivity"
   | "setRotateDragReleaseBehavior"
+  | "setRotateAngleSnapStepDeg"
   | "setRotateTwistAxis"
   | "setRotateUiOpacity"
   | "setRotateUiRadiusPx"
@@ -321,6 +325,8 @@ export const useUiStore = create<UiState>()(
         set({ rotateArcballSensitivity: value }),
       setRotateDragReleaseBehavior: (value) =>
         set({ rotateDragReleaseBehavior: value }),
+      setRotateAngleSnapStepDeg: (value) =>
+        set({ rotateAngleSnapStepDeg: value }),
       setRotateTwistAxis: (axis) => set({ rotateTwistAxis: axis }),
       setRotateUiOpacity: (value) => set({ rotateUiOpacity: value }),
       setRotateUiRadiusPx: (value) => set({ rotateUiRadiusPx: value }),
@@ -370,6 +376,7 @@ export const useUiStore = create<UiState>()(
         rotateGizmoSphereColor: state.rotateGizmoSphereColor,
         rotateArcballSensitivity: state.rotateArcballSensitivity,
         rotateDragReleaseBehavior: state.rotateDragReleaseBehavior,
+        rotateAngleSnapStepDeg: state.rotateAngleSnapStepDeg,
         rotateTwistAxis: state.rotateTwistAxis,
         rotateUiOpacity: state.rotateUiOpacity,
         rotateUiRadiusPx: state.rotateUiRadiusPx,

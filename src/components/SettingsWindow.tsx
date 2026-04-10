@@ -14,7 +14,7 @@ import {
 } from "../store/uiStore";
 
 const panelClasses =
-  "absolute right-3 top-3 z-20 w-[min(24rem,calc(100vw-1.5rem))] overflow-hidden rounded-[1.4rem] border border-white/15 bg-slate-950/72 shadow-[0_22px_48px_rgba(3,10,20,0.34)] backdrop-blur-xl md:right-4 md:top-4 md:w-[min(28rem,calc(100vw-2rem))]";
+  "absolute left-3 right-3 top-72 z-20 w-auto overflow-hidden rounded-[1.4rem] border border-white/15 bg-slate-950/72 shadow-[0_22px_48px_rgba(3,10,20,0.34)] backdrop-blur-xl md:left-auto md:right-4 md:top-4 md:w-[min(28rem,calc(100vw-2rem))]";
 const sectionHeadingClasses =
   "text-[0.68rem] font-bold uppercase tracking-[0.16em] text-sky-100/70";
 const fieldClasses =
@@ -289,6 +289,9 @@ export function SettingsWindow() {
   const rotateDragReleaseBehavior = useUiStore(
     (state) => state.rotateDragReleaseBehavior,
   );
+  const rotateAngleSnapStepDeg = useUiStore(
+    (state) => state.rotateAngleSnapStepDeg,
+  );
   const rotateUiOpacity = useUiStore((state) => state.rotateUiOpacity);
   const rotateUiRadiusPx = useUiStore((state) => state.rotateUiRadiusPx);
   const rotateWheelDirection = useUiStore(
@@ -374,6 +377,9 @@ export function SettingsWindow() {
   );
   const setRotateDragReleaseBehavior = useUiStore(
     (state) => state.setRotateDragReleaseBehavior,
+  );
+  const setRotateAngleSnapStepDeg = useUiStore(
+    (state) => state.setRotateAngleSnapStepDeg,
   );
   const setRotateUiOpacity = useUiStore((state) => state.setRotateUiOpacity);
   const setRotateUiRadiusPx = useUiStore((state) => state.setRotateUiRadiusPx);
@@ -935,6 +941,16 @@ export function SettingsWindow() {
                   onChange={handleNumberChange(setRotateWheelRotateStepDeg)}
                   step="1"
                   value={rotateWheelRotateStepDeg}
+                />
+                <NumberField
+                  hint="Angle Snap Step / Ctrl + Shift 中の回転角スナップ間隔。arcball と twist の両方に適用します。"
+                  id="rotate-angle-snap-step"
+                  label="Angle Snap Step / 角度スナップ間隔"
+                  max="90"
+                  min="1"
+                  onChange={handleNumberChange(setRotateAngleSnapStepDeg)}
+                  step="1"
+                  value={rotateAngleSnapStepDeg}
                 />
                 <label
                   className="grid gap-2 text-sm text-slate-100/90"

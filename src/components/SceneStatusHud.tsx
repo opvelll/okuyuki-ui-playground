@@ -66,6 +66,9 @@ export function SceneStatusHud() {
   const rotateDragReleaseBehavior = useUiStore(
     (state) => state.rotateDragReleaseBehavior,
   );
+  const rotateAngleSnapStepDeg = useUiStore(
+    (state) => state.rotateAngleSnapStepDeg,
+  );
   const rotateUiOpacity = useUiStore((state) => state.rotateUiOpacity);
   const rotateUiRadiusPx = useUiStore((state) => state.rotateUiRadiusPx);
   const rotateWheelDirection = useUiStore(
@@ -87,7 +90,7 @@ export function SceneStatusHud() {
           ? "Drag to move on screen plane. Wheel changes camera depth. Shift reduces wheel depth step, Ctrl magnetizes one axis to another object, and Shift + Ctrl applies interval snap. Move UI settings can keep either axis or interval snapping always on."
           : "Select an object to start screen-depth-drag editing."
       : selectedObjectId
-        ? "Rotate mode: drag the sphere gizmo for arcball rotation, hold Ctrl to snap the arc to an XYZ ring, and use the wheel for twist. Selection is cleared by clicking empty space, pressing Escape, or switching to Move UI."
+        ? "Rotate mode: drag the sphere gizmo for arcball rotation, hold Ctrl to snap the arc to an XYZ ring, hold Ctrl + Shift for fixed-angle snap, and use the wheel for twist. Selection is cleared by clicking empty space, pressing Escape, or switching to Move UI."
         : "Rotate mode: select an object to show the sphere gizmo.";
 
   useEffect(() => {
@@ -187,6 +190,10 @@ export function SceneStatusHud() {
                 {rotateWheelRotateStepDeg.toFixed(0)} deg /{" "}
                 {rotateWheelDirection}
               </dd>
+            </div>
+            <div className="grid grid-cols-[5rem_1fr] gap-3">
+              <dt className="text-slate-300/70">Snap</dt>
+              <dd>ctrl + shift {rotateAngleSnapStepDeg.toFixed(0)} deg</dd>
             </div>
             <div className="grid grid-cols-[5rem_1fr] gap-3">
               <dt className="text-slate-300/70">Release</dt>
