@@ -34,6 +34,16 @@ async function loadApp() {
 }
 
 describe("App", () => {
+  async function expandSettings(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(screen.getByRole("button", { name: /Expand settings/i }));
+  }
+
+  async function expandGeneralColors(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(
+      screen.getByRole("button", { name: /Expand color settings/i }),
+    );
+  }
+
   beforeEach(() => {
     vi.resetModules();
     useUiStore.persist.clearStorage();
@@ -57,8 +67,39 @@ describe("App", () => {
       }),
     ).toBeInTheDocument();
 
+    expect(
+      screen.getByRole("button", { name: /Expand settings/i }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /Move UI/i })).toHaveLength(1);
+    expect(
+      screen.getByRole("button", { name: /Switch to Rotate UI tool/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /Physics enabled: select an object to start screen-depth-drag editing/i,
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText("FPS")).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(/Scene loading|three-scene/i),
+    ).toBeInTheDocument();
+
+    const user = userEvent.setup();
+    await expandSettings(user);
+
+    expect(screen.getAllByRole("button", { name: /Move UI/i })).toHaveLength(2);
     expect(screen.getByLabelText(/Physics/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Show FPS \/ FPS表示/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /全体/i })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    expect(
+      screen.getByRole("button", { name: /物理演算/i }),
+    ).toBeInTheDocument();
+
+    await expandGeneralColors(user);
+
     expect(screen.getByLabelText(/Scene Background/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Fog Color/i)).toBeInTheDocument();
     expect(
@@ -70,30 +111,6 @@ describe("App", () => {
     expect(screen.getByLabelText(/Floor Color/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Grid Major/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Grid Minor/i)).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /Collapse settings/i }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /全体/i })).toHaveAttribute(
-      "aria-current",
-      "page",
-    );
-    expect(
-      screen.getByRole("button", { name: /物理演算/i }),
-    ).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: /Move UI/i })).toHaveLength(2);
-    expect(
-      screen.getByRole("button", { name: /Switch to Rotate UI tool/i }),
-    ).toBeInTheDocument();
-    expect(screen.getByLabelText(/Physics/i)).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        /Physics enabled: select an object to start screen-depth-drag editing/i,
-      ),
-    ).toBeInTheDocument();
-    expect(screen.getByText("FPS")).toBeInTheDocument();
-    expect(
-      screen.getByLabelText(/Scene loading|three-scene/i),
-    ).toBeInTheDocument();
   });
 
   it("shows the placeholder while the scene module is still loading", async () => {
@@ -115,16 +132,12 @@ describe("App", () => {
 
     render(<App />);
 
-    await user.click(
-      screen.getByRole("button", { name: /Collapse settings/i }),
-    );
+    await user.click(screen.getByRole("button", { name: /Expand settings/i }));
 
     expect(
-      screen.getByRole("button", { name: /Expand settings/i }),
-    ).toHaveAttribute("aria-expanded", "false");
-    expect(
-      screen.queryByRole("button", { name: /^全体$/i }),
-    ).not.toBeInTheDocument();
+      screen.getByRole("button", { name: /Collapse settings/i }),
+    ).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("button", { name: /全体/i })).toBeInTheDocument();
   });
 
   it("persists the selected settings section and open state", async () => {
@@ -133,6 +146,7 @@ describe("App", () => {
 
     render(<App />);
 
+    await expandSettings(user);
     await user.click(screen.getByRole("button", { name: /物理演算/i }));
     expect(screen.getByLabelText(/Rigid Body Mode/i)).toBeInTheDocument();
 
@@ -153,6 +167,7 @@ describe("App", () => {
 
     render(<App />);
 
+    await expandSettings(user);
     expect(screen.getByText("FPS")).toBeInTheDocument();
 
     await user.click(screen.getByLabelText(/Show FPS \/ FPS表示/i));
@@ -171,19 +186,21 @@ describe("App", () => {
 
     render(<App />);
 
-    expect(screen.getByLabelText(/Scene Background/i)).toBeInTheDocument();
-
-    await user.click(
-      screen.getByRole("button", { name: /Collapse color settings/i }),
-    );
+    await expandSettings(user);
 
     expect(
       screen.getByRole("button", { name: /Expand color settings/i }),
     ).toHaveAttribute("aria-expanded", "false");
+
+    await user.click(
+      screen.getByRole("button", { name: /Expand color settings/i }),
+    );
+
     expect(
-      screen.queryByLabelText(/Scene Background/i),
-    ).not.toBeInTheDocument();
-    expect(screen.queryByLabelText(/Fog Color/i)).not.toBeInTheDocument();
+      screen.getByRole("button", { name: /Collapse color settings/i }),
+    ).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByLabelText(/Scene Background/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Fog Color/i)).toBeInTheDocument();
   });
 
   it("switches the active tool mode from the left toolbar", async () => {
@@ -192,6 +209,7 @@ describe("App", () => {
 
     render(<App />);
 
+    await expandSettings(user);
     await user.click(
       screen.getByRole("button", { name: /Switch to Rotate UI tool/i }),
     );
@@ -233,6 +251,7 @@ describe("App", () => {
 
     render(<App />);
 
+    await expandSettings(user);
     await user.click(screen.getAllByRole("button", { name: /Rotate UI/i })[1]);
 
     expect(screen.getByLabelText(/Gizmo Sphere Color/i)).toBeInTheDocument();
@@ -256,6 +275,7 @@ describe("App", () => {
 
     render(<App />);
 
+    await expandSettings(user);
     await user.click(screen.getAllByRole("button", { name: /Rotate UI/i })[1]);
     await user.selectOptions(
       screen.getByLabelText(/Drag Release Behavior \/ ドラッグ後の選択/i),
@@ -276,6 +296,7 @@ describe("App", () => {
 
     render(<App />);
 
+    await expandSettings(user);
     await user.click(screen.getAllByRole("button", { name: /Rotate UI/i })[1]);
     await user.clear(screen.getByLabelText(/Angle Snap Step/i));
     await user.type(screen.getByLabelText(/Angle Snap Step/i), "30");
@@ -292,6 +313,7 @@ describe("App", () => {
 
     render(<App />);
 
+    await expandSettings(user);
     await user.click(screen.getAllByRole("button", { name: /Move UI/i })[1]);
 
     expect(
@@ -314,6 +336,7 @@ describe("App", () => {
 
     render(<App />);
 
+    await expandSettings(user);
     await user.click(screen.getAllByRole("button", { name: /Move UI/i })[1]);
     await user.selectOptions(
       screen.getByLabelText(/Always Snap \/ 常時スナップ/i),
@@ -342,6 +365,7 @@ describe("App", () => {
 
     render(<App />);
 
+    await expandSettings(user);
     await user.click(screen.getAllByRole("button", { name: /Move UI/i })[1]);
     await user.selectOptions(
       screen.getByLabelText(/Always Snap \/ 常時スナップ/i),
@@ -359,6 +383,7 @@ describe("App", () => {
 
     render(<App />);
 
+    await expandSettings(user);
     await user.click(screen.getAllByRole("button", { name: /Move UI/i })[1]);
 
     expect(

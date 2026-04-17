@@ -170,7 +170,7 @@ export const createDefaultPersistedUiState = (): PersistedUiState => ({
   rotateWheelRotateStepDeg: 16,
   selectedSettingsMenu: "general",
   showFps: true,
-  settingsOpen: true,
+  settingsOpen: false,
   suppressObjectRotation: false,
   interactionMode: "move",
 });

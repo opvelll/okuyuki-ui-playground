@@ -228,7 +228,7 @@ function ColorField({
 }
 
 export function SettingsWindow() {
-  const [generalColorsOpen, setGeneralColorsOpen] = useState(true);
+  const [generalColorsOpen, setGeneralColorsOpen] = useState(false);
   const floorFriction = useUiStore((state) => state.floorFriction);
   const floorColor = useUiStore((state) => state.floorColor);
   const floorRestitution = useUiStore((state) => state.floorRestitution);

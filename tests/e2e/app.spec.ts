@@ -1,5 +1,13 @@
 import { expect, test } from "@playwright/test";
 
+async function expandSettings(page: Parameters<typeof test>[0]["page"]) {
+  await page.getByRole("button", { name: /Expand settings/i }).click();
+}
+
+async function expandGeneralColors(page: Parameters<typeof test>[0]["page"]) {
+  await page.getByRole("button", { name: /Expand color settings/i }).click();
+}
+
 test("shows the 3d prototype screen", async ({ page }) => {
   await page.goto("/");
 
@@ -10,26 +18,11 @@ test("shows the 3d prototype screen", async ({ page }) => {
   ).toBeVisible();
 
   await expect(
-    page.getByRole("button", { name: /Collapse settings/i }),
+    page.getByRole("button", { name: /Expand settings/i }),
   ).toBeVisible();
   await expect(page.getByLabel("Scene loading")).toBeVisible();
-  await expect(page.getByLabel("Physics")).toBeVisible();
-  await expect(page.getByLabel("Show FPS / FPS表示")).toBeVisible();
-  await expect(page.getByLabel("Scene Background")).toBeVisible();
-  await expect(page.getByLabel("Fog Color")).toBeVisible();
-  await expect(page.getByLabel("Floor Color")).toBeVisible();
-  await expect(page.getByLabel("Grid Major")).toBeVisible();
-  await expect(page.getByLabel("Grid Minor")).toBeVisible();
-  await expect(page.getByRole("button", { name: /全体/i })).toBeVisible();
-  await expect(page.getByRole("button", { name: /物理演算/i })).toBeVisible();
   await expect(
     page.getByRole("button", { name: /Switch to Move UI tool/i }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: /Move UI screen-depth drag/i }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: /Rotate UI arcball rotate/i }),
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: /Switch to Rotate UI tool/i }),
@@ -40,11 +33,36 @@ test("shows the 3d prototype screen", async ({ page }) => {
     ),
   ).toBeVisible();
   await expect(page.getByText("FPS", { exact: true })).toBeVisible();
+
+  await expandSettings(page);
+
+  await expect(
+    page.getByRole("button", { name: /Collapse settings/i }),
+  ).toBeVisible();
+  await expect(page.getByLabel("Physics")).toBeVisible();
+  await expect(page.getByLabel("Show FPS / FPS表示")).toBeVisible();
+  await expect(page.getByRole("button", { name: /全体/i })).toBeVisible();
+  await expect(page.getByRole("button", { name: /物理演算/i })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /Move UI screen-depth drag/i }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /Rotate UI arcball rotate/i }),
+  ).toBeVisible();
+
+  await expandGeneralColors(page);
+
+  await expect(page.getByLabel("Scene Background")).toBeVisible();
+  await expect(page.getByLabel("Fog Color")).toBeVisible();
+  await expect(page.getByLabel("Floor Color")).toBeVisible();
+  await expect(page.getByLabel("Grid Major")).toBeVisible();
+  await expect(page.getByLabel("Grid Minor")).toBeVisible();
 });
 
 test("collapses the settings window", async ({ page }) => {
   await page.goto("/");
 
+  await expandSettings(page);
   await page.getByRole("button", { name: /Collapse settings/i }).click();
 
   await expect(
@@ -59,6 +77,7 @@ test("collapses the settings window", async ({ page }) => {
 test("switches to physics settings", async ({ page }) => {
   await page.goto("/");
 
+  await expandSettings(page);
   await page.getByRole("button", { name: /物理演算/i }).click();
 
   await expect(page.getByLabel("Rigid Body Mode")).toBeVisible();
@@ -74,6 +93,7 @@ test("switches tool mode and opens rotate settings", async ({ page }) => {
   await expect(page.getByText(/Object Rotate/i)).toBeVisible();
   await expect(page.getByText(/Rotate mode:/i)).toBeVisible();
 
+  await expandSettings(page);
   await page.getByRole("button", { name: /Rotate UI arcball rotate/i }).click();
 
   await expect(page.getByLabel("UI Strength")).toBeVisible();
