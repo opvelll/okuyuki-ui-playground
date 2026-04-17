@@ -10,7 +10,11 @@ import {
 import { Plane, Vector2, Vector3 } from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { useSceneStore } from "../../store/sceneStore";
-import { type AxisMagnetTarget, useUiStore } from "../../store/uiStore";
+import {
+  type AxisMagnetTarget,
+  type MoveOverlayDisplayMode,
+  useUiStore,
+} from "../../store/uiStore";
 import type { SceneObject, Vector3Tuple } from "../../types/scene";
 import {
   type DragPlaneOverlayState,
@@ -23,6 +27,9 @@ const OVERLAY_ORIENTATION_SHORTCUTS = {
   "2": "screen-vertical",
   "3": "screen-horizontal",
 } as const;
+const OVERLAY_SHORTCUT_KEYS = Object.keys(
+  OVERLAY_ORIENTATION_SHORTCUTS,
+) as Array<keyof typeof OVERLAY_ORIENTATION_SHORTCUTS>;
 
 type DragSession = {
   axisMagnetTarget: AxisMagnetTarget | null;
@@ -43,8 +50,75 @@ type DragModifierState = {
   shiftKey: boolean;
 };
 
+type OverlayShortcutState = {
+  displayMode: MoveOverlayDisplayMode;
+  orientationMode: (typeof OVERLAY_ORIENTATION_SHORTCUTS)[keyof typeof OVERLAY_ORIENTATION_SHORTCUTS];
+};
+
 const vectorFromTuple = ([x, y, z]: Vector3Tuple) => new Vector3(x, y, z);
 const tupleFromVector = ({ x, y, z }: Vector3): Vector3Tuple => [x, y, z];
+
+function getOverlayDisplayModeForShortcutState(
+  pressedKeys: ReadonlySet<keyof typeof OVERLAY_ORIENTATION_SHORTCUTS>,
+  preferredKey: keyof typeof OVERLAY_ORIENTATION_SHORTCUTS | null,
+): MoveOverlayDisplayMode | null {
+  if (pressedKeys.size === 3) {
+    return "modes-1-2-3" as const;
+  }
+
+  if (pressedKeys.size === 2 && pressedKeys.has("2") && pressedKeys.has("3")) {
+    return "modes-2-3" as const;
+  }
+
+  if (preferredKey && pressedKeys.has(preferredKey)) {
+    return preferredKey === "1"
+      ? ("mode-1" as const)
+      : preferredKey === "2"
+        ? ("mode-2" as const)
+        : ("mode-3" as const);
+  }
+
+  const fallbackKey = OVERLAY_SHORTCUT_KEYS.find((key) => pressedKeys.has(key));
+  if (!fallbackKey) {
+    return null;
+  }
+
+  return fallbackKey === "1"
+    ? ("mode-1" as const)
+    : fallbackKey === "2"
+      ? ("mode-2" as const)
+      : ("mode-3" as const);
+}
+
+export function resolveOverlayShortcutState(
+  pressedKeys: ReadonlySet<keyof typeof OVERLAY_ORIENTATION_SHORTCUTS>,
+  keyOrder: ReadonlyArray<keyof typeof OVERLAY_ORIENTATION_SHORTCUTS>,
+): OverlayShortcutState | null {
+  const preferredKey = [...keyOrder]
+    .reverse()
+    .find((key) => pressedKeys.has(key));
+  const displayMode = getOverlayDisplayModeForShortcutState(
+    pressedKeys,
+    preferredKey ?? null,
+  );
+
+  if (!displayMode) {
+    return null;
+  }
+
+  const orientationKey =
+    preferredKey ??
+    OVERLAY_SHORTCUT_KEYS.find((key) => pressedKeys.has(key)) ??
+    null;
+  if (!orientationKey) {
+    return null;
+  }
+
+  return {
+    displayMode,
+    orientationMode: OVERLAY_ORIENTATION_SHORTCUTS[orientationKey],
+  };
+}
 
 export function useObjectDragSession({
   controlsRef,
@@ -67,6 +141,12 @@ export function useObjectDragSession({
   );
   const selectObject = useUiStore((state) => state.selectObject);
   const dragSessionRef = useRef<DragSession | null>(null);
+  const overlayShortcutKeysRef = useRef<
+    Set<keyof typeof OVERLAY_ORIENTATION_SHORTCUTS>
+  >(new Set());
+  const overlayShortcutOrderRef = useRef<
+    Array<keyof typeof OVERLAY_ORIENTATION_SHORTCUTS>
+  >([]);
   const pointerVector = useMemo(() => new Vector2(), []);
   const [overlayState, setOverlayState] =
     useState<DragPlaneOverlayState | null>(null);
@@ -378,23 +458,40 @@ export function useObjectDragSession({
   ]);
 
   useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      const nextOrientationMode =
-        OVERLAY_ORIENTATION_SHORTCUTS[
-          event.key as keyof typeof OVERLAY_ORIENTATION_SHORTCUTS
-        ];
-      if (dragSessionRef.current && nextOrientationMode) {
-        event.preventDefault();
-        setMoveOverlayDisplayMode(
-          event.key === "1"
-            ? "mode-1"
-            : event.key === "2"
-              ? "mode-2"
-              : "mode-3",
-        );
-        setMoveOverlayOrientationMode(nextOrientationMode);
+    const applyOverlayShortcutState = () => {
+      const nextShortcutState = resolveOverlayShortcutState(
+        overlayShortcutKeysRef.current,
+        overlayShortcutOrderRef.current,
+      );
+      if (!nextShortcutState) {
+        return false;
+      }
+
+      setMoveOverlayDisplayMode(nextShortcutState.displayMode);
+      setMoveOverlayOrientationMode(nextShortcutState.orientationMode);
+
+      if (dragSessionRef.current) {
         syncOverlayState(dragSessionRef.current);
-        return;
+      }
+
+      return true;
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key in OVERLAY_ORIENTATION_SHORTCUTS) {
+        const shortcutKey =
+          event.key as keyof typeof OVERLAY_ORIENTATION_SHORTCUTS;
+        overlayShortcutKeysRef.current.add(shortcutKey);
+        overlayShortcutOrderRef.current = [
+          ...overlayShortcutOrderRef.current.filter(
+            (key) => key !== shortcutKey,
+          ),
+          shortcutKey,
+        ];
+        event.preventDefault();
+        if (applyOverlayShortcutState()) {
+          return;
+        }
       }
 
       if (event.key !== "Escape") {
@@ -407,9 +504,27 @@ export function useObjectDragSession({
       clearSelection();
     };
 
-    window.addEventListener("keydown", handleKeyDown);
+    const handleKeyUp = (event: KeyboardEvent) => {
+      if (!(event.key in OVERLAY_ORIENTATION_SHORTCUTS)) {
+        return;
+      }
 
-    return () => window.removeEventListener("keydown", handleKeyDown);
+      const shortcutKey =
+        event.key as keyof typeof OVERLAY_ORIENTATION_SHORTCUTS;
+      overlayShortcutKeysRef.current.delete(shortcutKey);
+      overlayShortcutOrderRef.current = overlayShortcutOrderRef.current.filter(
+        (key) => key !== shortcutKey,
+      );
+      applyOverlayShortcutState();
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
   }, [
     clearSelection,
     finishDrag,
