@@ -4,7 +4,7 @@
   :root {
     color-scheme: dark;
     font-family: "Sora", "Noto Sans JP", sans-serif;
-    font-size: 14px;
+    font-size: 15px;
     --ui-line: rgba(226, 232, 240, 0.16);
     --ui-line-strong: rgba(125, 211, 252, 0.55);
     --ui-panel: rgba(8, 15, 28, 0.72);

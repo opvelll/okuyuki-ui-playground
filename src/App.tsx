@@ -41,8 +41,8 @@ export default function App() {
   const setCurrentScreen = useUiStore((state) => state.setCurrentScreen);
 
   return (
-    <main className="flex min-h-screen flex-col gap-3 px-3 py-3 md:gap-4 md:px-4 md:py-4">
-      <header className="border-b border-white/10 pb-3 lg:grid lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start lg:gap-6">
+    <main className="flex h-screen min-h-screen flex-col gap-3 overflow-hidden px-3 py-3 md:gap-4 md:px-4 md:py-4">
+      <header className="shrink-0 border-b border-white/10 pb-3 lg:grid lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start lg:gap-6">
         <div>
           <h1 className="m-0 text-[0.8rem] font-semibold uppercase tracking-[0.18em] text-slate-50/90">
             Okuyuki-UI-Playground
@@ -79,7 +79,7 @@ export default function App() {
           })}
         </nav>
       </header>
-      <section className="relative flex-1">
+      <section className="relative flex min-h-0 flex-1">
         {currentScreen === "prototype" ? <InteractionModeHotkeys /> : null}
         {currentScreen === "modeling" ? <ModelingToolHotkeys /> : null}
         {currentScreen === "prototype" ? (

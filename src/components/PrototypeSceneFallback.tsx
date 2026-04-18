@@ -1,5 +1,5 @@
 const sceneFrameClasses =
-  "h-[calc(100vh-5.25rem)] min-h-[26.25rem] overflow-hidden border border-white/12 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.42),transparent_32%),linear-gradient(180deg,#eff7ff_0%,#d3e2f2_100%)] shadow-[0_18px_40px_rgba(3,10,20,0.22)] md:h-[calc(100vh-5.5rem)]";
+  "h-full min-h-0 w-full overflow-hidden border border-white/12 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.42),transparent_32%),linear-gradient(180deg,#eff7ff_0%,#d3e2f2_100%)] shadow-[0_18px_40px_rgba(3,10,20,0.22)]";
 
 export function PrototypeSceneFallback() {
   return (

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { useModelingStore } from "../store/modelingStore";
 import { getEffectiveModelingTool, useUiStore } from "../store/uiStore";
 
@@ -242,32 +242,31 @@ export function SceneStatusHud() {
   }, []);
 
   return (
-    <aside className="pointer-events-none absolute bottom-0 left-0 right-0 z-20 border-t border-white/10 bg-slate-950/78 px-3 py-2 text-slate-50 backdrop-blur md:px-4">
-      <p className="text-[0.56rem] font-bold uppercase tracking-[0.22em] text-sky-100/62">
+    <aside className="pointer-events-none absolute bottom-3 left-3 z-20 w-[min(24rem,calc(100%-1.5rem))] border border-white/12 bg-slate-950/82 px-3 py-3 text-slate-50 shadow-[0_16px_32px_rgba(3,10,20,0.22)] backdrop-blur md:bottom-4 md:left-4 md:w-[22rem]">
+      <p className="text-[0.62rem] font-bold uppercase tracking-[0.22em] text-sky-100/62">
         {currentScreen === "modeling"
           ? "Modeling Screen"
           : interactionMode === "move"
             ? "Object Move"
             : "Object Rotate"}
       </p>
-      <dl className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-[0.72rem]">
+      <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-[0.8rem] leading-5">
         {showFps ? (
-          <div className="grid grid-cols-[auto_auto] items-baseline gap-2 border-r border-white/8 pr-4">
+          <Fragment>
             <dt className="text-slate-300/62">fps</dt>
             <dd>{fps}</dd>
-          </div>
+          </Fragment>
         ) : null}
         {hudItems.map(([label, value]) => (
-          <div
-            className="grid grid-cols-[auto_auto] items-baseline gap-2 border-r border-white/8 pr-4 last:border-r-0 last:pr-0"
-            key={label}
-          >
+          <Fragment key={label}>
             <dt className="text-slate-300/62">{label}</dt>
-            <dd>{value}</dd>
-          </div>
+            <dd className="min-w-0 break-words">{value}</dd>
+          </Fragment>
         ))}
       </dl>
-      <p className="mt-1 text-[0.68rem] text-slate-200/78">{helperText}</p>
+      <p className="mt-2 border-t border-white/8 pt-2 text-[0.74rem] leading-5 text-slate-200/78">
+        {helperText}
+      </p>
     </aside>
   );
 }

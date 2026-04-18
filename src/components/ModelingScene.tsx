@@ -695,7 +695,7 @@ export function ModelingScene() {
 
   return (
     <div
-      className="h-[calc(100vh-8rem)] min-h-[26.25rem] overflow-hidden border border-white/12 shadow-[0_18px_40px_rgba(3,10,20,0.22)] md:h-[calc(100vh-8.5rem)]"
+      className="h-full min-h-0 w-full overflow-hidden border border-white/12 shadow-[0_18px_40px_rgba(3,10,20,0.22)]"
       style={{ background: sceneShellBackground }}
     >
       <Canvas
