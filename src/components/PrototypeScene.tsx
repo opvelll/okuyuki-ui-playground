@@ -32,7 +32,7 @@ export function PrototypeScene() {
 
   return (
     <div
-      className="h-[calc(100vh-5.25rem)] min-h-[26.25rem] overflow-hidden rounded-[2rem] border border-white/15 shadow-[0_30px_80px_rgba(3,10,20,0.45),inset_0_1px_0_rgba(255,255,255,0.2)] md:h-[calc(100vh-5.5rem)]"
+      className="h-[calc(100vh-5.25rem)] min-h-[26.25rem] overflow-hidden border border-white/12 shadow-[0_18px_40px_rgba(3,10,20,0.22)] md:h-[calc(100vh-5.5rem)]"
       style={{ background: sceneShellBackground }}
     >
       <Canvas

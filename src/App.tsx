@@ -41,20 +41,20 @@ export default function App() {
   const setCurrentScreen = useUiStore((state) => state.setCurrentScreen);
 
   return (
-    <main className="flex min-h-screen flex-col gap-3 p-4 md:gap-4 md:p-5">
-      <header className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+    <main className="flex min-h-screen flex-col gap-3 px-3 py-3 md:gap-4 md:px-4 md:py-4">
+      <header className="border-b border-white/10 pb-3 lg:grid lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start lg:gap-6">
         <div>
-          <h1 className="m-0 text-[0.9rem] font-semibold uppercase tracking-[0.16em] text-slate-50/90">
+          <h1 className="m-0 text-[0.8rem] font-semibold uppercase tracking-[0.18em] text-slate-50/90">
             Okuyuki-UI-Playground
           </h1>
-          <p className="mt-2 max-w-xl text-sm text-slate-200/70">
+          <p className="mt-1 max-w-xl text-[0.78rem] leading-5 text-slate-200/62">
             Screen-depth-drag driven object editing prototype for React Three
             Fiber.
           </p>
         </div>
         <nav
           aria-label="Screen navigation"
-          className="flex flex-wrap items-center gap-2"
+          className="mt-3 flex flex-wrap items-center gap-2 lg:mt-0"
         >
           {screenButtons.map((screenButton) => {
             const active = currentScreen === screenButton.screen;
@@ -63,21 +63,17 @@ export default function App() {
               <button
                 aria-label={`Switch to ${screenButton.label} screen`}
                 aria-pressed={active}
-                className={`min-w-36 rounded-2xl border px-4 py-3 text-left transition ${
+                className={`min-w-28 border px-3 py-2 text-left text-[0.76rem] font-semibold tracking-[0.08em] transition ${
                   active
-                    ? "border-sky-300/50 bg-sky-300/15 text-slate-50"
-                    : "border-white/10 bg-slate-950/50 text-slate-300 hover:bg-white/[0.06]"
+                    ? "border-sky-300/50 bg-sky-300/10 text-slate-50"
+                    : "border-white/10 bg-slate-950/30 text-slate-300 hover:bg-white/[0.04]"
                 }`}
                 key={screenButton.screen}
                 onClick={() => setCurrentScreen(screenButton.screen)}
+                title={screenButton.description}
                 type="button"
               >
-                <span className="block text-sm font-semibold">
-                  {screenButton.label}
-                </span>
-                <span className="mt-1 block text-[0.65rem] uppercase tracking-[0.14em] text-slate-400">
-                  {screenButton.description}
-                </span>
+                <span className="block">{screenButton.label}</span>
               </button>
             );
           })}

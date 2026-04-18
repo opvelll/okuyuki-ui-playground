@@ -38,7 +38,7 @@ test("shows the 3d prototype screen", async ({ page }) => {
       /Physics enabled: select an object to start screen-depth-drag editing/i,
     ),
   ).toBeVisible();
-  await expect(page.getByText("FPS", { exact: true })).toBeVisible();
+  await expect(page.getByText("fps", { exact: true })).toBeVisible();
 
   await expandSettings(page);
 
@@ -49,15 +49,9 @@ test("shows the 3d prototype screen", async ({ page }) => {
   await expect(page.getByLabel("Show FPS / FPS表示")).toBeVisible();
   await expect(page.getByRole("button", { name: /全体/i })).toBeVisible();
   await expect(page.getByRole("button", { name: /物理演算/i })).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: /Modeling modeling pointer/i }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: /Move UI screen-depth drag/i }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: /Rotate UI arcball rotate/i }),
-  ).toBeVisible();
+  await expect(page.getByTitle(/modeling pointer/i)).toBeVisible();
+  await expect(page.getByRole("button", { name: /Move UI/i })).toHaveCount(2);
+  await expect(page.getByRole("button", { name: /Rotate UI/i })).toHaveCount(2);
 
   await expandGeneralColors(page);
 
@@ -103,7 +97,10 @@ test("switches tool mode and opens rotate settings", async ({ page }) => {
   await expect(page.getByText(/Rotate mode:/i)).toBeVisible();
 
   await expandSettings(page);
-  await page.getByRole("button", { name: /Rotate UI arcball rotate/i }).click();
+  await page
+    .getByRole("button", { name: /Rotate UI/i })
+    .nth(1)
+    .click();
 
   await expect(page.getByLabel("UI Strength")).toBeVisible();
   await expect(page.getByLabel("Arcball Sensitivity")).toBeVisible();
@@ -123,7 +120,7 @@ test("switches to the modeling screen", async ({ page }) => {
     page.getByText("Modeling Screen", { exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByText(/Pointer tool: hover to move the 3D pointer/i),
+    page.getByText(/Select tool: click near a vertex to select it/i),
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: /Switch to Modeling screen/i }),
@@ -133,6 +130,9 @@ test("switches to the modeling screen", async ({ page }) => {
   ).toHaveAttribute("aria-pressed", "false");
   await expect(
     page.getByRole("button", { name: /Switch to 3D Pointer tool/i }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await expect(
+    page.getByRole("button", { name: /Switch to Select tool/i }),
   ).toHaveAttribute("aria-pressed", "true");
   await expect(
     page.getByRole("button", { name: /Switch to Camera Move tool/i }),

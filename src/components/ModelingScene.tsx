@@ -9,13 +9,16 @@ import {
   Float32BufferAttribute,
   LineBasicMaterial,
   LineDashedMaterial,
+  LineSegments,
   MOUSE,
+  MeshStandardMaterial,
   Raycaster,
-  Line as ThreeLine,
+  SphereGeometry,
   Vector2,
   Vector3,
 } from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
+import { useModelingStore } from "../store/modelingStore";
 import { getEffectiveModelingTool, useUiStore } from "../store/uiStore";
 
 const CURSOR_DEPTH_STEP = 0.45;
@@ -25,6 +28,8 @@ const POINTER_AXIS_LENGTH = 1.25;
 const POINTER_AXIS_DASH_EXTENT = 120;
 const POINTER_AXIS_DASH_SIZE = 0.18;
 const POINTER_AXIS_GAP_SIZE = 0.08;
+const MODEL_VERTEX_RADIUS = 0.12;
+const MODEL_SELECTED_VERTEX_RADIUS = 0.16;
 
 function isEditableTarget(target: EventTarget | null) {
   if (!(target instanceof HTMLElement)) {
@@ -70,7 +75,7 @@ function ModelingPointer() {
       ),
     );
     const material = new LineBasicMaterial({ color: "#f87171" });
-    return new ThreeLine(geometry, material);
+    return new LineSegments(geometry, material);
   }, []);
   const yAxisLine = useMemo(() => {
     const geometry = new BufferGeometry();
@@ -82,7 +87,7 @@ function ModelingPointer() {
       ),
     );
     const material = new LineBasicMaterial({ color: "#84cc16" });
-    return new ThreeLine(geometry, material);
+    return new LineSegments(geometry, material);
   }, []);
   const zAxisLine = useMemo(() => {
     const geometry = new BufferGeometry();
@@ -94,7 +99,7 @@ function ModelingPointer() {
       ),
     );
     const material = new LineBasicMaterial({ color: "#60a5fa" });
-    return new ThreeLine(geometry, material);
+    return new LineSegments(geometry, material);
   }, []);
   const xAxisDashLine = useMemo(() => {
     const geometry = new BufferGeometry();
@@ -122,10 +127,10 @@ function ModelingPointer() {
       color: "#fca5a5",
       dashSize: POINTER_AXIS_DASH_SIZE,
       gapSize: POINTER_AXIS_GAP_SIZE,
-      transparent: true,
       opacity: 0.7,
+      transparent: true,
     });
-    const line = new ThreeLine(geometry, material);
+    const line = new LineSegments(geometry, material);
     line.computeLineDistances();
     return line;
   }, []);
@@ -155,10 +160,10 @@ function ModelingPointer() {
       color: "#bef264",
       dashSize: POINTER_AXIS_DASH_SIZE,
       gapSize: POINTER_AXIS_GAP_SIZE,
-      transparent: true,
       opacity: 0.7,
+      transparent: true,
     });
-    const line = new ThreeLine(geometry, material);
+    const line = new LineSegments(geometry, material);
     line.computeLineDistances();
     return line;
   }, []);
@@ -188,10 +193,10 @@ function ModelingPointer() {
       color: "#93c5fd",
       dashSize: POINTER_AXIS_DASH_SIZE,
       gapSize: POINTER_AXIS_GAP_SIZE,
-      transparent: true,
       opacity: 0.7,
+      transparent: true,
     });
-    const line = new ThreeLine(geometry, material);
+    const line = new LineSegments(geometry, material);
     line.computeLineDistances();
     return line;
   }, []);
@@ -272,13 +277,162 @@ function ModelingPointer() {
   );
 }
 
+function getVertexSelectionDistance(
+  cameraPosition: Vector3,
+  pointerPosition: [number, number, number],
+) {
+  const pointerVector = new Vector3(...pointerPosition);
+  return Math.max(
+    0.28,
+    Math.min(cameraPosition.distanceTo(pointerVector) * 0.04, 0.8),
+  );
+}
+
+function ModelingMesh() {
+  const currentModelId = useModelingStore((state) => state.currentModelId);
+  const modelsById = useModelingStore((state) => state.modelsById);
+  const selectedVertexIds = useModelingStore(
+    (state) => state.selectedVertexIds,
+  );
+  const activeModel = modelsById[currentModelId];
+  const selectedVertexSet = useMemo(
+    () => new Set(selectedVertexIds),
+    [selectedVertexIds],
+  );
+  const edgeGeometry = useMemo(() => {
+    const geometry = new BufferGeometry();
+    if (!activeModel || activeModel.edgeOrder.length === 0) {
+      return geometry;
+    }
+
+    const positions = activeModel.edgeOrder.flatMap((edgeId) => {
+      const edge = activeModel.edgesById[edgeId];
+      return edge.vertexIds.flatMap(
+        (vertexId) => activeModel.verticesById[vertexId].position,
+      );
+    });
+
+    geometry.setAttribute("position", new Float32BufferAttribute(positions, 3));
+    return geometry;
+  }, [activeModel]);
+  const faceGeometry = useMemo(() => {
+    const geometry = new BufferGeometry();
+    if (!activeModel || activeModel.faceOrder.length === 0) {
+      return geometry;
+    }
+
+    const positions = activeModel.faceOrder.flatMap((faceId) => {
+      const face = activeModel.facesById[faceId];
+      return face.vertexIds.flatMap(
+        (vertexId) => activeModel.verticesById[vertexId].position,
+      );
+    });
+
+    geometry.setAttribute("position", new Float32BufferAttribute(positions, 3));
+    geometry.computeVertexNormals();
+    return geometry;
+  }, [activeModel]);
+  const vertexGeometry = useMemo(
+    () => new SphereGeometry(MODEL_VERTEX_RADIUS, 18, 18),
+    [],
+  );
+  const selectedVertexGeometry = useMemo(
+    () => new SphereGeometry(MODEL_SELECTED_VERTEX_RADIUS, 20, 20),
+    [],
+  );
+  const vertexMaterial = useMemo(
+    () =>
+      new MeshStandardMaterial({
+        color: "#cbd5f5",
+        emissive: "#64748b",
+        metalness: 0.2,
+        roughness: 0.35,
+      }),
+    [],
+  );
+  const selectedVertexMaterial = useMemo(
+    () =>
+      new MeshStandardMaterial({
+        color: "#fde68a",
+        emissive: "#f59e0b",
+        metalness: 0.1,
+        roughness: 0.22,
+      }),
+    [],
+  );
+
+  useEffect(() => {
+    return () => {
+      edgeGeometry.dispose();
+      faceGeometry.dispose();
+      vertexGeometry.dispose();
+      selectedVertexGeometry.dispose();
+      vertexMaterial.dispose();
+      selectedVertexMaterial.dispose();
+    };
+  }, [
+    edgeGeometry,
+    faceGeometry,
+    selectedVertexGeometry,
+    selectedVertexMaterial,
+    vertexGeometry,
+    vertexMaterial,
+  ]);
+
+  if (!activeModel) {
+    return null;
+  }
+
+  return (
+    <group>
+      {activeModel.faceOrder.length > 0 ? (
+        <mesh geometry={faceGeometry} renderOrder={3}>
+          <meshStandardMaterial
+            color="#2563eb"
+            opacity={0.42}
+            side={DoubleSide}
+            transparent
+          />
+        </mesh>
+      ) : null}
+      {activeModel.edgeOrder.length > 0 ? (
+        <lineSegments geometry={edgeGeometry} renderOrder={4}>
+          <lineBasicMaterial color="#bfdbfe" />
+        </lineSegments>
+      ) : null}
+      {activeModel.vertexOrder.map((vertexId) => {
+        const vertex = activeModel.verticesById[vertexId];
+        const selected = selectedVertexSet.has(vertexId);
+
+        return (
+          <mesh
+            castShadow
+            geometry={selected ? selectedVertexGeometry : vertexGeometry}
+            key={vertexId}
+            material={selected ? selectedVertexMaterial : vertexMaterial}
+            position={vertex.position}
+            receiveShadow
+            renderOrder={selected ? 7 : 6}
+          />
+        );
+      })}
+    </group>
+  );
+}
+
 function ModelingInputController({
   controlsRef,
 }: {
   controlsRef: RefObject<OrbitControlsImpl | null>;
 }) {
   const { camera, gl } = useThree();
-  const clearSelection = useUiStore((state) => state.clearSelection);
+  const addVertex = useModelingStore((state) => state.addVertex);
+  const clearVertexSelection = useModelingStore(
+    (state) => state.clearVertexSelection,
+  );
+  const selectNearestVertex = useModelingStore(
+    (state) => state.selectNearestVertex,
+  );
   const setModelingPointerDepth = useUiStore(
     (state) => state.setModelingPointerDepth,
   );
@@ -301,6 +455,12 @@ function ModelingInputController({
     const ndc = new Vector2(0, 0);
     let hasPointer = false;
     let cameraDragButton: number | null = null;
+    let clickCandidate: {
+      button: number;
+      moved: boolean;
+      x: number;
+      y: number;
+    } | null = null;
 
     const updatePointerPosition = (
       depth = useUiStore.getState().modelingPointer.depth,
@@ -332,16 +492,39 @@ function ModelingInputController({
     };
 
     const handlePointerMove = (event: PointerEvent) => {
+      if (
+        clickCandidate &&
+        Math.hypot(
+          event.clientX - clickCandidate.x,
+          event.clientY - clickCandidate.y,
+        ) > 5
+      ) {
+        clickCandidate = {
+          ...clickCandidate,
+          moved: true,
+        };
+      }
+
       updatePointerFromEvent(event);
     };
 
     const handlePointerLeave = () => {
       hasPointer = false;
+      clickCandidate = null;
       setModelingPointerHovered(false);
     };
 
     const handlePointerDown = (event: PointerEvent) => {
       const effectiveTool = getEffectiveModelingTool(useUiStore.getState());
+
+      if (event.button === 0 && effectiveTool !== "camera") {
+        clickCandidate = {
+          button: event.button,
+          moved: false,
+          x: event.clientX,
+          y: event.clientY,
+        };
+      }
 
       if (
         effectiveTool === "camera" &&
@@ -359,6 +542,30 @@ function ModelingInputController({
         cameraDragButton = null;
         setModelingCameraDragging(false);
       }
+
+      if (
+        clickCandidate &&
+        clickCandidate.button === event.button &&
+        !clickCandidate.moved &&
+        event.button === 0
+      ) {
+        const { modelingPointer, modelingTool } = useUiStore.getState();
+
+        if (modelingTool === "vertex") {
+          addVertex([...modelingPointer.position]);
+        } else if (modelingTool === "select") {
+          selectNearestVertex(
+            modelingPointer.position,
+            event.shiftKey,
+            getVertexSelectionDistance(
+              camera.position,
+              modelingPointer.position,
+            ),
+          );
+        }
+      }
+
+      clickCandidate = null;
     };
 
     const handleWheel = (event: WheelEvent) => {
@@ -411,6 +618,8 @@ function ModelingInputController({
         setModelingPointerPlane("horizontal");
       } else if (event.key === "3") {
         setModelingPointerPlane("vertical");
+      } else if (event.key === "Escape") {
+        clearVertexSelection();
       }
     };
 
@@ -436,13 +645,15 @@ function ModelingInputController({
       window.removeEventListener("keydown", handleKeyDown);
       setModelingCameraDragging(false);
       setModelingPointerHovered(false);
-      clearSelection();
+      clearVertexSelection();
     };
   }, [
+    addVertex,
     camera,
-    clearSelection,
+    clearVertexSelection,
     controlsRef,
     gl,
+    selectNearestVertex,
     setModelingCameraDragging,
     setModelingPointerDepth,
     setModelingPointerHovered,
@@ -464,7 +675,6 @@ export function ModelingScene() {
   const sceneBackgroundColor = useUiStore(
     (state) => state.sceneBackgroundColor,
   );
-  const clearSelection = useUiStore((state) => state.clearSelection);
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
   const effectiveTool = getEffectiveModelingTool({
     modelingCameraDragging,
@@ -485,17 +695,12 @@ export function ModelingScene() {
 
   return (
     <div
-      className="h-[calc(100vh-8rem)] min-h-[26.25rem] overflow-hidden rounded-[2rem] border border-white/15 shadow-[0_30px_80px_rgba(3,10,20,0.45),inset_0_1px_0_rgba(255,255,255,0.14)] md:h-[calc(100vh-8.5rem)]"
+      className="h-[calc(100vh-8rem)] min-h-[26.25rem] overflow-hidden border border-white/12 shadow-[0_18px_40px_rgba(3,10,20,0.22)] md:h-[calc(100vh-8.5rem)]"
       style={{ background: sceneShellBackground }}
     >
       <Canvas
         camera={{ fov: 42, position: [8.8, 6.4, 9.4] }}
         dpr={[1, 1.8]}
-        onPointerMissed={(event) => {
-          if (event.button === 0) {
-            clearSelection();
-          }
-        }}
         shadows
       >
         <color attach="background" args={["#0f172a"]} />
@@ -525,20 +730,21 @@ export function ModelingScene() {
             roughness={0.95}
           />
         </mesh>
+        <ModelingMesh />
         <ModelingPointer />
         <ModelingInputController controlsRef={controlsRef} />
         <OrbitControls
-          enabled={effectiveTool === "camera"}
-          ref={controlsRef}
           enableDamping={false}
+          enabled={effectiveTool === "camera"}
           enablePan={effectiveTool === "camera"}
-          enableZoom={false}
           enableRotate={effectiveTool === "camera"}
+          enableZoom={false}
           mouseButtons={{
             LEFT: MOUSE.ROTATE,
             MIDDLE: MOUSE.PAN,
             RIGHT: MOUSE.PAN,
           }}
+          ref={controlsRef}
           target={[0, 1.1, 0]}
         />
       </Canvas>

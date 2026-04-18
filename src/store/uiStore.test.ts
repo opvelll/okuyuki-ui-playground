@@ -7,6 +7,8 @@ describe("uiStore", () => {
       ...createDefaultPersistedUiState(),
       axisMagnetTarget: null,
       interactionState: "idle",
+      modelingCameraDragging: false,
+      modelingCameraOverride: false,
       modelingPointer: {
         depth: 8,
         hovered: false,

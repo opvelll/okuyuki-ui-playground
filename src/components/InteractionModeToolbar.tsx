@@ -20,7 +20,12 @@ const toolButtons = [
 
 function MoveIcon() {
   return (
-    <svg aria-hidden="true" className="h-4 w-4" fill="none" viewBox="0 0 24 24">
+    <svg
+      aria-hidden="true"
+      className="h-3.5 w-3.5"
+      fill="none"
+      viewBox="0 0 24 24"
+    >
       <path
         d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3"
         stroke="currentColor"
@@ -34,7 +39,12 @@ function MoveIcon() {
 
 function RotateIcon() {
   return (
-    <svg aria-hidden="true" className="h-4 w-4" fill="none" viewBox="0 0 24 24">
+    <svg
+      aria-hidden="true"
+      className="h-3.5 w-3.5"
+      fill="none"
+      viewBox="0 0 24 24"
+    >
       <path
         d="M8.5 6.5A7 7 0 1 1 5 12"
         stroke="currentColor"
@@ -62,11 +72,11 @@ export function InteractionModeToolbar() {
   const setInteractionMode = useUiStore((state) => state.setInteractionMode);
 
   return (
-    <aside className="absolute left-3 top-3 z-20 rounded-[1.2rem] border border-white/15 bg-slate-950/72 p-2 shadow-[0_18px_40px_rgba(3,10,20,0.3)] backdrop-blur-xl md:left-4 md:top-4">
-      <p className="px-2 pb-2 text-[0.62rem] font-bold uppercase tracking-[0.18em] text-sky-100/70">
+    <aside className="absolute left-3 top-3 z-20 w-48 border border-white/12 bg-slate-950/78 shadow-[0_14px_28px_rgba(3,10,20,0.22)] backdrop-blur md:left-4 md:top-4">
+      <p className="border-b border-white/8 px-3 py-2 text-[0.58rem] font-bold uppercase tracking-[0.22em] text-sky-100/62">
         Tool
       </p>
-      <div className="grid gap-2">
+      <div className="grid">
         {toolButtons.map((toolButton) => {
           const active = toolButton.mode === interactionMode;
           const Icon = modeIcons[toolButton.mode];
@@ -79,26 +89,20 @@ export function InteractionModeToolbar() {
                   : "Switch to Rotate UI tool"
               }
               aria-pressed={active}
-              className={`grid grid-cols-[auto_1fr] items-center gap-3 rounded-2xl border px-3 py-2 text-left transition ${
+              className={`grid grid-cols-[auto_1fr] items-center gap-2 border-b border-white/8 px-3 py-2 text-left text-[0.76rem] transition last:border-b-0 ${
                 active
-                  ? "border-sky-300/45 bg-sky-300/12 text-slate-50"
-                  : "border-white/8 bg-white/[0.03] text-slate-300 hover:bg-white/[0.06]"
+                  ? "bg-sky-300/10 text-slate-50"
+                  : "text-slate-300 hover:bg-white/[0.04]"
               }`}
               key={toolButton.mode}
               onClick={() => setInteractionMode(toolButton.mode)}
+              title={toolButton.description}
               type="button"
             >
-              <span className="inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-white/6 text-sky-200">
+              <span className="inline-flex h-7 w-7 items-center justify-center text-sky-200">
                 <Icon />
               </span>
-              <span className="min-w-0">
-                <span className="block text-sm font-semibold">
-                  {toolButton.label}
-                </span>
-                <span className="block text-[0.65rem] uppercase tracking-[0.14em] text-slate-400">
-                  {toolButton.description}
-                </span>
-              </span>
+              <span className="min-w-0 font-semibold">{toolButton.label}</span>
             </button>
           );
         })}

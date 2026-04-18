@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useModelingStore } from "../store/modelingStore";
 import { getEffectiveModelingTool, useUiStore } from "../store/uiStore";
 
 const OVERLAY_DISPLAY_LABELS = {
@@ -42,6 +43,15 @@ export function SceneStatusHud() {
   const currentScreen = useUiStore((state) => state.currentScreen);
   const interactionMode = useUiStore((state) => state.interactionMode);
   const interactionState = useUiStore((state) => state.interactionState);
+  const modelingCurrentModelId = useModelingStore(
+    (state) => state.currentModelId,
+  );
+  const modelingHistory = useModelingStore((state) => state.history);
+  const modelingHistoryIndex = useModelingStore((state) => state.historyIndex);
+  const modelingModelsById = useModelingStore((state) => state.modelsById);
+  const modelingSelectedVertexIds = useModelingStore(
+    (state) => state.selectedVertexIds,
+  );
   const modelingCameraDragging = useUiStore(
     (state) => state.modelingCameraDragging,
   );
@@ -49,9 +59,6 @@ export function SceneStatusHud() {
     (state) => state.modelingCameraOverride,
   );
   const modelingPointer = useUiStore((state) => state.modelingPointer);
-  const modelingPointerPanelRadius = useUiStore(
-    (state) => state.modelingPointerPanelRadius,
-  );
   const modelingPointerVisibleInCameraTool = useUiStore(
     (state) => state.modelingPointerVisibleInCameraTool,
   );
@@ -99,12 +106,104 @@ export function SceneStatusHud() {
     modelingCameraOverride,
     modelingTool,
   });
+  const activeModel = modelingModelsById[modelingCurrentModelId];
+  const hudItems =
+    currentScreen === "modeling"
+      ? [
+          ["screen", currentScreen],
+          ["model", activeModel?.name ?? "none"],
+          [
+            "tool",
+            `${effectiveModelingTool === "camera" ? "camera" : modelingTool}${
+              effectiveModelingTool === "pointer" && modelingCameraOverride
+                ? " (space)"
+                : ""
+            }`,
+          ],
+          [
+            "mesh",
+            `${activeModel?.vertexOrder.length ?? 0}v / ${
+              activeModel?.edgeOrder.length ?? 0
+            }e / ${activeModel?.faceOrder.length ?? 0}f`,
+          ],
+          ["select", `${modelingSelectedVertexIds.length} vertices`],
+          ["depth", modelingPointer.depth.toFixed(2)],
+          ["plane", modelingPointer.plane],
+          [
+            "pointer",
+            modelingPointer.hovered &&
+            (effectiveModelingTool === "pointer" ||
+              modelingPointerVisibleInCameraTool)
+              ? "visible"
+              : "hidden",
+          ],
+          [
+            "history",
+            `${modelingHistoryIndex + 1} / ${modelingHistory.length}`,
+          ],
+          [
+            "pos",
+            modelingPointer.position
+              .map((value) => value.toFixed(2))
+              .join(", "),
+          ],
+          ["state", interactionState],
+        ]
+      : interactionMode === "move"
+        ? [
+            ["screen", currentScreen],
+            ["selected", selectedObjectId ?? "none"],
+            [
+              "depth",
+              `${moveDepthWheelStep.toFixed(2)} / ${moveDepthWheelDirection}`,
+            ],
+            [
+              "snap",
+              `shift ${movePrecisionStep.toFixed(2)} / interval ${moveGridSnapStep.toFixed(
+                2,
+              )} (${GRID_SNAP_PATTERN_LABELS[moveGridSnapPattern]})`,
+            ],
+            [
+              "magnet",
+              axisMagnetTarget
+                ? `${axisMagnetTarget.objectId} / ${
+                    AXIS_REFERENCE_FRAME_LABELS[moveAxisMagnetReferenceFrame]
+                  } ${axisMagnetTarget.axis}${
+                    AXIS_DIRECTION_LABELS[axisMagnetTarget.direction]
+                  }`
+                : `none / ${ALWAYS_SNAP_MODE_LABELS[moveAlwaysSnapMode]} / ${
+                    AXIS_REFERENCE_FRAME_LABELS[moveAxisMagnetReferenceFrame]
+                  }`,
+            ],
+            [
+              "overlay",
+              `${OVERLAY_DISPLAY_LABELS[moveOverlayDisplayMode]} / ${
+                OVERLAY_MODE_LABELS[moveOverlayOrientationMode]
+              }`,
+            ],
+          ]
+        : [
+            ["screen", currentScreen],
+            ["selected", selectedObjectId ?? "none"],
+            ["arcball", `${rotateArcballSensitivity.toFixed(2)}x`],
+            ["radius", `${rotateUiRadiusPx.toFixed(0)} px`],
+            ["strength", rotateUiOpacity.toFixed(2)],
+            [
+              "twist",
+              `${rotateWheelRotateStepDeg.toFixed(0)} deg / ${rotateWheelDirection}`,
+            ],
+            ["snap", `ctrl + shift ${rotateAngleSnapStepDeg.toFixed(0)} deg`],
+            ["release", rotateDragReleaseBehavior],
+            ["axis", ROTATE_TWIST_AXIS_LABELS[rotateTwistAxis]],
+          ];
 
   const helperText =
     currentScreen === "modeling"
       ? effectiveModelingTool === "camera"
         ? "Camera tool: left drag rotates, wheel dollies, right drag slides, and releasing Space after starting a drag keeps camera control until the drag ends."
-        : "Pointer tool: hover to move the 3D pointer, use the wheel for cursor depth, hold Space for temporary camera control, and switch cursor planes with 1, 2, 3."
+        : modelingTool === "vertex"
+          ? "Vertex tool: click to place vertices at the 3D pointer, use the wheel for cursor depth, and switch cursor planes with 1, 2, 3."
+          : "Select tool: click near a vertex to select it, hold Shift for multi-select, press E for an edge, press F for a face, and hold Space for temporary camera control."
       : interactionMode === "move"
         ? physicsEnabled
           ? selectedObjectId
@@ -143,144 +242,32 @@ export function SceneStatusHud() {
   }, []);
 
   return (
-    <aside className="pointer-events-none absolute bottom-3 left-3 z-10 max-w-[min(24rem,calc(100vw-3rem))] rounded-[1.35rem] border border-white/12 bg-slate-950/68 px-4 py-3 text-slate-50 shadow-[0_18px_40px_rgba(3,10,20,0.3)] backdrop-blur-xl md:bottom-4 md:left-4 md:z-20">
-      <p className="text-[0.68rem] font-bold uppercase tracking-[0.18em] text-sky-100/70">
+    <aside className="pointer-events-none absolute bottom-0 left-0 right-0 z-20 border-t border-white/10 bg-slate-950/78 px-3 py-2 text-slate-50 backdrop-blur md:px-4">
+      <p className="text-[0.56rem] font-bold uppercase tracking-[0.22em] text-sky-100/62">
         {currentScreen === "modeling"
           ? "Modeling Screen"
           : interactionMode === "move"
             ? "Object Move"
             : "Object Rotate"}
       </p>
-      <dl className="mt-2 grid gap-2 text-sm">
-        <div className="grid grid-cols-[5rem_1fr] gap-3">
-          <dt className="text-slate-300/70">Screen</dt>
-          <dd>{currentScreen}</dd>
-        </div>
-        <div className="grid grid-cols-[5rem_1fr] gap-3">
-          <dt className="text-slate-300/70">Selected</dt>
-          <dd>{selectedObjectId ?? "none"}</dd>
-        </div>
+      <dl className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-[0.72rem]">
         {showFps ? (
-          <div className="grid grid-cols-[5rem_1fr] gap-3">
-            <dt className="text-slate-300/70">FPS</dt>
+          <div className="grid grid-cols-[auto_auto] items-baseline gap-2 border-r border-white/8 pr-4">
+            <dt className="text-slate-300/62">fps</dt>
             <dd>{fps}</dd>
           </div>
         ) : null}
-        {currentScreen === "modeling" ? (
-          <>
-            <div className="grid grid-cols-[5rem_1fr] gap-3">
-              <dt className="text-slate-300/70">Tool</dt>
-              <dd>
-                {effectiveModelingTool}
-                {modelingTool === "pointer" && modelingCameraOverride
-                  ? " (space)"
-                  : ""}
-              </dd>
-            </div>
-            <div className="grid grid-cols-[5rem_1fr] gap-3">
-              <dt className="text-slate-300/70">Pointer</dt>
-              <dd>
-                {modelingPointer.hovered &&
-                (effectiveModelingTool === "pointer" ||
-                  modelingPointerVisibleInCameraTool)
-                  ? "visible"
-                  : "hidden"}
-              </dd>
-            </div>
-            <div className="grid grid-cols-[5rem_1fr] gap-3">
-              <dt className="text-slate-300/70">Depth</dt>
-              <dd>{modelingPointer.depth.toFixed(2)}</dd>
-            </div>
-            <div className="grid grid-cols-[5rem_1fr] gap-3">
-              <dt className="text-slate-300/70">Plane</dt>
-              <dd>{modelingPointer.plane}</dd>
-            </div>
-            <div className="grid grid-cols-[5rem_1fr] gap-3">
-              <dt className="text-slate-300/70">Radius</dt>
-              <dd>{modelingPointerPanelRadius.toFixed(2)}</dd>
-            </div>
-            <div className="grid grid-cols-[5rem_1fr] gap-3">
-              <dt className="text-slate-300/70">Position</dt>
-              <dd>
-                {modelingPointer.position
-                  .map((value) => value.toFixed(2))
-                  .join(", ")}
-              </dd>
-            </div>
-            <div className="grid grid-cols-[5rem_1fr] gap-3">
-              <dt className="text-slate-300/70">State</dt>
-              <dd>{interactionState}</dd>
-            </div>
-          </>
-        ) : interactionMode === "move" ? (
-          <>
-            <div className="grid grid-cols-[5rem_1fr] gap-3">
-              <dt className="text-slate-300/70">Depth</dt>
-              <dd>
-                {moveDepthWheelStep.toFixed(2)} / {moveDepthWheelDirection}
-              </dd>
-            </div>
-            <div className="grid grid-cols-[5rem_1fr] gap-3">
-              <dt className="text-slate-300/70">Snap</dt>
-              <dd>
-                shift {movePrecisionStep.toFixed(2)} / interval{" "}
-                {moveGridSnapStep.toFixed(2)} (
-                {GRID_SNAP_PATTERN_LABELS[moveGridSnapPattern]})
-              </dd>
-            </div>
-            <div className="grid grid-cols-[5rem_1fr] gap-3">
-              <dt className="text-slate-300/70">Magnet</dt>
-              <dd>
-                {axisMagnetTarget
-                  ? `${axisMagnetTarget.objectId} / ${AXIS_REFERENCE_FRAME_LABELS[moveAxisMagnetReferenceFrame]} ${axisMagnetTarget.axis}${AXIS_DIRECTION_LABELS[axisMagnetTarget.direction]}`
-                  : `none / ${ALWAYS_SNAP_MODE_LABELS[moveAlwaysSnapMode]} / ${AXIS_REFERENCE_FRAME_LABELS[moveAxisMagnetReferenceFrame]}`}
-              </dd>
-            </div>
-            <div className="grid grid-cols-[5rem_1fr] gap-3">
-              <dt className="text-slate-300/70">Overlay</dt>
-              <dd>
-                {OVERLAY_DISPLAY_LABELS[moveOverlayDisplayMode]} /{" "}
-                {OVERLAY_MODE_LABELS[moveOverlayOrientationMode]}
-              </dd>
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="grid grid-cols-[5rem_1fr] gap-3">
-              <dt className="text-slate-300/70">Arcball</dt>
-              <dd>{rotateArcballSensitivity.toFixed(2)}x</dd>
-            </div>
-            <div className="grid grid-cols-[5rem_1fr] gap-3">
-              <dt className="text-slate-300/70">Radius</dt>
-              <dd>{rotateUiRadiusPx.toFixed(0)} px</dd>
-            </div>
-            <div className="grid grid-cols-[5rem_1fr] gap-3">
-              <dt className="text-slate-300/70">Strength</dt>
-              <dd>{rotateUiOpacity.toFixed(2)}</dd>
-            </div>
-            <div className="grid grid-cols-[5rem_1fr] gap-3">
-              <dt className="text-slate-300/70">Twist</dt>
-              <dd>
-                {rotateWheelRotateStepDeg.toFixed(0)} deg /{" "}
-                {rotateWheelDirection}
-              </dd>
-            </div>
-            <div className="grid grid-cols-[5rem_1fr] gap-3">
-              <dt className="text-slate-300/70">Snap</dt>
-              <dd>ctrl + shift {rotateAngleSnapStepDeg.toFixed(0)} deg</dd>
-            </div>
-            <div className="grid grid-cols-[5rem_1fr] gap-3">
-              <dt className="text-slate-300/70">Release</dt>
-              <dd>{rotateDragReleaseBehavior}</dd>
-            </div>
-            <div className="grid grid-cols-[5rem_1fr] gap-3">
-              <dt className="text-slate-300/70">Axis</dt>
-              <dd>{ROTATE_TWIST_AXIS_LABELS[rotateTwistAxis]}</dd>
-            </div>
-          </>
-        )}
+        {hudItems.map(([label, value]) => (
+          <div
+            className="grid grid-cols-[auto_auto] items-baseline gap-2 border-r border-white/8 pr-4 last:border-r-0 last:pr-0"
+            key={label}
+          >
+            <dt className="text-slate-300/62">{label}</dt>
+            <dd>{value}</dd>
+          </div>
+        ))}
       </dl>
-      <p className="mt-3 text-sm text-slate-200/85">{helperText}</p>
+      <p className="mt-1 text-[0.68rem] text-slate-200/78">{helperText}</p>
     </aside>
   );
 }

@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { useModelingStore } from "../store/modelingStore";
 import { useUiStore } from "../store/uiStore";
 
 function isEditableTarget(target: EventTarget | null) {
@@ -20,6 +21,14 @@ export function ModelingToolHotkeys() {
   const setModelingCameraOverride = useUiStore(
     (state) => state.setModelingCameraOverride,
   );
+  const connectSelectedVerticesAsEdge = useModelingStore(
+    (state) => state.connectSelectedVerticesAsEdge,
+  );
+  const createFaceFromSelectedVertices = useModelingStore(
+    (state) => state.createFaceFromSelectedVertices,
+  );
+  const redo = useModelingStore((state) => state.redo);
+  const undo = useModelingStore((state) => state.undo);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -31,12 +40,38 @@ export function ModelingToolHotkeys() {
         return;
       }
 
-      if (event.code !== "Space" || modelingTool !== "pointer") {
+      if ((event.metaKey || event.ctrlKey) && event.code === "KeyZ") {
+        event.preventDefault();
+        if (event.shiftKey) {
+          redo();
+        } else {
+          undo();
+        }
         return;
       }
 
-      event.preventDefault();
-      setModelingCameraOverride(true);
+      if ((event.metaKey || event.ctrlKey) && event.code === "KeyY") {
+        event.preventDefault();
+        redo();
+        return;
+      }
+
+      if (event.code === "KeyE") {
+        event.preventDefault();
+        connectSelectedVerticesAsEdge();
+        return;
+      }
+
+      if (event.code === "KeyF") {
+        event.preventDefault();
+        createFaceFromSelectedVertices();
+        return;
+      }
+
+      if (event.code === "Space" && modelingTool !== "camera") {
+        event.preventDefault();
+        setModelingCameraOverride(true);
+      }
     };
 
     const handleKeyUp = (event: KeyboardEvent) => {
@@ -55,7 +90,14 @@ export function ModelingToolHotkeys() {
       window.removeEventListener("keyup", handleKeyUp);
       setModelingCameraOverride(false);
     };
-  }, [modelingTool, setModelingCameraOverride]);
+  }, [
+    connectSelectedVerticesAsEdge,
+    createFaceFromSelectedVertices,
+    modelingTool,
+    redo,
+    setModelingCameraOverride,
+    undo,
+  ]);
 
   return null;
 }

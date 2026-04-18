@@ -5,7 +5,8 @@ export type MoveDepthWheelDirection = "normal" | "inverted";
 export type InteractionState = "idle" | "active" | "dragging";
 export type InteractionMode = "move" | "rotate";
 export type AppScreen = "prototype" | "modeling";
-export type ModelingTool = "pointer" | "camera";
+export type ModelingTool = "select" | "vertex" | "camera";
+export type EffectiveModelingTool = "pointer" | "camera";
 export type MoveAlwaysSnapMode = "off" | "axis-magnet" | "grid";
 export type MoveAxisMagnetReferenceFrame = "local" | "world";
 export type MoveGridSnapPattern = "xyz" | "xz";
@@ -167,7 +168,7 @@ type ModelingToolState = Pick<
 
 export function getEffectiveModelingTool(
   state: ModelingToolState,
-): ModelingTool {
+): EffectiveModelingTool {
   return state.modelingTool === "camera" ||
     state.modelingCameraOverride ||
     state.modelingCameraDragging
@@ -201,7 +202,7 @@ export const createDefaultPersistedUiState = (): PersistedUiState => ({
   moveVerticalDropGuide: true,
   modelingPointerPanelRadius: 0.72,
   modelingPointerVisibleInCameraTool: false,
-  modelingTool: "pointer",
+  modelingTool: "select",
   objectAngularDamping: 0.9,
   objectFriction: 0.9,
   objectLinearDamping: 0.45,

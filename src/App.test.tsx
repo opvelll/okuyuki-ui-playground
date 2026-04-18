@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { useModelingStore } from "./store/modelingStore";
 import { useSceneStore } from "./store/sceneStore";
 import {
   UI_STORE_PERSIST_KEY,
@@ -62,6 +63,7 @@ describe("App", () => {
       selectedObjectId: null,
     });
     useSceneStore.getState().resetScene();
+    useModelingStore.getState().resetModeling();
   });
 
   it("renders the app shell and loaded scene controls", async () => {
@@ -93,7 +95,7 @@ describe("App", () => {
         /Physics enabled: select an object to start screen-depth-drag editing/i,
       ),
     ).toBeInTheDocument();
-    expect(screen.getByText("FPS")).toBeInTheDocument();
+    expect(screen.getByText("fps")).toBeInTheDocument();
     expect(
       screen.getByLabelText(/Scene loading|three-scene/i),
     ).toBeInTheDocument();
@@ -111,9 +113,7 @@ describe("App", () => {
     expect(
       screen.getByRole("button", { name: /物理演算/i }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /Modeling modeling pointer/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByTitle(/modeling pointer/i)).toBeInTheDocument();
 
     await expandGeneralColors(user);
 
@@ -154,13 +154,16 @@ describe("App", () => {
 
     expect(screen.getAllByText(/Modeling Screen/i)).not.toHaveLength(0);
     expect(
-      screen.getByText(/Pointer tool: hover to move the 3D pointer/i),
+      screen.getByText(/Select tool: click near a vertex to select it/i),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /Switch to Modeling screen/i }),
     ).toHaveAttribute("aria-pressed", "true");
     expect(
       screen.getByRole("button", { name: /Switch to 3D Pointer tool/i }),
+    ).toHaveAttribute("aria-pressed", "true");
+    expect(
+      screen.getByRole("button", { name: /Switch to Select tool/i }),
     ).toHaveAttribute("aria-pressed", "true");
     expect(
       screen.getByRole("button", { name: /Switch to Camera Move tool/i }),
@@ -210,11 +213,11 @@ describe("App", () => {
     render(<App />);
 
     await expandSettings(user);
-    expect(screen.getByText("FPS")).toBeInTheDocument();
+    expect(screen.getByText("fps")).toBeInTheDocument();
 
     await user.click(screen.getByLabelText(/Show FPS \/ FPS表示/i));
 
-    expect(screen.queryByText("FPS")).not.toBeInTheDocument();
+    expect(screen.queryByText("fps")).not.toBeInTheDocument();
 
     const persistedState = window.localStorage.getItem(UI_STORE_PERSIST_KEY);
 
@@ -379,9 +382,7 @@ describe("App", () => {
     render(<App />);
 
     await expandSettings(user);
-    await user.click(
-      screen.getByRole("button", { name: /Modeling modeling pointer/i }),
-    );
+    await user.click(screen.getByTitle(/modeling pointer/i));
 
     expect(
       screen.getByLabelText(/Pointer Panel Radius \/ 面の半径/i),
@@ -431,6 +432,9 @@ describe("App", () => {
 
     expect(
       screen.getByRole("button", { name: /Switch to 3D Pointer tool/i }),
+    ).toHaveAttribute("aria-pressed", "true");
+    expect(
+      screen.getByRole("button", { name: /Switch to Select tool/i }),
     ).toHaveAttribute("aria-pressed", "true");
   });
 

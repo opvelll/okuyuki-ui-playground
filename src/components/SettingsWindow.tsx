@@ -15,18 +15,17 @@ import {
 } from "../store/uiStore";
 
 const panelClasses =
-  "absolute left-3 right-3 top-48 z-20 w-auto overflow-hidden rounded-[1.4rem] border border-white/15 bg-slate-950/72 shadow-[0_22px_48px_rgba(3,10,20,0.34)] backdrop-blur-xl md:left-auto md:right-4 md:top-4 md:w-[min(28rem,calc(100vw-2rem))]";
+  "absolute left-3 right-3 top-[18.5rem] z-20 w-auto overflow-hidden border border-white/12 bg-slate-950/82 shadow-[0_16px_32px_rgba(3,10,20,0.22)] backdrop-blur md:left-auto md:right-4 md:top-4 md:w-[min(24rem,calc(100vw-2rem))]";
 const sectionHeadingClasses =
-  "text-[0.68rem] font-bold uppercase tracking-[0.16em] text-sky-100/70";
+  "text-[0.58rem] font-bold uppercase tracking-[0.22em] text-sky-100/62";
 const fieldClasses =
-  "min-h-11 w-full rounded-2xl border border-white/12 bg-slate-900/80 px-3 text-sm text-slate-50 outline-none transition focus:border-sky-200/60 focus:ring-2 focus:ring-sky-300/40";
+  "min-h-9 w-full border border-white/12 bg-slate-900/72 px-2.5 text-[0.76rem] text-slate-50 outline-none transition focus:border-sky-200/60 focus:ring-2 focus:ring-sky-300/40";
 const toggleLabelClasses =
-  "grid grid-cols-[1fr_auto] items-center gap-4 text-sm text-slate-100/90";
-const fieldHintClasses = "text-xs leading-5 text-slate-300/72";
-const colorFieldClasses =
-  "h-11 w-14 rounded-2xl border border-white/12 bg-slate-900/80 p-1";
+  "grid grid-cols-[1fr_auto] items-center gap-4 text-[0.76rem] text-slate-100/90";
+const fieldHintClasses = "text-[0.68rem] leading-5 text-slate-300/72";
+const colorFieldClasses = "h-9 w-12 border border-white/12 bg-slate-900/80 p-1";
 const subsectionToggleClasses =
-  "flex w-full items-center justify-between gap-3 rounded-2xl border border-white/8 bg-white/[0.03] px-3 py-3 text-left text-sm font-semibold text-slate-100/90 transition hover:bg-white/[0.06] focus-visible:ring-2 focus-visible:ring-sky-300/50";
+  "flex w-full items-center justify-between gap-3 border border-white/8 bg-white/[0.03] px-3 py-2.5 text-left text-[0.74rem] font-semibold text-slate-100/90 transition hover:bg-white/[0.05] focus-visible:ring-2 focus-visible:ring-sky-300/50";
 
 const settingsMenuItems = [
   { description: "app-wide defaults", key: "general", label: "全体" },
@@ -92,7 +91,8 @@ const rigidBodyOptions = [
 ] as const;
 
 const modelingToolOptions = [
-  { label: "3D pointer", value: "pointer" },
+  { label: "select", value: "select" },
+  { label: "vertex", value: "vertex" },
   { label: "camera move", value: "camera" },
 ] as const;
 
@@ -435,17 +435,17 @@ export function SettingsWindow() {
       <button
         aria-expanded={settingsOpen}
         aria-label={settingsOpen ? "Collapse settings" : "Expand settings"}
-        className="flex w-full items-center justify-between gap-4 px-4 py-3 text-[0.72rem] font-bold uppercase tracking-[0.18em] text-slate-50 outline-none transition hover:bg-white/5 focus-visible:ring-2 focus-visible:ring-sky-300/50"
+        className="flex w-full items-center justify-between gap-4 border-b border-white/8 px-3 py-2.5 text-[0.62rem] font-bold uppercase tracking-[0.22em] text-slate-50 outline-none transition hover:bg-white/5 focus-visible:ring-2 focus-visible:ring-sky-300/50"
         onClick={() => setSettingsOpen(!settingsOpen)}
         type="button"
       >
         <span>Settings</span>
-        <span className="inline-flex w-6 justify-center text-base leading-none text-sky-300">
+        <span className="inline-flex w-5 justify-center text-sm leading-none text-sky-300">
           {settingsOpen ? "−" : "+"}
         </span>
       </button>
       {settingsOpen ? (
-        <div className="grid max-h-[calc(100vh-10rem)] gap-4 overflow-y-auto border-t border-white/8 px-3 pb-3 pt-3 md:max-h-[calc(100vh-8rem)] md:grid-cols-[8.5rem_minmax(0,1fr)]">
+        <div className="grid max-h-[calc(100vh-10rem)] gap-3 overflow-y-auto px-2 pb-2 pt-2 md:max-h-[calc(100vh-8rem)] md:grid-cols-[6.5rem_minmax(0,1fr)]">
           <nav
             aria-label="Settings sections"
             className="grid gap-2 md:content-start"
@@ -456,26 +456,22 @@ export function SettingsWindow() {
               return (
                 <button
                   aria-current={active ? "page" : undefined}
-                  className={`rounded-2xl border px-3 py-3 text-left transition ${
+                  className={`border px-2.5 py-2 text-left text-[0.72rem] font-semibold transition ${
                     active
                       ? "border-sky-300/45 bg-sky-300/12 text-slate-50"
-                      : "border-white/8 bg-white/[0.03] text-slate-300 hover:bg-white/[0.06]"
+                      : "border-white/8 bg-white/[0.03] text-slate-300 hover:bg-white/[0.05]"
                   }`}
                   key={menuItem.key}
                   onClick={() => setSelectedSettingsMenu(menuItem.key)}
+                  title={menuItem.description}
                   type="button"
                 >
-                  <span className="block text-sm font-semibold">
-                    {menuItem.label}
-                  </span>
-                  <span className="mt-1 block text-[0.7rem] uppercase tracking-[0.14em] text-slate-400">
-                    {menuItem.description}
-                  </span>
+                  <span className="block">{menuItem.label}</span>
                 </button>
               );
             })}
           </nav>
-          <div className="min-w-0 rounded-[1.2rem] border border-white/8 bg-black/10 p-3">
+          <div className="min-w-0 border-l border-white/8 pl-3">
             {selectedSettingsMenu === "general" ? (
               <section
                 aria-labelledby="general-settings"
@@ -504,7 +500,7 @@ export function SettingsWindow() {
                   Show FPS: 左下 HUD の FPS 行を表示します。OFF でもほかの HUD
                   情報はそのまま表示します。
                 </SectionNote>
-                <div className="grid gap-3 rounded-[1.1rem] border border-white/8 bg-white/[0.02] p-3">
+                <div className="grid gap-3 border border-white/8 bg-white/[0.02] p-3">
                   <button
                     aria-controls="general-color-settings"
                     aria-expanded={generalColorsOpen}
@@ -1066,7 +1062,7 @@ export function SettingsWindow() {
                   Modeling
                 </h2>
                 <SectionNote>
-                  Modeling: pointer tool と camera tool の既定挙動を調整します。
+                  Modeling: select / vertex / camera の既定挙動を調整します。
                 </SectionNote>
                 <label
                   className="grid gap-2 text-sm text-slate-100/90"
@@ -1091,8 +1087,8 @@ export function SettingsWindow() {
                     ))}
                   </select>
                   <span className={fieldHintClasses}>
-                    左上 toolbar で切り替える通常ツール。Space 一時切替の起点は
-                    pointer tool です。
+                    左上 toolbar の既定サブツール。select / vertex 中は Space
+                    で一時的に camera に切り替わります。
                   </span>
                 </label>
                 <ToggleField
