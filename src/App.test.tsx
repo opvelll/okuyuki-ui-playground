@@ -5,6 +5,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useModelingStore } from "./store/modelingStore";
 import { useSceneStore } from "./store/sceneStore";
 import {
+  DEFAULT_MODELING_CAMERA,
+  DEFAULT_PROTOTYPE_CAMERA,
   UI_STORE_PERSIST_KEY,
   createDefaultPersistedUiState,
   useUiStore,
@@ -52,6 +54,7 @@ describe("App", () => {
       ...createDefaultPersistedUiState(),
       axisMagnetTarget: null,
       interactionState: "idle",
+      modelingCamera: DEFAULT_MODELING_CAMERA,
       modelingCameraDragging: false,
       modelingCameraOverride: false,
       modelingPointer: {
@@ -60,6 +63,7 @@ describe("App", () => {
         plane: "none",
         position: [0, 0, 0],
       },
+      prototypeCamera: DEFAULT_PROTOTYPE_CAMERA,
       selectedObjectId: null,
     });
     useSceneStore.getState().resetScene();

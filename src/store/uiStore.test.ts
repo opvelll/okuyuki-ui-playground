@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { createDefaultPersistedUiState, useUiStore } from "./uiStore";
+import {
+  DEFAULT_MODELING_CAMERA,
+  DEFAULT_PROTOTYPE_CAMERA,
+  createDefaultPersistedUiState,
+  useUiStore,
+} from "./uiStore";
 
 describe("uiStore", () => {
   beforeEach(() => {
@@ -7,6 +12,7 @@ describe("uiStore", () => {
       ...createDefaultPersistedUiState(),
       axisMagnetTarget: null,
       interactionState: "idle",
+      modelingCamera: DEFAULT_MODELING_CAMERA,
       modelingCameraDragging: false,
       modelingCameraOverride: false,
       modelingPointer: {
@@ -15,6 +21,7 @@ describe("uiStore", () => {
         plane: "none",
         position: [0, 0, 0],
       },
+      prototypeCamera: DEFAULT_PROTOTYPE_CAMERA,
       selectedObjectId: null,
     });
   });
@@ -102,5 +109,47 @@ describe("uiStore", () => {
     expect(useUiStore.getState().currentScreen).toBe("modeling");
     expect(useUiStore.getState().selectedObjectId).toBeNull();
     expect(useUiStore.getState().interactionState).toBe("idle");
+  });
+
+  it("keeps prototype and modeling camera snapshots separate", () => {
+    useUiStore.getState().setPrototypeCamera({
+      position: [1, 2, 3],
+      target: [4, 5, 6],
+    });
+    useUiStore.getState().setModelingCamera({
+      position: [7, 8, 9],
+      target: [10, 11, 12],
+    });
+
+    expect(useUiStore.getState().prototypeCamera).toEqual({
+      position: [1, 2, 3],
+      target: [4, 5, 6],
+    });
+    expect(useUiStore.getState().modelingCamera).toEqual({
+      position: [7, 8, 9],
+      target: [10, 11, 12],
+    });
+  });
+
+  it("does not reset camera snapshots when switching screens", () => {
+    useUiStore.getState().setPrototypeCamera({
+      position: [1, 2, 3],
+      target: [0, 0, 0],
+    });
+    useUiStore.getState().setModelingCamera({
+      position: [7, 8, 9],
+      target: [1, 1, 1],
+    });
+
+    useUiStore.getState().setCurrentScreen("modeling");
+
+    expect(useUiStore.getState().prototypeCamera).toEqual({
+      position: [1, 2, 3],
+      target: [0, 0, 0],
+    });
+    expect(useUiStore.getState().modelingCamera).toEqual({
+      position: [7, 8, 9],
+      target: [1, 1, 1],
+    });
   });
 });

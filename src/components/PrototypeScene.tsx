@@ -1,12 +1,51 @@
 import { ContactShadows, OrbitControls } from "@react-three/drei";
-import { Canvas } from "@react-three/fiber";
-import { useMemo, useRef } from "react";
+import { Canvas, useThree } from "@react-three/fiber";
+import { type RefObject, useEffect, useMemo, useRef } from "react";
 import { Color, MOUSE } from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { useUiStore } from "../store/uiStore";
 import { FloorVisual } from "./scene/FloorVisual";
 import { ObjectMoveController } from "./scene/ObjectMoveController";
 import { SceneContents } from "./scene/SceneContents";
+
+function PrototypeCameraController({
+  controlsRef,
+}: {
+  controlsRef: RefObject<OrbitControlsImpl | null>;
+}) {
+  const { camera } = useThree();
+  const setPrototypeCamera = useUiStore((state) => state.setPrototypeCamera);
+
+  useEffect(() => {
+    const controls = controlsRef.current;
+    if (!controls) {
+      return;
+    }
+
+    const { prototypeCamera } = useUiStore.getState();
+
+    camera.position.set(...prototypeCamera.position);
+    controls.target.set(...prototypeCamera.target);
+    controls.update();
+
+    const syncCamera = () => {
+      setPrototypeCamera({
+        position: [camera.position.x, camera.position.y, camera.position.z],
+        target: [controls.target.x, controls.target.y, controls.target.z],
+      });
+    };
+
+    syncCamera();
+    controls.addEventListener("change", syncCamera);
+
+    return () => {
+      syncCamera();
+      controls.removeEventListener("change", syncCamera);
+    };
+  }, [camera, controlsRef, setPrototypeCamera]);
+
+  return null;
+}
 
 export function PrototypeScene() {
   const interactionState = useUiStore((state) => state.interactionState);
@@ -64,6 +103,7 @@ export function PrototypeScene() {
             physicsEnabled={physicsEnabled}
           />
         </SceneContents>
+        <PrototypeCameraController controlsRef={controlsRef} />
         <ContactShadows
           blur={2.6}
           color="#6b7b93"

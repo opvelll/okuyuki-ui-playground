@@ -44,6 +44,11 @@ export type ModelingPointerState = {
   position: [number, number, number];
 };
 
+export type CameraSnapshot = {
+  position: [number, number, number];
+  target: [number, number, number];
+};
+
 type PersistedUiState = {
   currentScreen: AppScreen;
   floorFriction: number;
@@ -96,9 +101,11 @@ type PersistedUiState = {
 type UiState = PersistedUiState & {
   axisMagnetTarget: AxisMagnetTarget | null;
   interactionState: InteractionState;
+  modelingCamera: CameraSnapshot;
   modelingPointer: ModelingPointerState;
   modelingCameraDragging: boolean;
   modelingCameraOverride: boolean;
+  prototypeCamera: CameraSnapshot;
   selectedObjectId: string | null;
   completeMoveDrag: () => void;
   clearSelection: () => void;
@@ -153,12 +160,14 @@ type UiState = PersistedUiState & {
   setShowFps: (value: boolean) => void;
   setSettingsOpen: (open: boolean) => void;
   setSuppressObjectRotation: (value: boolean) => void;
+  setModelingCamera: (camera: CameraSnapshot) => void;
   setModelingPointerDepth: (depth: number) => void;
   setModelingCameraDragging: (dragging: boolean) => void;
   setModelingCameraOverride: (active: boolean) => void;
   setModelingPointerHovered: (hovered: boolean) => void;
   setModelingPointerPlane: (plane: ModelingPointerPlane) => void;
   setModelingPointerPosition: (position: [number, number, number]) => void;
+  setPrototypeCamera: (camera: CameraSnapshot) => void;
 };
 
 type ModelingToolState = Pick<
@@ -177,6 +186,16 @@ export function getEffectiveModelingTool(
 }
 
 export const UI_STORE_PERSIST_KEY = "naname-ui-settings";
+
+export const DEFAULT_PROTOTYPE_CAMERA: CameraSnapshot = {
+  position: [6.4, 4.5, 7.8],
+  target: [0, 0, 0],
+};
+
+export const DEFAULT_MODELING_CAMERA: CameraSnapshot = {
+  position: [8.8, 6.4, 9.4],
+  target: [0, 1.1, 0],
+};
 
 export const createDefaultPersistedUiState = (): PersistedUiState => ({
   currentScreen: "prototype",
@@ -280,16 +299,19 @@ const createInitialUiState = (): Omit<
   | "setShowFps"
   | "setSettingsOpen"
   | "setSuppressObjectRotation"
+  | "setModelingCamera"
   | "setModelingPointerDepth"
   | "setModelingCameraDragging"
   | "setModelingCameraOverride"
   | "setModelingPointerHovered"
   | "setModelingPointerPlane"
   | "setModelingPointerPosition"
+  | "setPrototypeCamera"
 > => ({
   ...createDefaultPersistedUiState(),
   axisMagnetTarget: null,
   interactionState: "idle",
+  modelingCamera: DEFAULT_MODELING_CAMERA,
   modelingCameraDragging: false,
   modelingCameraOverride: false,
   modelingPointer: {
@@ -298,6 +320,7 @@ const createInitialUiState = (): Omit<
     plane: "none",
     position: [0, 0, 0],
   },
+  prototypeCamera: DEFAULT_PROTOTYPE_CAMERA,
   selectedObjectId: null,
 });
 
@@ -358,6 +381,7 @@ export const useUiStore = create<UiState>()(
       setMovePrecisionStep: (step) => set({ movePrecisionStep: step }),
       setMoveVerticalDropGuide: (value) =>
         set({ moveVerticalDropGuide: value }),
+      setModelingCamera: (camera) => set({ modelingCamera: camera }),
       setModelingPointerPanelRadius: (value) =>
         set({
           modelingPointerPanelRadius: Math.max(0.2, Math.min(value, 8)),
@@ -462,6 +486,7 @@ export const useUiStore = create<UiState>()(
             position,
           },
         })),
+      setPrototypeCamera: (camera) => set({ prototypeCamera: camera }),
     }),
     {
       name: UI_STORE_PERSIST_KEY,

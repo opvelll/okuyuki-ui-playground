@@ -664,6 +664,45 @@ function ModelingInputController({
   return null;
 }
 
+function ModelingCameraController({
+  controlsRef,
+}: {
+  controlsRef: RefObject<OrbitControlsImpl | null>;
+}) {
+  const { camera } = useThree();
+  const setModelingCamera = useUiStore((state) => state.setModelingCamera);
+
+  useEffect(() => {
+    const controls = controlsRef.current;
+    if (!controls) {
+      return;
+    }
+
+    const { modelingCamera } = useUiStore.getState();
+
+    camera.position.set(...modelingCamera.position);
+    controls.target.set(...modelingCamera.target);
+    controls.update();
+
+    const syncCamera = () => {
+      setModelingCamera({
+        position: [camera.position.x, camera.position.y, camera.position.z],
+        target: [controls.target.x, controls.target.y, controls.target.z],
+      });
+    };
+
+    syncCamera();
+    controls.addEventListener("change", syncCamera);
+
+    return () => {
+      syncCamera();
+      controls.removeEventListener("change", syncCamera);
+    };
+  }, [camera, controlsRef, setModelingCamera]);
+
+  return null;
+}
+
 export function ModelingScene() {
   const modelingCameraDragging = useUiStore(
     (state) => state.modelingCameraDragging,
@@ -733,6 +772,7 @@ export function ModelingScene() {
         <ModelingMesh />
         <ModelingPointer />
         <ModelingInputController controlsRef={controlsRef} />
+        <ModelingCameraController controlsRef={controlsRef} />
         <OrbitControls
           enableDamping={false}
           enabled={effectiveTool === "camera"}
