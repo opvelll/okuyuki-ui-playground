@@ -16,7 +16,7 @@ import {
   Vector3,
 } from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
-import { useUiStore } from "../store/uiStore";
+import { getEffectiveModelingTool, useUiStore } from "../store/uiStore";
 
 const CURSOR_DEPTH_STEP = 0.45;
 const CAMERA_DOLLY_STEP = 0.55;
@@ -42,9 +42,24 @@ function isEditableTarget(target: EventTarget | null) {
 
 function ModelingPointer() {
   const hovered = useUiStore((state) => state.modelingPointer.hovered);
+  const modelingCameraDragging = useUiStore(
+    (state) => state.modelingCameraDragging,
+  );
+  const modelingCameraOverride = useUiStore(
+    (state) => state.modelingCameraOverride,
+  );
+  const modelingPointerVisibleInCameraTool = useUiStore(
+    (state) => state.modelingPointerVisibleInCameraTool,
+  );
+  const modelingTool = useUiStore((state) => state.modelingTool);
   const plane = useUiStore((state) => state.modelingPointer.plane);
   const position = useUiStore((state) => state.modelingPointer.position);
   const panelRadius = useUiStore((state) => state.modelingPointerPanelRadius);
+  const effectiveTool = getEffectiveModelingTool({
+    modelingCameraDragging,
+    modelingCameraOverride,
+    modelingTool,
+  });
   const xAxisLine = useMemo(() => {
     const geometry = new BufferGeometry();
     geometry.setAttribute(
@@ -211,7 +226,10 @@ function ModelingPointer() {
     zAxisLine,
   ]);
 
-  if (!hovered) {
+  if (
+    !hovered ||
+    (effectiveTool === "camera" && !modelingPointerVisibleInCameraTool)
+  ) {
     return null;
   }
 
@@ -267,6 +285,9 @@ function ModelingInputController({
   const setModelingPointerHovered = useUiStore(
     (state) => state.setModelingPointerHovered,
   );
+  const setModelingCameraDragging = useUiStore(
+    (state) => state.setModelingCameraDragging,
+  );
   const setModelingPointerPlane = useUiStore(
     (state) => state.setModelingPointerPlane,
   );
@@ -279,7 +300,7 @@ function ModelingInputController({
     const raycaster = new Raycaster();
     const ndc = new Vector2(0, 0);
     let hasPointer = false;
-    let rightMouseDown = false;
+    let cameraDragButton: number | null = null;
 
     const updatePointerPosition = (
       depth = useUiStore.getState().modelingPointer.depth,
@@ -316,20 +337,27 @@ function ModelingInputController({
 
     const handlePointerLeave = () => {
       hasPointer = false;
-      rightMouseDown = false;
       setModelingPointerHovered(false);
     };
 
     const handlePointerDown = (event: PointerEvent) => {
-      if (event.button === 2) {
-        rightMouseDown = true;
+      const effectiveTool = getEffectiveModelingTool(useUiStore.getState());
+
+      if (
+        effectiveTool === "camera" &&
+        (event.button === 0 || event.button === 2)
+      ) {
+        cameraDragButton = event.button;
+        setModelingCameraDragging(true);
       }
+
       updatePointerFromEvent(event);
     };
 
     const handlePointerUp = (event: PointerEvent) => {
-      if (event.button === 2) {
-        rightMouseDown = false;
+      if (cameraDragButton === event.button) {
+        cameraDragButton = null;
+        setModelingCameraDragging(false);
       }
     };
 
@@ -337,7 +365,7 @@ function ModelingInputController({
       updatePointerFromEvent(event);
       event.preventDefault();
 
-      if (rightMouseDown) {
+      if (getEffectiveModelingTool(useUiStore.getState()) === "camera") {
         const forward = new Vector3();
         camera.getWorldDirection(forward);
         const nextStep =
@@ -406,6 +434,7 @@ function ModelingInputController({
       element.removeEventListener("wheel", handleWheel);
       element.removeEventListener("contextmenu", handleContextMenu);
       window.removeEventListener("keydown", handleKeyDown);
+      setModelingCameraDragging(false);
       setModelingPointerHovered(false);
       clearSelection();
     };
@@ -414,6 +443,7 @@ function ModelingInputController({
     clearSelection,
     controlsRef,
     gl,
+    setModelingCameraDragging,
     setModelingPointerDepth,
     setModelingPointerHovered,
     setModelingPointerPlane,
@@ -424,11 +454,23 @@ function ModelingInputController({
 }
 
 export function ModelingScene() {
+  const modelingCameraDragging = useUiStore(
+    (state) => state.modelingCameraDragging,
+  );
+  const modelingCameraOverride = useUiStore(
+    (state) => state.modelingCameraOverride,
+  );
+  const modelingTool = useUiStore((state) => state.modelingTool);
   const sceneBackgroundColor = useUiStore(
     (state) => state.sceneBackgroundColor,
   );
   const clearSelection = useUiStore((state) => state.clearSelection);
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
+  const effectiveTool = getEffectiveModelingTool({
+    modelingCameraDragging,
+    modelingCameraOverride,
+    modelingTool,
+  });
   const sceneShellBackground = useMemo(() => {
     const base = new Color(sceneBackgroundColor);
     const upper = base.clone().lerp(new Color("#94a3b8"), 0.28);
@@ -486,10 +528,12 @@ export function ModelingScene() {
         <ModelingPointer />
         <ModelingInputController controlsRef={controlsRef} />
         <OrbitControls
+          enabled={effectiveTool === "camera"}
           ref={controlsRef}
           enableDamping={false}
-          enablePan
+          enablePan={effectiveTool === "camera"}
           enableZoom={false}
+          enableRotate={effectiveTool === "camera"}
           mouseButtons={{
             LEFT: MOUSE.ROTATE,
             MIDDLE: MOUSE.PAN,

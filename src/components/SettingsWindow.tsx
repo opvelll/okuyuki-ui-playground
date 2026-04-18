@@ -1,5 +1,6 @@
 import { useState } from "react";
 import {
+  type ModelingTool,
   type MoveAlwaysSnapMode,
   type MoveAxisMagnetReferenceFrame,
   type MoveDepthWheelDirection,
@@ -14,7 +15,7 @@ import {
 } from "../store/uiStore";
 
 const panelClasses =
-  "absolute left-3 right-3 top-72 z-20 w-auto overflow-hidden rounded-[1.4rem] border border-white/15 bg-slate-950/72 shadow-[0_22px_48px_rgba(3,10,20,0.34)] backdrop-blur-xl md:left-auto md:right-4 md:top-4 md:w-[min(28rem,calc(100vw-2rem))]";
+  "absolute left-3 right-3 top-48 z-20 w-auto overflow-hidden rounded-[1.4rem] border border-white/15 bg-slate-950/72 shadow-[0_22px_48px_rgba(3,10,20,0.34)] backdrop-blur-xl md:left-auto md:right-4 md:top-4 md:w-[min(28rem,calc(100vw-2rem))]";
 const sectionHeadingClasses =
   "text-[0.68rem] font-bold uppercase tracking-[0.16em] text-sky-100/70";
 const fieldClasses =
@@ -90,6 +91,11 @@ const rigidBodyOptions = [
   { label: "Kinematic", value: "kinematicPosition" },
 ] as const;
 
+const modelingToolOptions = [
+  { label: "3D pointer", value: "pointer" },
+  { label: "camera move", value: "camera" },
+] as const;
+
 const isOverlayDisplayMode = (value: string): value is MoveOverlayDisplayMode =>
   overlayDisplayOptions.some((option) => option.value === value);
 
@@ -120,6 +126,9 @@ const isRotateDragReleaseBehavior = (
 
 const isRigidBodyType = (value: string): value is PhysicsRigidBodyType =>
   rigidBodyOptions.some((option) => option.value === value);
+
+const isModelingTool = (value: string): value is ModelingTool =>
+  modelingToolOptions.some((option) => option.value === value);
 
 const parseNumberInput = (value: string) => {
   const parsedValue = Number(value);
@@ -266,6 +275,10 @@ export function SettingsWindow() {
   const modelingPointerPanelRadius = useUiStore(
     (state) => state.modelingPointerPanelRadius,
   );
+  const modelingPointerVisibleInCameraTool = useUiStore(
+    (state) => state.modelingPointerVisibleInCameraTool,
+  );
+  const modelingTool = useUiStore((state) => state.modelingTool);
   const objectAngularDamping = useUiStore(
     (state) => state.objectAngularDamping,
   );
@@ -355,6 +368,10 @@ export function SettingsWindow() {
   const setModelingPointerPanelRadius = useUiStore(
     (state) => state.setModelingPointerPanelRadius,
   );
+  const setModelingPointerVisibleInCameraTool = useUiStore(
+    (state) => state.setModelingPointerVisibleInCameraTool,
+  );
+  const setModelingTool = useUiStore((state) => state.setModelingTool);
   const setObjectAngularDamping = useUiStore(
     (state) => state.setObjectAngularDamping,
   );
@@ -1049,8 +1066,41 @@ export function SettingsWindow() {
                   Modeling
                 </h2>
                 <SectionNote>
-                  Modeling: 3D mouse pointer の面サイズと表示感を調整します。
+                  Modeling: pointer tool と camera tool の既定挙動を調整します。
                 </SectionNote>
+                <label
+                  className="grid gap-2 text-sm text-slate-100/90"
+                  htmlFor="modeling-default-tool"
+                >
+                  <span>Default Tool / 既定ツール</span>
+                  <select
+                    className={fieldClasses}
+                    id="modeling-default-tool"
+                    onChange={(event) => {
+                      const nextTool = event.target.value;
+                      if (isModelingTool(nextTool)) {
+                        setModelingTool(nextTool);
+                      }
+                    }}
+                    value={modelingTool}
+                  >
+                    {modelingToolOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <span className={fieldHintClasses}>
+                    左上 toolbar で切り替える通常ツール。Space 一時切替の起点は
+                    pointer tool です。
+                  </span>
+                </label>
+                <ToggleField
+                  checked={modelingPointerVisibleInCameraTool}
+                  id="modeling-pointer-visible-in-camera-tool"
+                  label="Pointer Visible In Camera Tool / カメラツールでも表示"
+                  onChange={setModelingPointerVisibleInCameraTool}
+                />
                 <NumberField
                   hint="Pointer Panel Radius / 3D ポインタ面の半径。目安 0.4-1.6。"
                   id="modeling-pointer-panel-radius"

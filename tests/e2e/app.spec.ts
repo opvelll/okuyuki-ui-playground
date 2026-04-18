@@ -123,12 +123,18 @@ test("switches to the modeling screen", async ({ page }) => {
     page.getByText("Modeling Screen", { exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByText(/hover to show the 3D mouse pointer/i),
+    page.getByText(/Pointer tool: hover to move the 3D pointer/i),
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: /Switch to Modeling screen/i }),
   ).toHaveAttribute("aria-pressed", "true");
   await expect(
     page.getByRole("button", { name: /Switch to Prototype screen/i }),
+  ).toHaveAttribute("aria-pressed", "false");
+  await expect(
+    page.getByRole("button", { name: /Switch to 3D Pointer tool/i }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await expect(
+    page.getByRole("button", { name: /Switch to Camera Move tool/i }),
   ).toHaveAttribute("aria-pressed", "false");
 });

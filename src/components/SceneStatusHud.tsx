@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useUiStore } from "../store/uiStore";
+import { getEffectiveModelingTool, useUiStore } from "../store/uiStore";
 
 const OVERLAY_DISPLAY_LABELS = {
   "mode-1": "1",
@@ -42,10 +42,20 @@ export function SceneStatusHud() {
   const currentScreen = useUiStore((state) => state.currentScreen);
   const interactionMode = useUiStore((state) => state.interactionMode);
   const interactionState = useUiStore((state) => state.interactionState);
+  const modelingCameraDragging = useUiStore(
+    (state) => state.modelingCameraDragging,
+  );
+  const modelingCameraOverride = useUiStore(
+    (state) => state.modelingCameraOverride,
+  );
   const modelingPointer = useUiStore((state) => state.modelingPointer);
   const modelingPointerPanelRadius = useUiStore(
     (state) => state.modelingPointerPanelRadius,
   );
+  const modelingPointerVisibleInCameraTool = useUiStore(
+    (state) => state.modelingPointerVisibleInCameraTool,
+  );
+  const modelingTool = useUiStore((state) => state.modelingTool);
   const moveDepthWheelDirection = useUiStore(
     (state) => state.moveDepthWheelDirection,
   );
@@ -84,10 +94,17 @@ export function SceneStatusHud() {
   );
   const selectedObjectId = useUiStore((state) => state.selectedObjectId);
   const showFps = useUiStore((state) => state.showFps);
+  const effectiveModelingTool = getEffectiveModelingTool({
+    modelingCameraDragging,
+    modelingCameraOverride,
+    modelingTool,
+  });
 
   const helperText =
     currentScreen === "modeling"
-      ? "Modeling screen: hover to show the 3D mouse pointer, use the wheel for cursor depth, hold right click while using the wheel for camera dolly, and switch cursor planes with 1, 2, 3."
+      ? effectiveModelingTool === "camera"
+        ? "Camera tool: left drag rotates, wheel dollies, right drag slides, and releasing Space after starting a drag keeps camera control until the drag ends."
+        : "Pointer tool: hover to move the 3D pointer, use the wheel for cursor depth, hold Space for temporary camera control, and switch cursor planes with 1, 2, 3."
       : interactionMode === "move"
         ? physicsEnabled
           ? selectedObjectId
@@ -152,8 +169,23 @@ export function SceneStatusHud() {
         {currentScreen === "modeling" ? (
           <>
             <div className="grid grid-cols-[5rem_1fr] gap-3">
+              <dt className="text-slate-300/70">Tool</dt>
+              <dd>
+                {effectiveModelingTool}
+                {modelingTool === "pointer" && modelingCameraOverride
+                  ? " (space)"
+                  : ""}
+              </dd>
+            </div>
+            <div className="grid grid-cols-[5rem_1fr] gap-3">
               <dt className="text-slate-300/70">Pointer</dt>
-              <dd>{modelingPointer.hovered ? "visible" : "hidden"}</dd>
+              <dd>
+                {modelingPointer.hovered &&
+                (effectiveModelingTool === "pointer" ||
+                  modelingPointerVisibleInCameraTool)
+                  ? "visible"
+                  : "hidden"}
+              </dd>
             </div>
             <div className="grid grid-cols-[5rem_1fr] gap-3">
               <dt className="text-slate-300/70">Depth</dt>

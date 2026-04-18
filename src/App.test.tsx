@@ -51,6 +51,8 @@ describe("App", () => {
       ...createDefaultPersistedUiState(),
       axisMagnetTarget: null,
       interactionState: "idle",
+      modelingCameraDragging: false,
+      modelingCameraOverride: false,
       modelingPointer: {
         depth: 8,
         hovered: false,
@@ -152,14 +154,17 @@ describe("App", () => {
 
     expect(screen.getAllByText(/Modeling Screen/i)).not.toHaveLength(0);
     expect(
-      screen.getByText(/hover to show the 3D mouse pointer/i),
+      screen.getByText(/Pointer tool: hover to move the 3D pointer/i),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /Switch to Modeling screen/i }),
     ).toHaveAttribute("aria-pressed", "true");
     expect(
-      screen.queryByRole("button", { name: /Switch to Move UI tool/i }),
-    ).not.toBeInTheDocument();
+      screen.getByRole("button", { name: /Switch to 3D Pointer tool/i }),
+    ).toHaveAttribute("aria-pressed", "true");
+    expect(
+      screen.getByRole("button", { name: /Switch to Camera Move tool/i }),
+    ).toHaveAttribute("aria-pressed", "false");
   });
 
   it("collapses the settings window while the scene is loading", async () => {
@@ -381,6 +386,52 @@ describe("App", () => {
     expect(
       screen.getByLabelText(/Pointer Panel Radius \/ 面の半径/i),
     ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(
+        /Pointer Visible In Camera Tool \/ カメラツールでも表示/i,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("switches the modeling tool from the left toolbar", async () => {
+    const user = userEvent.setup();
+    const App = await loadApp();
+
+    render(<App />);
+
+    await user.click(
+      screen.getByRole("button", { name: /Switch to Modeling screen/i }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: /Switch to Camera Move tool/i }),
+    );
+
+    expect(screen.getByText(/Camera tool:/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Switch to Camera Move tool/i }),
+    ).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("temporarily switches modeling controls while space is held", async () => {
+    const user = userEvent.setup();
+    const App = await loadApp();
+
+    render(<App />);
+
+    await user.click(
+      screen.getByRole("button", { name: /Switch to Modeling screen/i }),
+    );
+    await user.keyboard("[Space>]");
+
+    expect(
+      screen.getByRole("button", { name: /Switch to Camera Move tool/i }),
+    ).toHaveAttribute("aria-pressed", "true");
+
+    await user.keyboard("[/Space]");
+
+    expect(
+      screen.getByRole("button", { name: /Switch to 3D Pointer tool/i }),
+    ).toHaveAttribute("aria-pressed", "true");
   });
 
   it("persists move snap settings", async () => {

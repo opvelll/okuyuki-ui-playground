@@ -5,6 +5,7 @@ export type MoveDepthWheelDirection = "normal" | "inverted";
 export type InteractionState = "idle" | "active" | "dragging";
 export type InteractionMode = "move" | "rotate";
 export type AppScreen = "prototype" | "modeling";
+export type ModelingTool = "pointer" | "camera";
 export type MoveAlwaysSnapMode = "off" | "axis-magnet" | "grid";
 export type MoveAxisMagnetReferenceFrame = "local" | "world";
 export type MoveGridSnapPattern = "xyz" | "xz";
@@ -62,6 +63,8 @@ type PersistedUiState = {
   movePrecisionStep: number;
   moveVerticalDropGuide: boolean;
   modelingPointerPanelRadius: number;
+  modelingPointerVisibleInCameraTool: boolean;
+  modelingTool: ModelingTool;
   objectAngularDamping: number;
   objectFriction: number;
   objectLinearDamping: number;
@@ -93,6 +96,8 @@ type UiState = PersistedUiState & {
   axisMagnetTarget: AxisMagnetTarget | null;
   interactionState: InteractionState;
   modelingPointer: ModelingPointerState;
+  modelingCameraDragging: boolean;
+  modelingCameraOverride: boolean;
   selectedObjectId: string | null;
   completeMoveDrag: () => void;
   clearSelection: () => void;
@@ -120,6 +125,8 @@ type UiState = PersistedUiState & {
   setMovePrecisionStep: (step: number) => void;
   setMoveVerticalDropGuide: (value: boolean) => void;
   setModelingPointerPanelRadius: (value: number) => void;
+  setModelingPointerVisibleInCameraTool: (value: boolean) => void;
+  setModelingTool: (tool: ModelingTool) => void;
   setObjectAngularDamping: (value: number) => void;
   setObjectFriction: (value: number) => void;
   setObjectLinearDamping: (value: number) => void;
@@ -146,10 +153,27 @@ type UiState = PersistedUiState & {
   setSettingsOpen: (open: boolean) => void;
   setSuppressObjectRotation: (value: boolean) => void;
   setModelingPointerDepth: (depth: number) => void;
+  setModelingCameraDragging: (dragging: boolean) => void;
+  setModelingCameraOverride: (active: boolean) => void;
   setModelingPointerHovered: (hovered: boolean) => void;
   setModelingPointerPlane: (plane: ModelingPointerPlane) => void;
   setModelingPointerPosition: (position: [number, number, number]) => void;
 };
+
+type ModelingToolState = Pick<
+  UiState,
+  "modelingCameraDragging" | "modelingCameraOverride" | "modelingTool"
+>;
+
+export function getEffectiveModelingTool(
+  state: ModelingToolState,
+): ModelingTool {
+  return state.modelingTool === "camera" ||
+    state.modelingCameraOverride ||
+    state.modelingCameraDragging
+    ? "camera"
+    : "pointer";
+}
 
 export const UI_STORE_PERSIST_KEY = "naname-ui-settings";
 
@@ -176,6 +200,8 @@ export const createDefaultPersistedUiState = (): PersistedUiState => ({
   movePrecisionStep: 0.1,
   moveVerticalDropGuide: true,
   modelingPointerPanelRadius: 0.72,
+  modelingPointerVisibleInCameraTool: false,
+  modelingTool: "pointer",
   objectAngularDamping: 0.9,
   objectFriction: 0.9,
   objectLinearDamping: 0.45,
@@ -226,6 +252,8 @@ const createInitialUiState = (): Omit<
   | "setMovePrecisionStep"
   | "setMoveVerticalDropGuide"
   | "setModelingPointerPanelRadius"
+  | "setModelingPointerVisibleInCameraTool"
+  | "setModelingTool"
   | "setObjectAngularDamping"
   | "setObjectFriction"
   | "setObjectLinearDamping"
@@ -252,6 +280,8 @@ const createInitialUiState = (): Omit<
   | "setSettingsOpen"
   | "setSuppressObjectRotation"
   | "setModelingPointerDepth"
+  | "setModelingCameraDragging"
+  | "setModelingCameraOverride"
   | "setModelingPointerHovered"
   | "setModelingPointerPlane"
   | "setModelingPointerPosition"
@@ -259,6 +289,8 @@ const createInitialUiState = (): Omit<
   ...createDefaultPersistedUiState(),
   axisMagnetTarget: null,
   interactionState: "idle",
+  modelingCameraDragging: false,
+  modelingCameraOverride: false,
   modelingPointer: {
     depth: 8,
     hovered: false,
@@ -295,6 +327,8 @@ export const useUiStore = create<UiState>()(
           axisMagnetTarget: null,
           currentScreen: screen,
           interactionState: "idle",
+          modelingCameraDragging: false,
+          modelingCameraOverride: false,
           selectedObjectId: null,
         }),
       setAxisMagnetTarget: (target) => set({ axisMagnetTarget: target }),
@@ -326,6 +360,14 @@ export const useUiStore = create<UiState>()(
       setModelingPointerPanelRadius: (value) =>
         set({
           modelingPointerPanelRadius: Math.max(0.2, Math.min(value, 8)),
+        }),
+      setModelingPointerVisibleInCameraTool: (value) =>
+        set({ modelingPointerVisibleInCameraTool: value }),
+      setModelingTool: (tool) =>
+        set({
+          modelingCameraDragging: false,
+          modelingCameraOverride: false,
+          modelingTool: tool,
         }),
       setObjectAngularDamping: (value) => set({ objectAngularDamping: value }),
       setObjectFriction: (value) => set({ objectFriction: value }),
@@ -394,6 +436,10 @@ export const useUiStore = create<UiState>()(
             depth: Math.max(0.5, Math.min(depth, 48)),
           },
         })),
+      setModelingCameraDragging: (dragging) =>
+        set({ modelingCameraDragging: dragging }),
+      setModelingCameraOverride: (active) =>
+        set({ modelingCameraOverride: active }),
       setModelingPointerHovered: (hovered) =>
         set((state) => ({
           modelingPointer: {
@@ -442,6 +488,9 @@ export const useUiStore = create<UiState>()(
         movePrecisionStep: state.movePrecisionStep,
         moveVerticalDropGuide: state.moveVerticalDropGuide,
         modelingPointerPanelRadius: state.modelingPointerPanelRadius,
+        modelingPointerVisibleInCameraTool:
+          state.modelingPointerVisibleInCameraTool,
+        modelingTool: state.modelingTool,
         objectAngularDamping: state.objectAngularDamping,
         objectFriction: state.objectFriction,
         objectLinearDamping: state.objectLinearDamping,
