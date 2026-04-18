@@ -51,6 +51,12 @@ describe("App", () => {
       ...createDefaultPersistedUiState(),
       axisMagnetTarget: null,
       interactionState: "idle",
+      modelingPointer: {
+        depth: 8,
+        hovered: false,
+        plane: "none",
+        position: [0, 0, 0],
+      },
       selectedObjectId: null,
     });
     useSceneStore.getState().resetScene();
@@ -70,6 +76,12 @@ describe("App", () => {
     expect(
       screen.getByRole("button", { name: /Expand settings/i }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Switch to Prototype screen/i }),
+    ).toHaveAttribute("aria-pressed", "true");
+    expect(
+      screen.getByRole("button", { name: /Switch to Modeling screen/i }),
+    ).toHaveAttribute("aria-pressed", "false");
     expect(screen.getAllByRole("button", { name: /Move UI/i })).toHaveLength(1);
     expect(
       screen.getByRole("button", { name: /Switch to Rotate UI tool/i }),
@@ -97,6 +109,9 @@ describe("App", () => {
     expect(
       screen.getByRole("button", { name: /物理演算/i }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Modeling modeling pointer/i }),
+    ).toBeInTheDocument();
 
     await expandGeneralColors(user);
 
@@ -123,6 +138,28 @@ describe("App", () => {
     expect(
       screen.getByText(/Preparing the 3D prototype scene/i),
     ).toBeInTheDocument();
+  });
+
+  it("switches to the modeling screen from the header navigation", async () => {
+    const user = userEvent.setup();
+    const App = await loadApp();
+
+    render(<App />);
+
+    await user.click(
+      screen.getByRole("button", { name: /Switch to Modeling screen/i }),
+    );
+
+    expect(screen.getAllByText(/Modeling Screen/i)).not.toHaveLength(0);
+    expect(
+      screen.getByText(/hover to show the 3D mouse pointer/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Switch to Modeling screen/i }),
+    ).toHaveAttribute("aria-pressed", "true");
+    expect(
+      screen.queryByRole("button", { name: /Switch to Move UI tool/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("collapses the settings window while the scene is loading", async () => {
@@ -327,6 +364,22 @@ describe("App", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByLabelText(/Magnet Axis Space \/ 軸吸着の基準/i),
+    ).toBeInTheDocument();
+  });
+
+  it("shows modeling pointer settings when the modeling section is selected", async () => {
+    const user = userEvent.setup();
+    const App = await loadApp();
+
+    render(<App />);
+
+    await expandSettings(user);
+    await user.click(
+      screen.getByRole("button", { name: /Modeling modeling pointer/i }),
+    );
+
+    expect(
+      screen.getByLabelText(/Pointer Panel Radius \/ 面の半径/i),
     ).toBeInTheDocument();
   });
 

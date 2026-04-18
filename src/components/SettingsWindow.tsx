@@ -32,6 +32,7 @@ const settingsMenuItems = [
   { description: "rapier tuning", key: "physics", label: "物理演算" },
   { description: "screen-depth drag", key: "move-ui", label: "Move UI" },
   { description: "arcball rotate", key: "rotate-ui", label: "Rotate UI" },
+  { description: "modeling pointer", key: "modeling-ui", label: "Modeling" },
 ] as const satisfies ReadonlyArray<{
   description: string;
   key: SettingsMenu;
@@ -262,6 +263,9 @@ export function SettingsWindow() {
   const moveVerticalDropGuide = useUiStore(
     (state) => state.moveVerticalDropGuide,
   );
+  const modelingPointerPanelRadius = useUiStore(
+    (state) => state.modelingPointerPanelRadius,
+  );
   const objectAngularDamping = useUiStore(
     (state) => state.objectAngularDamping,
   );
@@ -347,6 +351,9 @@ export function SettingsWindow() {
   );
   const setMoveVerticalDropGuide = useUiStore(
     (state) => state.setMoveVerticalDropGuide,
+  );
+  const setModelingPointerPanelRadius = useUiStore(
+    (state) => state.setModelingPointerPanelRadius,
   );
   const setObjectAngularDamping = useUiStore(
     (state) => state.setObjectAngularDamping,
@@ -1031,6 +1038,29 @@ export function SettingsWindow() {
                     twist を追従させるローカル基準軸。通常は +Y 推奨です。
                   </span>
                 </label>
+              </section>
+            ) : null}
+            {selectedSettingsMenu === "modeling-ui" ? (
+              <section
+                aria-labelledby="modeling-settings"
+                className="grid gap-3"
+              >
+                <h2 className={sectionHeadingClasses} id="modeling-settings">
+                  Modeling
+                </h2>
+                <SectionNote>
+                  Modeling: 3D mouse pointer の面サイズと表示感を調整します。
+                </SectionNote>
+                <NumberField
+                  hint="Pointer Panel Radius / 3D ポインタ面の半径。目安 0.4-1.6。"
+                  id="modeling-pointer-panel-radius"
+                  label="Pointer Panel Radius / 面の半径"
+                  max="8"
+                  min="0.2"
+                  onChange={handleNumberChange(setModelingPointerPanelRadius)}
+                  step="0.05"
+                  value={modelingPointerPanelRadius}
+                />
               </section>
             ) : null}
           </div>

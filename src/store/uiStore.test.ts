@@ -7,6 +7,12 @@ describe("uiStore", () => {
       ...createDefaultPersistedUiState(),
       axisMagnetTarget: null,
       interactionState: "idle",
+      modelingPointer: {
+        depth: 8,
+        hovered: false,
+        plane: "none",
+        position: [0, 0, 0],
+      },
       selectedObjectId: null,
     });
   });
@@ -80,5 +86,19 @@ describe("uiStore", () => {
       direction: "negative",
       objectId: "amber-box",
     });
+  });
+
+  it("clears selection when switching screens", () => {
+    useUiStore.setState({
+      currentScreen: "prototype",
+      interactionState: "active",
+      selectedObjectId: "amber-box",
+    });
+
+    useUiStore.getState().setCurrentScreen("modeling");
+
+    expect(useUiStore.getState().currentScreen).toBe("modeling");
+    expect(useUiStore.getState().selectedObjectId).toBeNull();
+    expect(useUiStore.getState().interactionState).toBe("idle");
   });
 });

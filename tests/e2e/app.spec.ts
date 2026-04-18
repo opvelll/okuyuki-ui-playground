@@ -20,6 +20,12 @@ test("shows the 3d prototype screen", async ({ page }) => {
   await expect(
     page.getByRole("button", { name: /Expand settings/i }),
   ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /Switch to Prototype screen/i }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await expect(
+    page.getByRole("button", { name: /Switch to Modeling screen/i }),
+  ).toBeVisible();
   await expect(page.getByLabel("Scene loading")).toBeVisible();
   await expect(
     page.getByRole("button", { name: /Switch to Move UI tool/i }),
@@ -43,6 +49,9 @@ test("shows the 3d prototype screen", async ({ page }) => {
   await expect(page.getByLabel("Show FPS / FPS表示")).toBeVisible();
   await expect(page.getByRole("button", { name: /全体/i })).toBeVisible();
   await expect(page.getByRole("button", { name: /物理演算/i })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /Modeling modeling pointer/i }),
+  ).toBeVisible();
   await expect(
     page.getByRole("button", { name: /Move UI screen-depth drag/i }),
   ).toBeVisible();
@@ -101,4 +110,25 @@ test("switches tool mode and opens rotate settings", async ({ page }) => {
   await expect(page.getByLabel("UI Radius Px")).toBeVisible();
   await expect(page.getByLabel("Wheel Rotate Step")).toBeVisible();
   await expect(page.getByLabel("Twist Axis")).toBeVisible();
+});
+
+test("switches to the modeling screen", async ({ page }) => {
+  await page.goto("/");
+
+  await page
+    .getByRole("button", { name: /Switch to Modeling screen/i })
+    .click();
+
+  await expect(
+    page.getByText("Modeling Screen", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText(/hover to show the 3D mouse pointer/i),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /Switch to Modeling screen/i }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await expect(
+    page.getByRole("button", { name: /Switch to Prototype screen/i }),
+  ).toHaveAttribute("aria-pressed", "false");
 });

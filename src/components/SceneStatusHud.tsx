@@ -39,8 +39,13 @@ const ROTATE_TWIST_AXIS_LABELS = {
 export function SceneStatusHud() {
   const [fps, setFps] = useState(0);
   const axisMagnetTarget = useUiStore((state) => state.axisMagnetTarget);
+  const currentScreen = useUiStore((state) => state.currentScreen);
   const interactionMode = useUiStore((state) => state.interactionMode);
   const interactionState = useUiStore((state) => state.interactionState);
+  const modelingPointer = useUiStore((state) => state.modelingPointer);
+  const modelingPointerPanelRadius = useUiStore(
+    (state) => state.modelingPointerPanelRadius,
+  );
   const moveDepthWheelDirection = useUiStore(
     (state) => state.moveDepthWheelDirection,
   );
@@ -81,17 +86,19 @@ export function SceneStatusHud() {
   const showFps = useUiStore((state) => state.showFps);
 
   const helperText =
-    interactionMode === "move"
-      ? physicsEnabled
-        ? selectedObjectId
-          ? "Physics enabled: drag to move on the screen plane and use the wheel for depth. Released objects rejoin the simulation."
-          : "Physics enabled: select an object to start screen-depth-drag editing."
+    currentScreen === "modeling"
+      ? "Modeling screen: hover to show the 3D mouse pointer, use the wheel for cursor depth, hold right click while using the wheel for camera dolly, and switch cursor planes with 1, 2, 3."
+      : interactionMode === "move"
+        ? physicsEnabled
+          ? selectedObjectId
+            ? "Physics enabled: drag to move on the screen plane and use the wheel for depth. Released objects rejoin the simulation."
+            : "Physics enabled: select an object to start screen-depth-drag editing."
+          : selectedObjectId
+            ? "Drag to move on screen plane. Wheel changes camera depth. Shift reduces wheel depth step, Ctrl magnetizes one axis to another object, and Shift + Ctrl applies interval snap. Move UI settings can keep either axis or interval snapping always on."
+            : "Select an object to start screen-depth-drag editing."
         : selectedObjectId
-          ? "Drag to move on screen plane. Wheel changes camera depth. Shift reduces wheel depth step, Ctrl magnetizes one axis to another object, and Shift + Ctrl applies interval snap. Move UI settings can keep either axis or interval snapping always on."
-          : "Select an object to start screen-depth-drag editing."
-      : selectedObjectId
-        ? "Rotate mode: drag the sphere gizmo for arcball rotation, hold Ctrl to snap the arc to an XYZ ring, hold Ctrl + Shift for fixed-angle snap, and use the wheel for twist. Selection is cleared by clicking empty space, pressing Escape, or switching to Move UI."
-        : "Rotate mode: select an object to show the sphere gizmo.";
+          ? "Rotate mode: drag the sphere gizmo for arcball rotation, hold Ctrl to snap the arc to an XYZ ring, hold Ctrl + Shift for fixed-angle snap, and use the wheel for twist. Selection is cleared by clicking empty space, pressing Escape, or switching to Move UI."
+          : "Rotate mode: select an object to show the sphere gizmo.";
 
   useEffect(() => {
     let animationFrameId = 0;
@@ -121,16 +128,20 @@ export function SceneStatusHud() {
   return (
     <aside className="pointer-events-none absolute bottom-3 left-3 z-10 max-w-[min(24rem,calc(100vw-3rem))] rounded-[1.35rem] border border-white/12 bg-slate-950/68 px-4 py-3 text-slate-50 shadow-[0_18px_40px_rgba(3,10,20,0.3)] backdrop-blur-xl md:bottom-4 md:left-4 md:z-20">
       <p className="text-[0.68rem] font-bold uppercase tracking-[0.18em] text-sky-100/70">
-        {interactionMode === "move" ? "Object Move" : "Object Rotate"}
+        {currentScreen === "modeling"
+          ? "Modeling Screen"
+          : interactionMode === "move"
+            ? "Object Move"
+            : "Object Rotate"}
       </p>
       <dl className="mt-2 grid gap-2 text-sm">
         <div className="grid grid-cols-[5rem_1fr] gap-3">
-          <dt className="text-slate-300/70">Selected</dt>
-          <dd>{selectedObjectId ?? "none"}</dd>
+          <dt className="text-slate-300/70">Screen</dt>
+          <dd>{currentScreen}</dd>
         </div>
         <div className="grid grid-cols-[5rem_1fr] gap-3">
-          <dt className="text-slate-300/70">State</dt>
-          <dd>{interactionState}</dd>
+          <dt className="text-slate-300/70">Selected</dt>
+          <dd>{selectedObjectId ?? "none"}</dd>
         </div>
         {showFps ? (
           <div className="grid grid-cols-[5rem_1fr] gap-3">
@@ -138,7 +149,38 @@ export function SceneStatusHud() {
             <dd>{fps}</dd>
           </div>
         ) : null}
-        {interactionMode === "move" ? (
+        {currentScreen === "modeling" ? (
+          <>
+            <div className="grid grid-cols-[5rem_1fr] gap-3">
+              <dt className="text-slate-300/70">Pointer</dt>
+              <dd>{modelingPointer.hovered ? "visible" : "hidden"}</dd>
+            </div>
+            <div className="grid grid-cols-[5rem_1fr] gap-3">
+              <dt className="text-slate-300/70">Depth</dt>
+              <dd>{modelingPointer.depth.toFixed(2)}</dd>
+            </div>
+            <div className="grid grid-cols-[5rem_1fr] gap-3">
+              <dt className="text-slate-300/70">Plane</dt>
+              <dd>{modelingPointer.plane}</dd>
+            </div>
+            <div className="grid grid-cols-[5rem_1fr] gap-3">
+              <dt className="text-slate-300/70">Radius</dt>
+              <dd>{modelingPointerPanelRadius.toFixed(2)}</dd>
+            </div>
+            <div className="grid grid-cols-[5rem_1fr] gap-3">
+              <dt className="text-slate-300/70">Position</dt>
+              <dd>
+                {modelingPointer.position
+                  .map((value) => value.toFixed(2))
+                  .join(", ")}
+              </dd>
+            </div>
+            <div className="grid grid-cols-[5rem_1fr] gap-3">
+              <dt className="text-slate-300/70">State</dt>
+              <dd>{interactionState}</dd>
+            </div>
+          </>
+        ) : interactionMode === "move" ? (
           <>
             <div className="grid grid-cols-[5rem_1fr] gap-3">
               <dt className="text-slate-300/70">Depth</dt>

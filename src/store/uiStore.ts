@@ -4,6 +4,7 @@ import { createJSONStorage, persist } from "zustand/middleware";
 export type MoveDepthWheelDirection = "normal" | "inverted";
 export type InteractionState = "idle" | "active" | "dragging";
 export type InteractionMode = "move" | "rotate";
+export type AppScreen = "prototype" | "modeling";
 export type MoveAlwaysSnapMode = "off" | "axis-magnet" | "grid";
 export type MoveAxisMagnetReferenceFrame = "local" | "world";
 export type MoveGridSnapPattern = "xyz" | "xz";
@@ -20,15 +21,29 @@ export type MoveOverlayDisplayMode =
 export type RotateWheelDirection = "normal" | "reverse";
 export type RotateTwistAxis = "+x" | "+y" | "+z";
 export type RotateDragReleaseBehavior = "keep-selected" | "clear-selection";
-export type SettingsMenu = "general" | "physics" | "move-ui" | "rotate-ui";
+export type SettingsMenu =
+  | "general"
+  | "physics"
+  | "move-ui"
+  | "rotate-ui"
+  | "modeling-ui";
 export type PhysicsRigidBodyType = "dynamic" | "fixed" | "kinematicPosition";
+export type ModelingPointerPlane = "none" | "horizontal" | "vertical";
 export type AxisMagnetTarget = {
   axis: "x" | "y" | "z";
   direction: "negative" | "positive";
   objectId: string;
 };
 
+export type ModelingPointerState = {
+  depth: number;
+  hovered: boolean;
+  plane: ModelingPointerPlane;
+  position: [number, number, number];
+};
+
 type PersistedUiState = {
+  currentScreen: AppScreen;
   floorFriction: number;
   floorColor: string;
   gridMajorColor: string;
@@ -46,6 +61,7 @@ type PersistedUiState = {
   moveOverlayRadiusMultiplier: number;
   movePrecisionStep: number;
   moveVerticalDropGuide: boolean;
+  modelingPointerPanelRadius: number;
   objectAngularDamping: number;
   objectFriction: number;
   objectLinearDamping: number;
@@ -76,10 +92,12 @@ type PersistedUiState = {
 type UiState = PersistedUiState & {
   axisMagnetTarget: AxisMagnetTarget | null;
   interactionState: InteractionState;
+  modelingPointer: ModelingPointerState;
   selectedObjectId: string | null;
   completeMoveDrag: () => void;
   clearSelection: () => void;
   selectObject: (objectId: string) => void;
+  setCurrentScreen: (screen: AppScreen) => void;
   setAxisMagnetTarget: (target: AxisMagnetTarget | null) => void;
   setFloorFriction: (value: number) => void;
   setFloorColor: (value: string) => void;
@@ -101,6 +119,7 @@ type UiState = PersistedUiState & {
   setMoveOverlayRadiusMultiplier: (multiplier: number) => void;
   setMovePrecisionStep: (step: number) => void;
   setMoveVerticalDropGuide: (value: boolean) => void;
+  setModelingPointerPanelRadius: (value: number) => void;
   setObjectAngularDamping: (value: number) => void;
   setObjectFriction: (value: number) => void;
   setObjectLinearDamping: (value: number) => void;
@@ -126,11 +145,16 @@ type UiState = PersistedUiState & {
   setShowFps: (value: boolean) => void;
   setSettingsOpen: (open: boolean) => void;
   setSuppressObjectRotation: (value: boolean) => void;
+  setModelingPointerDepth: (depth: number) => void;
+  setModelingPointerHovered: (hovered: boolean) => void;
+  setModelingPointerPlane: (plane: ModelingPointerPlane) => void;
+  setModelingPointerPosition: (position: [number, number, number]) => void;
 };
 
 export const UI_STORE_PERSIST_KEY = "naname-ui-settings";
 
 export const createDefaultPersistedUiState = (): PersistedUiState => ({
+  currentScreen: "prototype",
   floorFriction: 1.1,
   floorColor: "#d9dee7",
   gridMajorColor: "#8d99ae",
@@ -151,6 +175,7 @@ export const createDefaultPersistedUiState = (): PersistedUiState => ({
   moveOverlayRadiusMultiplier: 1.15,
   movePrecisionStep: 0.1,
   moveVerticalDropGuide: true,
+  modelingPointerPanelRadius: 0.72,
   objectAngularDamping: 0.9,
   objectFriction: 0.9,
   objectLinearDamping: 0.45,
@@ -180,6 +205,7 @@ const createInitialUiState = (): Omit<
   | "completeMoveDrag"
   | "clearSelection"
   | "selectObject"
+  | "setCurrentScreen"
   | "setAxisMagnetTarget"
   | "setFloorFriction"
   | "setFloorColor"
@@ -199,6 +225,7 @@ const createInitialUiState = (): Omit<
   | "setMoveOverlayRadiusMultiplier"
   | "setMovePrecisionStep"
   | "setMoveVerticalDropGuide"
+  | "setModelingPointerPanelRadius"
   | "setObjectAngularDamping"
   | "setObjectFriction"
   | "setObjectLinearDamping"
@@ -224,10 +251,20 @@ const createInitialUiState = (): Omit<
   | "setShowFps"
   | "setSettingsOpen"
   | "setSuppressObjectRotation"
+  | "setModelingPointerDepth"
+  | "setModelingPointerHovered"
+  | "setModelingPointerPlane"
+  | "setModelingPointerPosition"
 > => ({
   ...createDefaultPersistedUiState(),
   axisMagnetTarget: null,
   interactionState: "idle",
+  modelingPointer: {
+    depth: 8,
+    hovered: false,
+    plane: "none",
+    position: [0, 0, 0],
+  },
   selectedObjectId: null,
 });
 
@@ -252,6 +289,13 @@ export const useUiStore = create<UiState>()(
           axisMagnetTarget: null,
           interactionState: "active",
           selectedObjectId: objectId,
+        }),
+      setCurrentScreen: (screen) =>
+        set({
+          axisMagnetTarget: null,
+          currentScreen: screen,
+          interactionState: "idle",
+          selectedObjectId: null,
         }),
       setAxisMagnetTarget: (target) => set({ axisMagnetTarget: target }),
       setFloorFriction: (value) => set({ floorFriction: value }),
@@ -279,6 +323,10 @@ export const useUiStore = create<UiState>()(
       setMovePrecisionStep: (step) => set({ movePrecisionStep: step }),
       setMoveVerticalDropGuide: (value) =>
         set({ moveVerticalDropGuide: value }),
+      setModelingPointerPanelRadius: (value) =>
+        set({
+          modelingPointerPanelRadius: Math.max(0.2, Math.min(value, 8)),
+        }),
       setObjectAngularDamping: (value) => set({ objectAngularDamping: value }),
       setObjectFriction: (value) => set({ objectFriction: value }),
       setObjectLinearDamping: (value) => set({ objectLinearDamping: value }),
@@ -339,10 +387,39 @@ export const useUiStore = create<UiState>()(
       setSettingsOpen: (open) => set({ settingsOpen: open }),
       setSuppressObjectRotation: (value) =>
         set({ suppressObjectRotation: value }),
+      setModelingPointerDepth: (depth) =>
+        set((state) => ({
+          modelingPointer: {
+            ...state.modelingPointer,
+            depth: Math.max(0.5, Math.min(depth, 48)),
+          },
+        })),
+      setModelingPointerHovered: (hovered) =>
+        set((state) => ({
+          modelingPointer: {
+            ...state.modelingPointer,
+            hovered,
+          },
+        })),
+      setModelingPointerPlane: (plane) =>
+        set((state) => ({
+          modelingPointer: {
+            ...state.modelingPointer,
+            plane,
+          },
+        })),
+      setModelingPointerPosition: (position) =>
+        set((state) => ({
+          modelingPointer: {
+            ...state.modelingPointer,
+            position,
+          },
+        })),
     }),
     {
       name: UI_STORE_PERSIST_KEY,
       partialize: (state) => ({
+        currentScreen: state.currentScreen,
         floorFriction: state.floorFriction,
         floorColor: state.floorColor,
         gridMajorColor: state.gridMajorColor,
@@ -364,6 +441,7 @@ export const useUiStore = create<UiState>()(
         moveOverlayRadiusMultiplier: state.moveOverlayRadiusMultiplier,
         movePrecisionStep: state.movePrecisionStep,
         moveVerticalDropGuide: state.moveVerticalDropGuide,
+        modelingPointerPanelRadius: state.modelingPointerPanelRadius,
         objectAngularDamping: state.objectAngularDamping,
         objectFriction: state.objectFriction,
         objectLinearDamping: state.objectLinearDamping,
