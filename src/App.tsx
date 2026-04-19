@@ -3,7 +3,10 @@ import { InteractionModeHotkeys } from "./components/InteractionModeHotkeys";
 import { InteractionModeToolbar } from "./components/InteractionModeToolbar";
 import { ModelingSceneFallback } from "./components/ModelingSceneFallback";
 import { ModelingToolHotkeys } from "./components/ModelingToolHotkeys";
-import { ModelingToolToolbar } from "./components/ModelingToolToolbar";
+import {
+  ModelingToolHeaderProperties,
+  ModelingToolToolbar,
+} from "./components/ModelingToolToolbar";
 import { PrototypeSceneFallback } from "./components/PrototypeSceneFallback";
 import { SceneStatusHud } from "./components/SceneStatusHud";
 import { SettingsWindow } from "./components/SettingsWindow";
@@ -93,6 +96,7 @@ export default function App() {
         )}
         {currentScreen === "prototype" ? <InteractionModeToolbar /> : null}
         {currentScreen === "modeling" ? <ModelingToolToolbar /> : null}
+        {currentScreen === "modeling" ? <ModelingToolHeaderProperties /> : null}
         <SettingsWindow />
         <SceneStatusHud />
       </section>

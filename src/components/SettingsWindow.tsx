@@ -93,6 +93,7 @@ const rigidBodyOptions = [
 const modelingToolOptions = [
   { label: "select", value: "select" },
   { label: "vertex", value: "vertex" },
+  { label: "line", value: "line" },
   { label: "camera move", value: "camera" },
 ] as const;
 
@@ -275,6 +276,15 @@ export function SettingsWindow() {
   const modelingPointerPanelRadius = useUiStore(
     (state) => state.modelingPointerPanelRadius,
   );
+  const modelingLineSnapDistance = useUiStore(
+    (state) => state.modelingLineSnapDistance,
+  );
+  const modelingLineOverlayDisplayMode = useUiStore(
+    (state) => state.modelingLineOverlayDisplayMode,
+  );
+  const modelingLineSnapEnabled = useUiStore(
+    (state) => state.modelingLineSnapEnabled,
+  );
   const modelingPointerVerticalAxisFloorY = useUiStore(
     (state) => state.modelingPointerVerticalAxisFloorY,
   );
@@ -370,6 +380,15 @@ export function SettingsWindow() {
   );
   const setModelingPointerPanelRadius = useUiStore(
     (state) => state.setModelingPointerPanelRadius,
+  );
+  const setModelingLineSnapDistance = useUiStore(
+    (state) => state.setModelingLineSnapDistance,
+  );
+  const setModelingLineOverlayDisplayMode = useUiStore(
+    (state) => state.setModelingLineOverlayDisplayMode,
+  );
+  const setModelingLineSnapEnabled = useUiStore(
+    (state) => state.setModelingLineSnapEnabled,
   );
   const setModelingPointerVerticalAxisFloorY = useUiStore(
     (state) => state.setModelingPointerVerticalAxisFloorY,
@@ -1068,7 +1087,8 @@ export function SettingsWindow() {
                   Modeling
                 </h2>
                 <SectionNote>
-                  Modeling: select / vertex / camera の既定挙動を調整します。
+                  Modeling: select / vertex / line / camera
+                  の既定挙動を調整します。
                 </SectionNote>
                 <label
                   className="grid gap-2 text-sm text-slate-100/90"
@@ -1093,8 +1113,51 @@ export function SettingsWindow() {
                     ))}
                   </select>
                   <span className={fieldHintClasses}>
-                    左上 toolbar の既定サブツール。select / vertex 中は Space
-                    で一時的に camera に切り替わります。
+                    左上 toolbar の既定サブツール。select / vertex / line 中は
+                    Space で一時的に camera に切り替わります。
+                  </span>
+                </label>
+                <ToggleField
+                  checked={modelingLineSnapEnabled}
+                  id="modeling-line-snap-enabled"
+                  label="Line Snap / lineツール吸着"
+                  onChange={setModelingLineSnapEnabled}
+                />
+                <NumberField
+                  hint="Line Snap Distance / line ツールの始点・終点が既存頂点へ吸い付く距離。目安 0.15-0.8。"
+                  id="modeling-line-snap-distance"
+                  label="Line Snap Distance / 吸着距離"
+                  max="4"
+                  min="0.05"
+                  onChange={handleNumberChange(setModelingLineSnapDistance)}
+                  step="0.05"
+                  value={modelingLineSnapDistance}
+                />
+                <label
+                  className="grid gap-2 text-sm text-slate-100/90"
+                  htmlFor="modeling-line-overlay-display"
+                >
+                  <span>Line Overlay / lineドラッグ表示</span>
+                  <select
+                    className={fieldClasses}
+                    id="modeling-line-overlay-display"
+                    onChange={(event) => {
+                      const nextDisplayMode = event.target.value;
+                      if (isOverlayDisplayMode(nextDisplayMode)) {
+                        setModelingLineOverlayDisplayMode(nextDisplayMode);
+                      }
+                    }}
+                    value={modelingLineOverlayDisplayMode}
+                  >
+                    {overlayDisplayOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <span className={fieldHintClasses}>
+                    line ツールのドラッグ中に表示する preview panel
+                    の組み合わせ。
                   </span>
                 </label>
                 <ToggleField

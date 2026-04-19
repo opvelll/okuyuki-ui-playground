@@ -87,4 +87,39 @@ describe("modelingStore", () => {
     expect(selected?.id).toBe(vertex?.id);
     expect(useModelingStore.getState().selectedVertexIds).toEqual([vertex?.id]);
   });
+
+  it("creates an edge from dragged positions and reuses nearby vertices when snapped", () => {
+    const startVertex = useModelingStore.getState().addVertex([0, 0, 0]);
+    const endVertex = useModelingStore.getState().addVertex([2, 0, 0]);
+
+    expect(
+      useModelingStore
+        .getState()
+        .createEdgeFromPositions([0.1, 0.02, 0], [1.92, 0, 0.03], 0.2),
+    ).toBe(true);
+
+    const state = useModelingStore.getState();
+    const currentModel = state.modelsById[state.currentModelId];
+
+    expect(currentModel.vertexOrder).toHaveLength(2);
+    expect(currentModel.edgeOrder).toHaveLength(1);
+    expect(currentModel.edgesById[currentModel.edgeOrder[0]].vertexIds).toEqual(
+      [startVertex?.id, endVertex?.id],
+    );
+  });
+
+  it("creates new start and end vertices when no nearby snap target exists", () => {
+    expect(
+      useModelingStore
+        .getState()
+        .createEdgeFromPositions([0, 0, 0], [1, 0, 0], 0),
+    ).toBe(true);
+
+    const state = useModelingStore.getState();
+    const currentModel = state.modelsById[state.currentModelId];
+
+    expect(currentModel.vertexOrder).toHaveLength(2);
+    expect(currentModel.edgeOrder).toHaveLength(1);
+    expect(state.selectedVertexIds).toEqual(["vertex-1", "vertex-2"]);
+  });
 });

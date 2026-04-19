@@ -1,4 +1,4 @@
-import { Grid, OrbitControls } from "@react-three/drei";
+import { Grid, Line, OrbitControls } from "@react-three/drei";
 import { Canvas, useThree } from "@react-three/fiber";
 import { type RefObject, useEffect, useMemo, useRef } from "react";
 import {
@@ -12,13 +12,16 @@ import {
   LineSegments,
   MOUSE,
   PointsMaterial,
+  Quaternion,
   Raycaster,
   Vector2,
   Vector3,
 } from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { useModelingStore } from "../store/modelingStore";
+import type { MoveOverlayOrientationMode } from "../store/uiStore";
 import { getEffectiveModelingTool, useUiStore } from "../store/uiStore";
+import { calculateDragPlaneOverlayGeometry } from "./scene/dragPlaneOverlay";
 
 const CURSOR_DEPTH_STEP = 0.45;
 const CAMERA_DOLLY_STEP = 0.55;
@@ -28,6 +31,12 @@ const POINTER_AXIS_DASH_EXTENT = 120;
 const POINTER_AXIS_DASH_SIZE = 0.18;
 const POINTER_AXIS_GAP_SIZE = 0.08;
 const MODEL_VERTEX_PIXEL_SIZE = 4;
+const DEFAULT_OVERLAY_NORMAL = new Vector3(0, 0, 1);
+const MODELING_LINE_PREVIEW_COLORS = {
+  "camera-facing": "#fdba74",
+  "screen-horizontal": "#facc15",
+  "screen-vertical": "#fb923c",
+} as const;
 
 function createLineSegments(points: number[], material: LineBasicMaterial) {
   const geometry = new BufferGeometry();
@@ -294,6 +303,134 @@ function getVertexSelectionDistance(
   );
 }
 
+function ModelingLinePreviewOverlay() {
+  const modelingLineOverlayDisplayMode = useUiStore(
+    (state) => state.modelingLineOverlayDisplayMode,
+  );
+  const modelingLinePreview = useUiStore((state) => state.modelingLinePreview);
+  const overlayModes = useMemo(() => {
+    switch (modelingLineOverlayDisplayMode) {
+      case "mode-2":
+        return ["screen-vertical"] as const;
+      case "mode-3":
+        return ["screen-horizontal"] as const;
+      case "modes-2-3":
+        return ["screen-vertical", "screen-horizontal"] as const;
+      case "modes-1-2-3":
+        return [
+          "camera-facing",
+          "screen-vertical",
+          "screen-horizontal",
+        ] as const;
+      default:
+        return ["camera-facing"] as const;
+    }
+  }, [modelingLineOverlayDisplayMode]);
+  const overlayGeometries = useMemo(() => {
+    if (!modelingLinePreview.active) {
+      return [];
+    }
+
+    return overlayModes.map((orientationMode) => {
+      const geometry = calculateDragPlaneOverlayGeometry(
+        {
+          currentPoint: new Vector3(...modelingLinePreview.currentPosition),
+          orientationMode: orientationMode as MoveOverlayOrientationMode,
+          planeNormal: new Vector3(...modelingLinePreview.planeNormal),
+          previousSurfaceNormal: null,
+          startPoint: new Vector3(...modelingLinePreview.startPosition),
+        },
+        {
+          radiusMultiplier: 1.15,
+        },
+      );
+
+      const planeQuaternion = new Quaternion();
+      planeQuaternion.setFromUnitVectors(
+        DEFAULT_OVERLAY_NORMAL,
+        geometry.surfaceNormal.clone().normalize(),
+      );
+
+      return {
+        color: MODELING_LINE_PREVIEW_COLORS[orientationMode],
+        ...geometry,
+        orientationMode,
+        planeQuaternion,
+      };
+    });
+  }, [modelingLinePreview, overlayModes]);
+
+  if (!modelingLinePreview.active || overlayGeometries.length === 0) {
+    return null;
+  }
+
+  return (
+    <group raycast={() => null}>
+      {overlayGeometries.map((geometry) => (
+        <mesh
+          key={geometry.orientationMode}
+          position={geometry.center}
+          quaternion={geometry.planeQuaternion}
+        >
+          <circleGeometry args={[geometry.radius, 96]} />
+          <meshBasicMaterial
+            color={geometry.color}
+            depthTest={true}
+            depthWrite={false}
+            opacity={0.16}
+            side={DoubleSide}
+            transparent
+          />
+        </mesh>
+      ))}
+      <Line
+        color="#bfdbfe"
+        dashed
+        dashScale={1.4}
+        depthTest={false}
+        depthWrite={false}
+        gapSize={0.12}
+        lineWidth={1.8}
+        opacity={0.98}
+        points={[
+          new Vector3(...modelingLinePreview.startPosition),
+          new Vector3(...modelingLinePreview.currentPosition),
+        ]}
+        renderOrder={12}
+        transparent
+      />
+      <points renderOrder={13} position={modelingLinePreview.startPosition}>
+        <bufferGeometry>
+          <bufferAttribute
+            args={[new Float32Array([0, 0, 0]), 3]}
+            attach="attributes-position"
+            count={1}
+          />
+        </bufferGeometry>
+        <pointsMaterial
+          color="#ffffff"
+          size={MODEL_VERTEX_PIXEL_SIZE}
+          sizeAttenuation={false}
+        />
+      </points>
+      <points renderOrder={13} position={modelingLinePreview.currentPosition}>
+        <bufferGeometry>
+          <bufferAttribute
+            args={[new Float32Array([0, 0, 0]), 3]}
+            attach="attributes-position"
+            count={1}
+          />
+        </bufferGeometry>
+        <pointsMaterial
+          color="#ffffff"
+          size={MODEL_VERTEX_PIXEL_SIZE}
+          sizeAttenuation={false}
+        />
+      </points>
+    </group>
+  );
+}
+
 function ModelingMesh() {
   const currentModelId = useModelingStore((state) => state.currentModelId);
   const modelsById = useModelingStore((state) => state.modelsById);
@@ -452,8 +589,20 @@ function ModelingInputController({
   const clearVertexSelection = useModelingStore(
     (state) => state.clearVertexSelection,
   );
+  const createEdgeFromPositions = useModelingStore(
+    (state) => state.createEdgeFromPositions,
+  );
+  const findNearestVertex = useModelingStore(
+    (state) => state.findNearestVertex,
+  );
   const selectNearestVertex = useModelingStore(
     (state) => state.selectNearestVertex,
+  );
+  const modelingLineSnapDistance = useUiStore(
+    (state) => state.modelingLineSnapDistance,
+  );
+  const modelingLineSnapEnabled = useUiStore(
+    (state) => state.modelingLineSnapEnabled,
   );
   const setModelingPointerDepth = useUiStore(
     (state) => state.setModelingPointerDepth,
@@ -470,6 +619,12 @@ function ModelingInputController({
   const setModelingPointerPosition = useUiStore(
     (state) => state.setModelingPointerPosition,
   );
+  const setModelingLinePreview = useUiStore(
+    (state) => state.setModelingLinePreview,
+  );
+  const clearModelingLinePreview = useUiStore(
+    (state) => state.clearModelingLinePreview,
+  );
 
   useEffect(() => {
     const element = gl.domElement;
@@ -483,6 +638,7 @@ function ModelingInputController({
       x: number;
       y: number;
     } | null = null;
+    let lineDragStartPosition: [number, number, number] | null = null;
 
     const updatePointerPosition = (
       depth = useUiStore.getState().modelingPointer.depth,
@@ -528,11 +684,47 @@ function ModelingInputController({
       }
 
       updatePointerFromEvent(event);
+
+      const { modelingPointer, modelingTool } = useUiStore.getState();
+      if (
+        clickCandidate?.moved &&
+        modelingTool === "line" &&
+        lineDragStartPosition
+      ) {
+        const snappedVertex =
+          modelingLineSnapEnabled && modelingLineSnapDistance > 0
+            ? findNearestVertex(
+                modelingPointer.position,
+                modelingLineSnapDistance,
+              )
+            : null;
+        const previewPosition: [number, number, number] = snappedVertex
+          ? [
+              snappedVertex.position[0],
+              snappedVertex.position[1],
+              snappedVertex.position[2],
+            ]
+          : [
+              modelingPointer.position[0],
+              modelingPointer.position[1],
+              modelingPointer.position[2],
+            ];
+        const planeNormal = new Vector3();
+        camera.getWorldDirection(planeNormal);
+
+        setModelingLinePreview({
+          currentPosition: previewPosition,
+          planeNormal: [planeNormal.x, planeNormal.y, planeNormal.z],
+          startPosition: lineDragStartPosition,
+        });
+      }
     };
 
     const handlePointerLeave = () => {
       hasPointer = false;
       clickCandidate = null;
+      lineDragStartPosition = null;
+      clearModelingLinePreview();
       setModelingPointerHovered(false);
     };
 
@@ -546,6 +738,21 @@ function ModelingInputController({
           x: event.clientX,
           y: event.clientY,
         };
+
+        const { modelingPointer, modelingTool } = useUiStore.getState();
+        if (modelingTool === "line") {
+          const snappedVertex =
+            modelingLineSnapEnabled && modelingLineSnapDistance > 0
+              ? findNearestVertex(
+                  modelingPointer.position,
+                  modelingLineSnapDistance,
+                )
+              : null;
+
+          lineDragStartPosition = snappedVertex
+            ? [...snappedVertex.position]
+            : [...modelingPointer.position];
+        }
       }
 
       if (
@@ -568,14 +775,21 @@ function ModelingInputController({
       if (
         clickCandidate &&
         clickCandidate.button === event.button &&
-        !clickCandidate.moved &&
         event.button === 0
       ) {
         const { modelingPointer, modelingTool } = useUiStore.getState();
 
-        if (modelingTool === "vertex") {
+        if (modelingTool === "line") {
+          if (clickCandidate.moved && lineDragStartPosition) {
+            createEdgeFromPositions(
+              lineDragStartPosition,
+              [...modelingPointer.position],
+              modelingLineSnapEnabled ? modelingLineSnapDistance : 0,
+            );
+          }
+        } else if (!clickCandidate.moved && modelingTool === "vertex") {
           addVertex([...modelingPointer.position]);
-        } else if (modelingTool === "select") {
+        } else if (!clickCandidate.moved && modelingTool === "select") {
           selectNearestVertex(
             modelingPointer.position,
             event.shiftKey,
@@ -588,6 +802,8 @@ function ModelingInputController({
       }
 
       clickCandidate = null;
+      lineDragStartPosition = null;
+      clearModelingLinePreview();
     };
 
     const handleWheel = (event: WheelEvent) => {
@@ -666,6 +882,7 @@ function ModelingInputController({
       element.removeEventListener("contextmenu", handleContextMenu);
       window.removeEventListener("keydown", handleKeyDown);
       setModelingCameraDragging(false);
+      clearModelingLinePreview();
       setModelingPointerHovered(false);
       clearVertexSelection();
     };
@@ -674,9 +891,15 @@ function ModelingInputController({
     camera,
     clearVertexSelection,
     controlsRef,
+    createEdgeFromPositions,
+    findNearestVertex,
     gl,
+    modelingLineSnapDistance,
+    modelingLineSnapEnabled,
+    clearModelingLinePreview,
     selectNearestVertex,
     setModelingCameraDragging,
+    setModelingLinePreview,
     setModelingPointerDepth,
     setModelingPointerHovered,
     setModelingPointerPlane,
@@ -791,6 +1014,7 @@ export function ModelingScene() {
         />
         <ModelingMesh />
         <ModelingPointer />
+        <ModelingLinePreviewOverlay />
         <ModelingInputController controlsRef={controlsRef} />
         <ModelingCameraController controlsRef={controlsRef} />
         <OrbitControls

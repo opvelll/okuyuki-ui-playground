@@ -5,7 +5,7 @@ export type MoveDepthWheelDirection = "normal" | "inverted";
 export type InteractionState = "idle" | "active" | "dragging";
 export type InteractionMode = "move" | "rotate";
 export type AppScreen = "prototype" | "modeling";
-export type ModelingTool = "select" | "vertex" | "camera";
+export type ModelingTool = "select" | "vertex" | "line" | "camera";
 export type EffectiveModelingTool = "pointer" | "camera";
 export type MoveAlwaysSnapMode = "off" | "axis-magnet" | "grid";
 export type MoveAxisMagnetReferenceFrame = "local" | "world";
@@ -44,6 +44,13 @@ export type ModelingPointerState = {
   position: [number, number, number];
 };
 
+export type ModelingLinePreviewState = {
+  active: boolean;
+  currentPosition: [number, number, number];
+  planeNormal: [number, number, number];
+  startPosition: [number, number, number];
+};
+
 export type CameraSnapshot = {
   position: [number, number, number];
   target: [number, number, number];
@@ -69,6 +76,9 @@ type PersistedUiState = {
   movePrecisionStep: number;
   moveVerticalDropGuide: boolean;
   modelingPointerPanelRadius: number;
+  modelingLineSnapDistance: number;
+  modelingLineOverlayDisplayMode: MoveOverlayDisplayMode;
+  modelingLineSnapEnabled: boolean;
   modelingPointerVerticalAxisFloorY: number;
   modelingPointerVisibleInCameraTool: boolean;
   modelingTool: ModelingTool;
@@ -103,6 +113,7 @@ type UiState = PersistedUiState & {
   axisMagnetTarget: AxisMagnetTarget | null;
   interactionState: InteractionState;
   modelingCamera: CameraSnapshot;
+  modelingLinePreview: ModelingLinePreviewState;
   modelingPointer: ModelingPointerState;
   modelingCameraDragging: boolean;
   modelingCameraOverride: boolean;
@@ -134,6 +145,9 @@ type UiState = PersistedUiState & {
   setMovePrecisionStep: (step: number) => void;
   setMoveVerticalDropGuide: (value: boolean) => void;
   setModelingPointerPanelRadius: (value: number) => void;
+  setModelingLineSnapDistance: (value: number) => void;
+  setModelingLineOverlayDisplayMode: (value: MoveOverlayDisplayMode) => void;
+  setModelingLineSnapEnabled: (value: boolean) => void;
   setModelingPointerVerticalAxisFloorY: (value: number) => void;
   setModelingPointerVisibleInCameraTool: (value: boolean) => void;
   setModelingTool: (tool: ModelingTool) => void;
@@ -169,6 +183,10 @@ type UiState = PersistedUiState & {
   setModelingPointerHovered: (hovered: boolean) => void;
   setModelingPointerPlane: (plane: ModelingPointerPlane) => void;
   setModelingPointerPosition: (position: [number, number, number]) => void;
+  setModelingLinePreview: (
+    preview: Omit<ModelingLinePreviewState, "active">,
+  ) => void;
+  clearModelingLinePreview: () => void;
   setPrototypeCamera: (camera: CameraSnapshot) => void;
 };
 
@@ -199,6 +217,13 @@ export const DEFAULT_MODELING_CAMERA: CameraSnapshot = {
   target: [0, 1.1, 0],
 };
 
+const DEFAULT_MODELING_LINE_PREVIEW: ModelingLinePreviewState = {
+  active: false,
+  currentPosition: [0, 0, 0],
+  planeNormal: [0, 0, 1],
+  startPosition: [0, 0, 0],
+};
+
 export const createDefaultPersistedUiState = (): PersistedUiState => ({
   currentScreen: "prototype",
   floorFriction: 1.1,
@@ -222,6 +247,9 @@ export const createDefaultPersistedUiState = (): PersistedUiState => ({
   movePrecisionStep: 0.1,
   moveVerticalDropGuide: true,
   modelingPointerPanelRadius: 0.72,
+  modelingLineSnapDistance: 0.45,
+  modelingLineOverlayDisplayMode: "mode-1",
+  modelingLineSnapEnabled: true,
   modelingPointerVerticalAxisFloorY: 0,
   modelingPointerVisibleInCameraTool: false,
   modelingTool: "select",
@@ -275,6 +303,9 @@ const createInitialUiState = (): Omit<
   | "setMovePrecisionStep"
   | "setMoveVerticalDropGuide"
   | "setModelingPointerPanelRadius"
+  | "setModelingLineSnapDistance"
+  | "setModelingLineOverlayDisplayMode"
+  | "setModelingLineSnapEnabled"
   | "setModelingPointerVerticalAxisFloorY"
   | "setModelingPointerVisibleInCameraTool"
   | "setModelingTool"
@@ -310,6 +341,8 @@ const createInitialUiState = (): Omit<
   | "setModelingPointerHovered"
   | "setModelingPointerPlane"
   | "setModelingPointerPosition"
+  | "setModelingLinePreview"
+  | "clearModelingLinePreview"
   | "setPrototypeCamera"
 > => ({
   ...createDefaultPersistedUiState(),
@@ -318,6 +351,7 @@ const createInitialUiState = (): Omit<
   modelingCamera: DEFAULT_MODELING_CAMERA,
   modelingCameraDragging: false,
   modelingCameraOverride: false,
+  modelingLinePreview: DEFAULT_MODELING_LINE_PREVIEW,
   modelingPointer: {
     depth: 8,
     hovered: false,
@@ -357,6 +391,7 @@ export const useUiStore = create<UiState>()(
           interactionState: "idle",
           modelingCameraDragging: false,
           modelingCameraOverride: false,
+          modelingLinePreview: DEFAULT_MODELING_LINE_PREVIEW,
           selectedObjectId: null,
         }),
       setAxisMagnetTarget: (target) => set({ axisMagnetTarget: target }),
@@ -390,6 +425,18 @@ export const useUiStore = create<UiState>()(
         set({
           modelingPointerPanelRadius: Math.max(0.2, Math.min(value, 8)),
         }),
+      setModelingLineSnapDistance: (value) =>
+        set({
+          modelingLineSnapDistance: Math.max(0.05, Math.min(value, 4)),
+        }),
+      setModelingLineOverlayDisplayMode: (value) =>
+        set({
+          modelingLineOverlayDisplayMode: value,
+        }),
+      setModelingLineSnapEnabled: (value) =>
+        set({
+          modelingLineSnapEnabled: value,
+        }),
       setModelingPointerVerticalAxisFloorY: (value) =>
         set({
           modelingPointerVerticalAxisFloorY: Math.max(-32, Math.min(value, 32)),
@@ -400,6 +447,7 @@ export const useUiStore = create<UiState>()(
         set({
           modelingCameraDragging: false,
           modelingCameraOverride: false,
+          modelingLinePreview: DEFAULT_MODELING_LINE_PREVIEW,
           modelingTool: tool,
         }),
       setObjectAngularDamping: (value) => set({ objectAngularDamping: value }),
@@ -494,6 +542,19 @@ export const useUiStore = create<UiState>()(
             position,
           },
         })),
+      setModelingLinePreview: (preview) =>
+        set({
+          modelingLinePreview: {
+            active: true,
+            currentPosition: preview.currentPosition,
+            planeNormal: preview.planeNormal,
+            startPosition: preview.startPosition,
+          },
+        }),
+      clearModelingLinePreview: () =>
+        set({
+          modelingLinePreview: DEFAULT_MODELING_LINE_PREVIEW,
+        }),
       setPrototypeCamera: (camera) => set({ prototypeCamera: camera }),
     }),
     {
@@ -522,6 +583,9 @@ export const useUiStore = create<UiState>()(
         movePrecisionStep: state.movePrecisionStep,
         moveVerticalDropGuide: state.moveVerticalDropGuide,
         modelingPointerPanelRadius: state.modelingPointerPanelRadius,
+        modelingLineSnapDistance: state.modelingLineSnapDistance,
+        modelingLineOverlayDisplayMode: state.modelingLineOverlayDisplayMode,
+        modelingLineSnapEnabled: state.modelingLineSnapEnabled,
         modelingPointerVerticalAxisFloorY:
           state.modelingPointerVerticalAxisFloorY,
         modelingPointerVisibleInCameraTool:

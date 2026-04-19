@@ -35,12 +35,21 @@ type ModelingSnapshot = {
 
 type ModelingState = ModelingSnapshot & {
   autoNameIndex: number;
+  createEdgeFromPositions: (
+    startPosition: Vector3Tuple,
+    endPosition: Vector3Tuple,
+    snapDistance?: number,
+  ) => boolean;
   history: ModelingSnapshot[];
   historyIndex: number;
   addVertex: (position: Vector3Tuple) => ModelingVertex | null;
   clearVertexSelection: () => void;
   connectSelectedVerticesAsEdge: () => boolean;
   createFaceFromSelectedVertices: () => boolean;
+  findNearestVertex: (
+    pointerPosition: Vector3Tuple,
+    maxDistance?: number,
+  ) => ModelingVertex | null;
   redo: () => void;
   resetModeling: () => void;
   selectNearestVertex: (
@@ -177,6 +186,32 @@ function hasFace(model: ModelingModel, vertexIds: [string, string, string]) {
   );
 }
 
+function findNearestVertexInModel(
+  model: ModelingModel,
+  pointerPosition: Vector3Tuple,
+  maxDistance: number,
+) {
+  return model.vertexOrder
+    .map((vertexId) => model.verticesById[vertexId])
+    .reduce<{ distance: number; vertex: ModelingVertex | null }>(
+      (nearest, vertex) => {
+        const distance = getVertexDistance(vertex.position, pointerPosition);
+        if (distance >= nearest.distance) {
+          return nearest;
+        }
+
+        return {
+          distance,
+          vertex,
+        };
+      },
+      {
+        distance: maxDistance,
+        vertex: null,
+      },
+    ).vertex;
+}
+
 function commitSnapshot(
   state: ModelingState,
   nextSnapshot: ModelingSnapshot,
@@ -203,6 +238,90 @@ function commitSnapshot(
 
 export const useModelingStore = create<ModelingState>((set, get) => ({
   ...createInitialState(),
+  createEdgeFromPositions: (
+    startPosition,
+    endPosition,
+    snapDistance = DEFAULT_SELECTION_DISTANCE,
+  ) => {
+    const state = get();
+    const currentModel = state.modelsById[state.currentModelId];
+
+    if (!currentModel) {
+      return false;
+    }
+
+    const snappedStartVertex = findNearestVertexInModel(
+      currentModel,
+      startPosition,
+      snapDistance,
+    );
+    const snappedEndVertex = findNearestVertexInModel(
+      currentModel,
+      endPosition,
+      snapDistance,
+    );
+
+    if (
+      snappedStartVertex &&
+      snappedEndVertex &&
+      snappedStartVertex.id === snappedEndVertex.id
+    ) {
+      return false;
+    }
+
+    const nextModel = cloneModel(currentModel);
+    const selectedVertexIds: string[] = [];
+
+    const ensureVertex = (
+      snappedVertex: ModelingVertex | null,
+      position: Vector3Tuple,
+    ) => {
+      if (snappedVertex) {
+        selectedVertexIds.push(snappedVertex.id);
+        return snappedVertex.id;
+      }
+
+      const nextVertexId = `vertex-${nextModel.vertexOrder.length + 1}`;
+      nextModel.vertexOrder.push(nextVertexId);
+      nextModel.verticesById[nextVertexId] = {
+        id: nextVertexId,
+        position: [...position],
+      };
+      selectedVertexIds.push(nextVertexId);
+      return nextVertexId;
+    };
+
+    const startVertexId = ensureVertex(snappedStartVertex, startPosition);
+    const endVertexId = ensureVertex(snappedEndVertex, endPosition);
+    const edgeVertexIds = [startVertexId, endVertexId] as [string, string];
+
+    if (
+      edgeVertexIds[0] === edgeVertexIds[1] ||
+      hasEdge(nextModel, edgeVertexIds)
+    ) {
+      return false;
+    }
+
+    const nextEdgeId = `edge-${nextModel.edgeOrder.length + 1}`;
+    nextModel.edgeOrder.push(nextEdgeId);
+    nextModel.edgesById[nextEdgeId] = {
+      id: nextEdgeId,
+      vertexIds: edgeVertexIds,
+    };
+
+    set({
+      ...commitSnapshot(state, {
+        currentModelId: state.currentModelId,
+        modelsById: {
+          ...state.modelsById,
+          [currentModel.id]: nextModel,
+        },
+        selectedVertexIds,
+      }),
+    });
+
+    return true;
+  },
   addVertex: (position) => {
     const state = get();
     const currentModel = state.modelsById[state.currentModelId];
@@ -347,6 +466,19 @@ export const useModelingStore = create<ModelingState>((set, get) => ({
 
     return true;
   },
+  findNearestVertex: (
+    pointerPosition,
+    maxDistance = DEFAULT_SELECTION_DISTANCE,
+  ) => {
+    const state = get();
+    const currentModel = state.modelsById[state.currentModelId];
+
+    if (!currentModel) {
+      return null;
+    }
+
+    return findNearestVertexInModel(currentModel, pointerPosition, maxDistance);
+  },
   redo: () =>
     set((state) => {
       if (state.historyIndex >= state.history.length - 1) {
@@ -373,25 +505,11 @@ export const useModelingStore = create<ModelingState>((set, get) => ({
       return null;
     }
 
-    const nearestVertex = currentModel.vertexOrder
-      .map((vertexId) => currentModel.verticesById[vertexId])
-      .reduce<{ distance: number; vertex: ModelingVertex | null }>(
-        (nearest, vertex) => {
-          const distance = getVertexDistance(vertex.position, pointerPosition);
-          if (distance >= nearest.distance) {
-            return nearest;
-          }
-
-          return {
-            distance,
-            vertex,
-          };
-        },
-        {
-          distance: maxDistance,
-          vertex: null,
-        },
-      ).vertex;
+    const nearestVertex = findNearestVertexInModel(
+      currentModel,
+      pointerPosition,
+      maxDistance,
+    );
 
     if (!nearestVertex) {
       if (!appendToSelection && state.selectedVertexIds.length > 0) {

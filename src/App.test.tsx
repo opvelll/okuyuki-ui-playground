@@ -58,6 +58,12 @@ describe("App", () => {
       modelingCamera: DEFAULT_MODELING_CAMERA,
       modelingCameraDragging: false,
       modelingCameraOverride: false,
+      modelingLinePreview: {
+        active: false,
+        currentPosition: [0, 0, 0],
+        planeNormal: [0, 0, 1],
+        startPosition: [0, 0, 0],
+      },
       modelingPointer: {
         depth: 8,
         hovered: false,
@@ -170,6 +176,9 @@ describe("App", () => {
     expect(
       screen.getByRole("button", { name: /Switch to Select tool/i }),
     ).toHaveAttribute("aria-pressed", "true");
+    expect(
+      screen.getByRole("button", { name: /Switch to Line tool/i }),
+    ).toHaveAttribute("aria-pressed", "false");
     expect(
       screen.getByRole("button", { name: /Switch to Camera Move tool/i }),
     ).toHaveAttribute("aria-pressed", "false");
@@ -390,6 +399,15 @@ describe("App", () => {
     await user.click(screen.getByTitle(/modeling pointer/i));
 
     expect(
+      screen.getByLabelText(/Line Snap \/ lineツール吸着/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(/Line Snap Distance \/ 吸着距離/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(/Line Overlay \/ lineドラッグ表示/i),
+    ).toBeInTheDocument();
+    expect(
       screen.getByLabelText(/Pointer Panel Radius \/ 面の半径/i),
     ).toBeInTheDocument();
     expect(
@@ -419,6 +437,15 @@ describe("App", () => {
     expect(
       screen.getByRole("button", { name: /Switch to Camera Move tool/i }),
     ).toHaveAttribute("aria-pressed", "true");
+
+    await user.click(
+      screen.getByRole("button", { name: /Switch to Line tool/i }),
+    );
+
+    expect(screen.getByText(/Line tool: drag and drop/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Snap$/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Snap Distance/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Overlay/i)).toBeInTheDocument();
   });
 
   it("temporarily switches modeling controls while space is held", async () => {

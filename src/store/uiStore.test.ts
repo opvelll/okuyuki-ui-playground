@@ -15,6 +15,12 @@ describe("uiStore", () => {
       modelingCamera: DEFAULT_MODELING_CAMERA,
       modelingCameraDragging: false,
       modelingCameraOverride: false,
+      modelingLinePreview: {
+        active: false,
+        currentPosition: [0, 0, 0],
+        planeNormal: [0, 0, 1],
+        startPosition: [0, 0, 0],
+      },
       modelingPointer: {
         depth: 8,
         hovered: false,
@@ -159,5 +165,17 @@ describe("uiStore", () => {
 
     useUiStore.getState().setModelingPointerVerticalAxisFloorY(-64);
     expect(useUiStore.getState().modelingPointerVerticalAxisFloorY).toBe(-32);
+  });
+
+  it("resets line preview when switching modeling tools", () => {
+    useUiStore.getState().setModelingLinePreview({
+      currentPosition: [1, 1, 1],
+      planeNormal: [0, 0, 1],
+      startPosition: [0, 0, 0],
+    });
+
+    useUiStore.getState().setModelingTool("camera");
+
+    expect(useUiStore.getState().modelingLinePreview.active).toBe(false);
   });
 });
