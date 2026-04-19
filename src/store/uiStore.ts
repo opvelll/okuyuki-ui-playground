@@ -69,6 +69,7 @@ type PersistedUiState = {
   movePrecisionStep: number;
   moveVerticalDropGuide: boolean;
   modelingPointerPanelRadius: number;
+  modelingPointerVerticalAxisFloorY: number;
   modelingPointerVisibleInCameraTool: boolean;
   modelingTool: ModelingTool;
   objectAngularDamping: number;
@@ -133,6 +134,7 @@ type UiState = PersistedUiState & {
   setMovePrecisionStep: (step: number) => void;
   setMoveVerticalDropGuide: (value: boolean) => void;
   setModelingPointerPanelRadius: (value: number) => void;
+  setModelingPointerVerticalAxisFloorY: (value: number) => void;
   setModelingPointerVisibleInCameraTool: (value: boolean) => void;
   setModelingTool: (tool: ModelingTool) => void;
   setObjectAngularDamping: (value: number) => void;
@@ -220,6 +222,7 @@ export const createDefaultPersistedUiState = (): PersistedUiState => ({
   movePrecisionStep: 0.1,
   moveVerticalDropGuide: true,
   modelingPointerPanelRadius: 0.72,
+  modelingPointerVerticalAxisFloorY: 0,
   modelingPointerVisibleInCameraTool: false,
   modelingTool: "select",
   objectAngularDamping: 0.9,
@@ -272,6 +275,7 @@ const createInitialUiState = (): Omit<
   | "setMovePrecisionStep"
   | "setMoveVerticalDropGuide"
   | "setModelingPointerPanelRadius"
+  | "setModelingPointerVerticalAxisFloorY"
   | "setModelingPointerVisibleInCameraTool"
   | "setModelingTool"
   | "setObjectAngularDamping"
@@ -385,6 +389,10 @@ export const useUiStore = create<UiState>()(
       setModelingPointerPanelRadius: (value) =>
         set({
           modelingPointerPanelRadius: Math.max(0.2, Math.min(value, 8)),
+        }),
+      setModelingPointerVerticalAxisFloorY: (value) =>
+        set({
+          modelingPointerVerticalAxisFloorY: Math.max(-32, Math.min(value, 32)),
         }),
       setModelingPointerVisibleInCameraTool: (value) =>
         set({ modelingPointerVisibleInCameraTool: value }),
@@ -514,6 +522,8 @@ export const useUiStore = create<UiState>()(
         movePrecisionStep: state.movePrecisionStep,
         moveVerticalDropGuide: state.moveVerticalDropGuide,
         modelingPointerPanelRadius: state.modelingPointerPanelRadius,
+        modelingPointerVerticalAxisFloorY:
+          state.modelingPointerVerticalAxisFloorY,
         modelingPointerVisibleInCameraTool:
           state.modelingPointerVisibleInCameraTool,
         modelingTool: state.modelingTool,

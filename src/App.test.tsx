@@ -28,6 +28,7 @@ vi.mock("@react-three/rapier", () => ({
 
 vi.mock("@react-three/drei", () => ({
   ContactShadows: () => null,
+  Grid: () => null,
   OrbitControls: () => null,
 }));
 
@@ -390,6 +391,9 @@ describe("App", () => {
 
     expect(
       screen.getByLabelText(/Pointer Panel Radius \/ 面の半径/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(/Vertical Axis Floor Y \/ 縦軸の下限高さ/i),
     ).toBeInTheDocument();
     expect(
       screen.getByLabelText(

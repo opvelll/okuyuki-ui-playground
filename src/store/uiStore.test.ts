@@ -152,4 +152,12 @@ describe("uiStore", () => {
       target: [1, 1, 1],
     });
   });
+
+  it("clamps the modeling vertical axis floor height", () => {
+    useUiStore.getState().setModelingPointerVerticalAxisFloorY(64);
+    expect(useUiStore.getState().modelingPointerVerticalAxisFloorY).toBe(32);
+
+    useUiStore.getState().setModelingPointerVerticalAxisFloorY(-64);
+    expect(useUiStore.getState().modelingPointerVerticalAxisFloorY).toBe(-32);
+  });
 });

@@ -275,6 +275,9 @@ export function SettingsWindow() {
   const modelingPointerPanelRadius = useUiStore(
     (state) => state.modelingPointerPanelRadius,
   );
+  const modelingPointerVerticalAxisFloorY = useUiStore(
+    (state) => state.modelingPointerVerticalAxisFloorY,
+  );
   const modelingPointerVisibleInCameraTool = useUiStore(
     (state) => state.modelingPointerVisibleInCameraTool,
   );
@@ -367,6 +370,9 @@ export function SettingsWindow() {
   );
   const setModelingPointerPanelRadius = useUiStore(
     (state) => state.setModelingPointerPanelRadius,
+  );
+  const setModelingPointerVerticalAxisFloorY = useUiStore(
+    (state) => state.setModelingPointerVerticalAxisFloorY,
   );
   const setModelingPointerVisibleInCameraTool = useUiStore(
     (state) => state.setModelingPointerVisibleInCameraTool,
@@ -1106,6 +1112,18 @@ export function SettingsWindow() {
                   onChange={handleNumberChange(setModelingPointerPanelRadius)}
                   step="0.05"
                   value={modelingPointerPanelRadius}
+                />
+                <NumberField
+                  hint="Vertical Axis Floor Y / このワールド Y より下では 3D ポインタの縦軸を表示しません。既定値 0 はグリッド面です。"
+                  id="modeling-pointer-vertical-axis-floor-y"
+                  label="Vertical Axis Floor Y / 縦軸の下限高さ"
+                  max="32"
+                  min="-32"
+                  onChange={handleNumberChange(
+                    setModelingPointerVerticalAxisFloorY,
+                  )}
+                  step="0.1"
+                  value={modelingPointerVerticalAxisFloorY}
                 />
               </section>
             ) : null}

@@ -1,4 +1,4 @@
-import { OrbitControls } from "@react-three/drei";
+import { Grid, OrbitControls } from "@react-three/drei";
 import { Canvas, useThree } from "@react-three/fiber";
 import { type RefObject, useEffect, useMemo, useRef } from "react";
 import {
@@ -11,9 +11,8 @@ import {
   LineDashedMaterial,
   LineSegments,
   MOUSE,
-  MeshStandardMaterial,
+  PointsMaterial,
   Raycaster,
-  SphereGeometry,
   Vector2,
   Vector3,
 } from "three";
@@ -28,8 +27,25 @@ const POINTER_AXIS_LENGTH = 1.25;
 const POINTER_AXIS_DASH_EXTENT = 120;
 const POINTER_AXIS_DASH_SIZE = 0.18;
 const POINTER_AXIS_GAP_SIZE = 0.08;
-const MODEL_VERTEX_RADIUS = 0.12;
-const MODEL_SELECTED_VERTEX_RADIUS = 0.16;
+const MODEL_VERTEX_PIXEL_SIZE = 4;
+
+function createLineSegments(points: number[], material: LineBasicMaterial) {
+  const geometry = new BufferGeometry();
+  if (points.length > 0) {
+    geometry.setAttribute("position", new Float32BufferAttribute(points, 3));
+  }
+
+  return new LineSegments(geometry, material);
+}
+
+function createDashedLineSegments(
+  points: number[],
+  material: LineDashedMaterial,
+) {
+  const line = createLineSegments(points, material);
+  line.computeLineDistances();
+  return line;
+}
 
 function isEditableTarget(target: EventTarget | null) {
   if (!(target instanceof HTMLElement)) {
@@ -60,6 +76,9 @@ function ModelingPointer() {
   const plane = useUiStore((state) => state.modelingPointer.plane);
   const position = useUiStore((state) => state.modelingPointer.position);
   const panelRadius = useUiStore((state) => state.modelingPointerPanelRadius);
+  const verticalAxisFloorY = useUiStore(
+    (state) => state.modelingPointerVerticalAxisFloorY,
+  );
   const effectiveTool = getEffectiveModelingTool({
     modelingCameraDragging,
     modelingCameraOverride,
@@ -78,17 +97,15 @@ function ModelingPointer() {
     return new LineSegments(geometry, material);
   }, []);
   const yAxisLine = useMemo(() => {
-    const geometry = new BufferGeometry();
-    geometry.setAttribute(
-      "position",
-      new Float32BufferAttribute(
-        [0, -POINTER_AXIS_LENGTH, 0, 0, POINTER_AXIS_LENGTH, 0],
-        3,
-      ),
-    );
+    const clipLocalY = verticalAxisFloorY - position[1];
+    const visibleStart = Math.max(-POINTER_AXIS_LENGTH, clipLocalY);
+    const points =
+      visibleStart < POINTER_AXIS_LENGTH
+        ? [0, visibleStart, 0, 0, POINTER_AXIS_LENGTH, 0]
+        : [];
     const material = new LineBasicMaterial({ color: "#84cc16" });
-    return new LineSegments(geometry, material);
-  }, []);
+    return createLineSegments(points, material);
+  }, [position, verticalAxisFloorY]);
   const zAxisLine = useMemo(() => {
     const geometry = new BufferGeometry();
     geometry.setAttribute(
@@ -135,27 +152,18 @@ function ModelingPointer() {
     return line;
   }, []);
   const yAxisDashLine = useMemo(() => {
-    const geometry = new BufferGeometry();
-    geometry.setAttribute(
-      "position",
-      new Float32BufferAttribute(
-        [
-          0,
-          -POINTER_AXIS_DASH_EXTENT,
-          0,
-          0,
-          -POINTER_AXIS_LENGTH,
-          0,
-          0,
-          POINTER_AXIS_LENGTH,
-          0,
-          0,
-          POINTER_AXIS_DASH_EXTENT,
-          0,
-        ],
-        3,
-      ),
-    );
+    const clipLocalY = verticalAxisFloorY - position[1];
+    const points: number[] = [];
+    const lowerDashStart = Math.max(-POINTER_AXIS_DASH_EXTENT, clipLocalY);
+    if (lowerDashStart < -POINTER_AXIS_LENGTH) {
+      points.push(0, lowerDashStart, 0, 0, -POINTER_AXIS_LENGTH, 0);
+    }
+
+    const upperDashStart = Math.max(POINTER_AXIS_LENGTH, clipLocalY);
+    if (upperDashStart < POINTER_AXIS_DASH_EXTENT) {
+      points.push(0, upperDashStart, 0, 0, POINTER_AXIS_DASH_EXTENT, 0);
+    }
+
     const material = new LineDashedMaterial({
       color: "#bef264",
       dashSize: POINTER_AXIS_DASH_SIZE,
@@ -163,10 +171,8 @@ function ModelingPointer() {
       opacity: 0.7,
       transparent: true,
     });
-    const line = new LineSegments(geometry, material);
-    line.computeLineDistances();
-    return line;
-  }, []);
+    return createDashedLineSegments(points, material);
+  }, [position, verticalAxisFloorY]);
   const zAxisDashLine = useMemo(() => {
     const geometry = new BufferGeometry();
     geometry.setAttribute(
@@ -332,31 +338,53 @@ function ModelingMesh() {
     geometry.computeVertexNormals();
     return geometry;
   }, [activeModel]);
-  const vertexGeometry = useMemo(
-    () => new SphereGeometry(MODEL_VERTEX_RADIUS, 18, 18),
-    [],
-  );
-  const selectedVertexGeometry = useMemo(
-    () => new SphereGeometry(MODEL_SELECTED_VERTEX_RADIUS, 20, 20),
-    [],
-  );
+  const vertexGeometry = useMemo(() => {
+    const geometry = new BufferGeometry();
+    if (!activeModel) {
+      return geometry;
+    }
+
+    const positions = activeModel.vertexOrder.flatMap((vertexId) => {
+      if (selectedVertexSet.has(vertexId)) {
+        return [];
+      }
+
+      return activeModel.verticesById[vertexId].position;
+    });
+
+    geometry.setAttribute("position", new Float32BufferAttribute(positions, 3));
+    return geometry;
+  }, [activeModel, selectedVertexSet]);
+  const selectedVertexGeometry = useMemo(() => {
+    const geometry = new BufferGeometry();
+    if (!activeModel) {
+      return geometry;
+    }
+
+    const positions = activeModel.vertexOrder.flatMap((vertexId) =>
+      selectedVertexSet.has(vertexId)
+        ? activeModel.verticesById[vertexId].position
+        : [],
+    );
+
+    geometry.setAttribute("position", new Float32BufferAttribute(positions, 3));
+    return geometry;
+  }, [activeModel, selectedVertexSet]);
   const vertexMaterial = useMemo(
     () =>
-      new MeshStandardMaterial({
-        color: "#cbd5f5",
-        emissive: "#64748b",
-        metalness: 0.2,
-        roughness: 0.35,
+      new PointsMaterial({
+        color: "#000000",
+        size: MODEL_VERTEX_PIXEL_SIZE,
+        sizeAttenuation: false,
       }),
     [],
   );
   const selectedVertexMaterial = useMemo(
     () =>
-      new MeshStandardMaterial({
-        color: "#fde68a",
-        emissive: "#f59e0b",
-        metalness: 0.1,
-        roughness: 0.22,
+      new PointsMaterial({
+        color: "#ffffff",
+        size: MODEL_VERTEX_PIXEL_SIZE,
+        sizeAttenuation: false,
       }),
     [],
   );
@@ -400,22 +428,16 @@ function ModelingMesh() {
           <lineBasicMaterial color="#bfdbfe" />
         </lineSegments>
       ) : null}
-      {activeModel.vertexOrder.map((vertexId) => {
-        const vertex = activeModel.verticesById[vertexId];
-        const selected = selectedVertexSet.has(vertexId);
-
-        return (
-          <mesh
-            castShadow
-            geometry={selected ? selectedVertexGeometry : vertexGeometry}
-            key={vertexId}
-            material={selected ? selectedVertexMaterial : vertexMaterial}
-            position={vertex.position}
-            receiveShadow
-            renderOrder={selected ? 7 : 6}
-          />
-        );
-      })}
+      <points
+        geometry={vertexGeometry}
+        material={vertexMaterial}
+        renderOrder={6}
+      />
+      <points
+        geometry={selectedVertexGeometry}
+        material={selectedVertexMaterial}
+        renderOrder={7}
+      />
     </group>
   );
 }
@@ -711,9 +733,6 @@ export function ModelingScene() {
     (state) => state.modelingCameraOverride,
   );
   const modelingTool = useUiStore((state) => state.modelingTool);
-  const sceneBackgroundColor = useUiStore(
-    (state) => state.sceneBackgroundColor,
-  );
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
   const effectiveTool = getEffectiveModelingTool({
     modelingCameraDragging,
@@ -721,16 +740,16 @@ export function ModelingScene() {
     modelingTool,
   });
   const sceneShellBackground = useMemo(() => {
-    const base = new Color(sceneBackgroundColor);
-    const upper = base.clone().lerp(new Color("#94a3b8"), 0.28);
-    const lower = base.clone().lerp(new Color("#020617"), 0.78);
+    const base = new Color("#b5bec8");
+    const upper = base.clone().lerp(new Color("#c7d0da"), 0.18);
+    const lower = base.clone().lerp(new Color("#596473"), 0.74);
 
     return `radial-gradient(circle at top, rgba(${Math.round(
       upper.r * 255,
     )}, ${Math.round(upper.g * 255)}, ${Math.round(
       upper.b * 255,
-    )}, 0.36), transparent 34%), linear-gradient(180deg, #0b1220 0%, #101827 42%, #${lower.getHexString()} 100%)`;
-  }, [sceneBackgroundColor]);
+    )}, 0.22), transparent 42%), linear-gradient(180deg, #9ba7b3 0%, #7f8c99 42%, #${lower.getHexString()} 100%)`;
+  }, []);
 
   return (
     <div
@@ -742,33 +761,34 @@ export function ModelingScene() {
         dpr={[1, 1.8]}
         shadows
       >
-        <color attach="background" args={["#0f172a"]} />
-        <fog attach="fog" args={["#0f172a", 14, 32]} />
-        <ambientLight intensity={0.85} />
+        <color attach="background" args={["#74808d"]} />
+        <ambientLight intensity={0.96} />
         <hemisphereLight
-          args={["#cbd5e1", "#020617", 1.15]}
+          args={["#e8edf3", "#47515f", 1.14]}
           position={[0, 12, 0]}
         />
         <directionalLight
           castShadow
-          color="#dbeafe"
-          intensity={2}
+          color="#eef3f8"
+          intensity={1.8}
           position={[10, 14, 6]}
           shadow-mapSize-height={2048}
           shadow-mapSize-width={2048}
         />
-        <gridHelper
-          args={[40, 40, "#475569", "#1e293b"]}
-          position={[0, 0.001, 0]}
+        <Grid
+          args={[200, 200]}
+          cellColor="#d7dee7"
+          cellSize={1}
+          cellThickness={0.85}
+          fadeDistance={160}
+          fadeStrength={1.4}
+          followCamera
+          infiniteGrid
+          position={[0, 0, 0]}
+          sectionColor="#ffffff"
+          sectionSize={5}
+          sectionThickness={1.35}
         />
-        <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]}>
-          <planeGeometry args={[40, 40]} />
-          <meshStandardMaterial
-            color="#0b1120"
-            metalness={0.1}
-            roughness={0.95}
-          />
-        </mesh>
         <ModelingMesh />
         <ModelingPointer />
         <ModelingInputController controlsRef={controlsRef} />
