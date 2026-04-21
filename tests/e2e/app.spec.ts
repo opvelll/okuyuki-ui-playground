@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 async function expandSettings(page: Parameters<typeof test>[0]["page"]) {
-  await page.getByRole("button", { name: /Expand settings/i }).click();
+  await page.getByRole("button", { name: /Open settings/i }).click();
 }
 
 async function expandGeneralColors(page: Parameters<typeof test>[0]["page"]) {
@@ -18,7 +18,7 @@ test("shows the 3d prototype screen", async ({ page }) => {
   ).toBeVisible();
 
   await expect(
-    page.getByRole("button", { name: /Expand settings/i }),
+    page.getByRole("button", { name: /Open settings/i }),
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: /Switch to Prototype screen/i }),
@@ -43,7 +43,10 @@ test("shows the 3d prototype screen", async ({ page }) => {
   await expandSettings(page);
 
   await expect(
-    page.getByRole("button", { name: /Collapse settings/i }),
+    page.getByRole("button", { name: /Close settings/i }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("dialog", { name: /Settings window/i }),
   ).toBeVisible();
   await expect(page.getByLabel("Physics")).toBeVisible();
   await expect(page.getByLabel("Show FPS / FPS表示")).toBeVisible();
@@ -66,10 +69,10 @@ test("collapses the settings window", async ({ page }) => {
   await page.goto("/");
 
   await expandSettings(page);
-  await page.getByRole("button", { name: /Collapse settings/i }).click();
+  await page.getByRole("button", { name: /Close settings/i }).click();
 
   await expect(
-    page.getByRole("button", { name: /Expand settings/i }),
+    page.getByRole("button", { name: /Open settings/i }),
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: /Switch to Move UI tool/i }),

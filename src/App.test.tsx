@@ -39,7 +39,7 @@ async function loadApp() {
 
 describe("App", () => {
   async function expandSettings(user: ReturnType<typeof userEvent.setup>) {
-    await user.click(screen.getByRole("button", { name: /Expand settings/i }));
+    await user.click(screen.getByRole("button", { name: /Open settings/i }));
   }
 
   async function expandGeneralColors(user: ReturnType<typeof userEvent.setup>) {
@@ -91,7 +91,7 @@ describe("App", () => {
     ).toBeInTheDocument();
 
     expect(
-      screen.getByRole("button", { name: /Expand settings/i }),
+      screen.getByRole("button", { name: /Open settings/i }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /Switch to Prototype screen/i }),
@@ -193,11 +193,14 @@ describe("App", () => {
 
     render(<App />);
 
-    await user.click(screen.getByRole("button", { name: /Expand settings/i }));
+    await user.click(screen.getByRole("button", { name: /Open settings/i }));
 
     expect(
-      screen.getByRole("button", { name: /Collapse settings/i }),
+      screen.getByRole("button", { name: /Close settings/i }),
     ).toHaveAttribute("aria-expanded", "true");
+    expect(
+      screen.getByRole("dialog", { name: /Settings window/i }),
+    ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /全体/i })).toBeInTheDocument();
   });
 
@@ -211,9 +214,7 @@ describe("App", () => {
     await user.click(screen.getByRole("button", { name: /物理演算/i }));
     expect(screen.getByLabelText(/Rigid Body Mode/i)).toBeInTheDocument();
 
-    await user.click(
-      screen.getByRole("button", { name: /Collapse settings/i }),
-    );
+    await user.click(screen.getByRole("button", { name: /Close settings/i }));
 
     const persistedState = window.localStorage.getItem(UI_STORE_PERSIST_KEY);
 

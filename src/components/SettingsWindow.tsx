@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { X } from "lucide-react";
+import { useEffect, useState } from "react";
 import {
   type ModelingTool,
   type MoveAlwaysSnapMode,
@@ -14,15 +15,22 @@ import {
   useUiStore,
 } from "../store/uiStore";
 
+const overlayClasses =
+  "absolute inset-0 z-30 flex items-center justify-center p-3 md:p-6";
+const backdropClasses = "absolute inset-0 bg-slate-950/58 backdrop-blur-sm";
 const panelClasses =
-  "absolute left-3 right-3 top-[18.5rem] z-20 w-auto overflow-hidden border border-white/12 bg-slate-950/82 shadow-[0_16px_32px_rgba(3,10,20,0.22)] backdrop-blur md:left-auto md:right-4 md:top-4 md:w-[min(24rem,calc(100vw-2rem))]";
+  "relative z-10 flex min-h-[28rem] max-h-[calc(100vh-2rem)] w-full max-w-5xl flex-col overflow-hidden border border-white/12 bg-slate-950/92 shadow-[0_24px_60px_rgba(3,10,20,0.4)] md:h-[44rem] md:max-h-[min(44rem,calc(100vh-2rem))]";
 const sectionHeadingClasses =
   "text-[0.58rem] font-bold uppercase tracking-[0.22em] text-sky-100/62";
+const sectionBodyClasses = "grid gap-4 md:gap-5";
+const fieldGroupClasses = "grid gap-1.5 text-sm text-slate-100/90";
 const fieldClasses =
   "min-h-9 w-full border border-white/12 bg-slate-900/72 px-2.5 text-[0.76rem] text-slate-50 outline-none transition focus:border-sky-200/60 focus:ring-2 focus:ring-sky-300/40";
 const toggleLabelClasses =
   "grid grid-cols-[1fr_auto] items-center gap-4 text-[0.76rem] text-slate-100/90";
 const fieldHintClasses = "text-[0.68rem] leading-5 text-slate-300/72";
+const attachedFieldHintClasses =
+  "-mt-2 text-[0.68rem] leading-5 text-slate-300/72";
 const colorFieldClasses = "h-9 w-12 border border-white/12 bg-slate-900/80 p-1";
 const subsectionToggleClasses =
   "flex w-full items-center justify-between gap-3 border border-white/8 bg-white/[0.03] px-3 py-2.5 text-left text-[0.74rem] font-semibold text-slate-100/90 transition hover:bg-white/[0.05] focus-visible:ring-2 focus-visible:ring-sky-300/50";
@@ -186,7 +194,7 @@ function NumberField({
   value: number;
 }) {
   return (
-    <label className="grid gap-2 text-sm text-slate-100/90" htmlFor={id}>
+    <label className={fieldGroupClasses} htmlFor={id}>
       <span>{label}</span>
       <input
         className={fieldClasses}
@@ -204,7 +212,7 @@ function NumberField({
 }
 
 function SectionNote({ children }: { children: string }) {
-  return <p className={fieldHintClasses}>{children}</p>;
+  return <p className={attachedFieldHintClasses}>{children}</p>;
 }
 
 function ColorField({
@@ -221,7 +229,7 @@ function ColorField({
   value: string;
 }) {
   return (
-    <label className="grid gap-2 text-sm text-slate-100/90" htmlFor={id}>
+    <label className={fieldGroupClasses} htmlFor={id}>
       <span>{label}</span>
       <div className="grid grid-cols-[auto_1fr] items-center gap-3">
         <input
@@ -447,6 +455,21 @@ export function SettingsWindow() {
     (state) => state.setSuppressObjectRotation,
   );
 
+  useEffect(() => {
+    if (!settingsOpen) {
+      return undefined;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setSettingsOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [setSettingsOpen, settingsOpen]);
+
   const handleNumberChange =
     (setter: (value: number) => void) => (value: string) => {
       const parsedValue = parseNumberInput(value);
@@ -455,22 +478,48 @@ export function SettingsWindow() {
       }
     };
 
+  if (!settingsOpen) {
+    return null;
+  }
+
   return (
-    <aside aria-label="Settings window" className={panelClasses}>
+    <div className={overlayClasses}>
       <button
-        aria-expanded={settingsOpen}
-        aria-label={settingsOpen ? "Collapse settings" : "Expand settings"}
-        className="flex w-full items-center justify-between gap-4 border-b border-white/8 px-3 py-2.5 text-[0.62rem] font-bold uppercase tracking-[0.22em] text-slate-50 outline-none transition hover:bg-white/5 focus-visible:ring-2 focus-visible:ring-sky-300/50"
-        onClick={() => setSettingsOpen(!settingsOpen)}
+        aria-label="Close settings"
+        aria-hidden="true"
+        className={backdropClasses}
+        onClick={() => setSettingsOpen(false)}
+        tabIndex={-1}
         type="button"
+      />
+      <dialog
+        aria-label="Settings window"
+        aria-modal="true"
+        className={panelClasses}
+        open
       >
-        <span>Settings</span>
-        <span className="inline-flex w-5 justify-center text-sm leading-none text-sky-300">
-          {settingsOpen ? "−" : "+"}
-        </span>
-      </button>
-      {settingsOpen ? (
-        <div className="grid max-h-[calc(100vh-10rem)] gap-3 overflow-y-auto px-2 pb-2 pt-2 md:max-h-[calc(100vh-8rem)] md:grid-cols-[6.5rem_minmax(0,1fr)]">
+        <div className="flex items-start justify-between gap-4 border-b border-white/8 px-4 py-3 md:px-5">
+          <div className="min-w-0">
+            <p className="text-[0.62rem] font-bold uppercase tracking-[0.24em] text-sky-100/70">
+              Settings
+            </p>
+            <h2 className="mt-1 text-base font-semibold text-slate-50 md:text-lg">
+              Workspace controls
+            </h2>
+            <p className="mt-1 text-[0.74rem] leading-5 text-slate-300/72">
+              Prototype / Modeling 共通の挙動と表示をここで調整します。
+            </p>
+          </div>
+          <button
+            aria-label="Dismiss settings dialog"
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center border border-white/10 bg-white/[0.03] text-slate-200 transition hover:bg-white/[0.07] focus-visible:ring-2 focus-visible:ring-sky-300/50"
+            onClick={() => setSettingsOpen(false)}
+            type="button"
+          >
+            <X aria-hidden="true" className="h-4 w-4" strokeWidth={2} />
+          </button>
+        </div>
+        <div className="grid min-h-0 flex-1 gap-3 overflow-y-auto px-3 pb-3 pt-3 md:grid-cols-[8.5rem_minmax(0,1fr)] md:px-4 md:pb-4">
           <nav
             aria-label="Settings sections"
             className="grid gap-2 md:content-start"
@@ -496,11 +545,11 @@ export function SettingsWindow() {
               );
             })}
           </nav>
-          <div className="min-w-0 border-l border-white/8 pl-3">
+          <div className="min-w-0 border-t border-white/8 pt-3 md:border-l md:border-t-0 md:pl-4 md:pt-0">
             {selectedSettingsMenu === "general" ? (
               <section
                 aria-labelledby="general-settings"
-                className="grid gap-3"
+                className={sectionBodyClasses}
               >
                 <h2 className={sectionHeadingClasses} id="general-settings">
                   全体
@@ -525,7 +574,7 @@ export function SettingsWindow() {
                   Show FPS: 左下 HUD の FPS 行を表示します。OFF でもほかの HUD
                   情報はそのまま表示します。
                 </SectionNote>
-                <div className="grid gap-3 border border-white/8 bg-white/[0.02] p-3">
+                <div className="grid gap-4 border border-white/8 bg-white/[0.02] p-3">
                   <button
                     aria-controls="general-color-settings"
                     aria-expanded={generalColorsOpen}
@@ -544,7 +593,7 @@ export function SettingsWindow() {
                     </span>
                   </button>
                   {generalColorsOpen ? (
-                    <div className="grid gap-3" id="general-color-settings">
+                    <div className="grid gap-4" id="general-color-settings">
                       <ColorField
                         hint="Scene Background / 背景色。Canvas 背景とフォグに反映します。"
                         id="scene-background-color"
@@ -607,7 +656,7 @@ export function SettingsWindow() {
             {selectedSettingsMenu === "physics" ? (
               <section
                 aria-labelledby="physics-settings"
-                className="grid gap-3"
+                className={sectionBodyClasses}
               >
                 <h2 className={sectionHeadingClasses} id="physics-settings">
                   物理演算
@@ -616,10 +665,7 @@ export function SettingsWindow() {
                   推奨値は Rapier / react-three-rapier の公式 docs
                   を基準にした目安です。
                 </SectionNote>
-                <label
-                  className="grid gap-2 text-sm text-slate-100/90"
-                  htmlFor="rigid-body-type"
-                >
+                <label className={fieldGroupClasses} htmlFor="rigid-body-type">
                   <span>Rigid Body Mode / 剛体モード</span>
                   <select
                     className={fieldClasses}
@@ -725,7 +771,10 @@ export function SettingsWindow() {
               </section>
             ) : null}
             {selectedSettingsMenu === "move-ui" ? (
-              <section aria-labelledby="move-settings" className="grid gap-3">
+              <section
+                aria-labelledby="move-settings"
+                className={sectionBodyClasses}
+              >
                 <h2 className={sectionHeadingClasses} id="move-settings">
                   Move UI
                 </h2>
@@ -744,7 +793,7 @@ export function SettingsWindow() {
                   縦ガイド線を表示します。
                 </SectionNote>
                 <label
-                  className="grid gap-2 text-sm text-slate-100/90"
+                  className={fieldGroupClasses}
                   htmlFor="overlay-display-mode"
                 >
                   <span>Overlay Display / オーバーレイ表示</span>
@@ -791,7 +840,7 @@ export function SettingsWindow() {
                   value={moveGridSnapStep}
                 />
                 <label
-                  className="grid gap-2 text-sm text-slate-100/90"
+                  className={fieldGroupClasses}
                   htmlFor="move-always-snap-mode"
                 >
                   <span>Always Snap / 常時スナップ</span>
@@ -823,7 +872,7 @@ export function SettingsWindow() {
                   は保持されます。
                 </SectionNote>
                 <label
-                  className="grid gap-2 text-sm text-slate-100/90"
+                  className={fieldGroupClasses}
                   htmlFor="move-axis-magnet-reference-frame"
                 >
                   <span>Magnet Axis Space / 軸吸着の基準</span>
@@ -850,7 +899,7 @@ export function SettingsWindow() {
                   </span>
                 </label>
                 <label
-                  className="grid gap-2 text-sm text-slate-100/90"
+                  className={fieldGroupClasses}
                   htmlFor="move-grid-snap-pattern"
                 >
                   <span>Interval Snap Pattern / 一定間隔パターン</span>
@@ -896,10 +945,7 @@ export function SettingsWindow() {
                   step="0.01"
                   value={moveDepthWheelStep}
                 />
-                <label
-                  className="grid gap-2 text-sm text-slate-100/90"
-                  htmlFor="depth-direction"
-                >
+                <label className={fieldGroupClasses} htmlFor="depth-direction">
                   <span>Depth Wheel Direction / ホイール方向</span>
                   <select
                     className={fieldClasses}
@@ -925,7 +971,10 @@ export function SettingsWindow() {
               </section>
             ) : null}
             {selectedSettingsMenu === "rotate-ui" ? (
-              <section aria-labelledby="rotate-settings" className="grid gap-3">
+              <section
+                aria-labelledby="rotate-settings"
+                className={sectionBodyClasses}
+              >
                 <h2 className={sectionHeadingClasses} id="rotate-settings">
                   Rotate UI
                 </h2>
@@ -998,7 +1047,7 @@ export function SettingsWindow() {
                   value={rotateAngleSnapStepDeg}
                 />
                 <label
-                  className="grid gap-2 text-sm text-slate-100/90"
+                  className={fieldGroupClasses}
                   htmlFor="rotate-drag-release-behavior"
                 >
                   <span>Drag Release Behavior / ドラッグ後の選択</span>
@@ -1025,7 +1074,7 @@ export function SettingsWindow() {
                   </span>
                 </label>
                 <label
-                  className="grid gap-2 text-sm text-slate-100/90"
+                  className={fieldGroupClasses}
                   htmlFor="rotate-wheel-direction"
                 >
                   <span>Wheel Direction / ホイール方向</span>
@@ -1051,7 +1100,7 @@ export function SettingsWindow() {
                   </span>
                 </label>
                 <label
-                  className="grid gap-2 text-sm text-slate-100/90"
+                  className={fieldGroupClasses}
                   htmlFor="rotate-twist-axis"
                 >
                   <span>Twist Axis / Twist 基準軸</span>
@@ -1081,7 +1130,7 @@ export function SettingsWindow() {
             {selectedSettingsMenu === "modeling-ui" ? (
               <section
                 aria-labelledby="modeling-settings"
-                className="grid gap-3"
+                className={sectionBodyClasses}
               >
                 <h2 className={sectionHeadingClasses} id="modeling-settings">
                   Modeling
@@ -1091,7 +1140,7 @@ export function SettingsWindow() {
                   の既定挙動を調整します。
                 </SectionNote>
                 <label
-                  className="grid gap-2 text-sm text-slate-100/90"
+                  className={fieldGroupClasses}
                   htmlFor="modeling-default-tool"
                 >
                   <span>Default Tool / 既定ツール</span>
@@ -1134,7 +1183,7 @@ export function SettingsWindow() {
                   value={modelingLineSnapDistance}
                 />
                 <label
-                  className="grid gap-2 text-sm text-slate-100/90"
+                  className={fieldGroupClasses}
                   htmlFor="modeling-line-overlay-display"
                 >
                   <span>Line Overlay / lineドラッグ表示</span>
@@ -1192,7 +1241,7 @@ export function SettingsWindow() {
             ) : null}
           </div>
         </div>
-      ) : null}
-    </aside>
+      </dialog>
+    </div>
   );
 }

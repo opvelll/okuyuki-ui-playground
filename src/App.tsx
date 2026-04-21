@@ -1,3 +1,4 @@
+import { Settings2 } from "lucide-react";
 import { Suspense, lazy } from "react";
 import { InteractionModeHotkeys } from "./components/InteractionModeHotkeys";
 import { InteractionModeToolbar } from "./components/InteractionModeToolbar";
@@ -41,7 +42,9 @@ const screenButtons = [
 
 export default function App() {
   const currentScreen = useUiStore((state) => state.currentScreen);
+  const settingsOpen = useUiStore((state) => state.settingsOpen);
   const setCurrentScreen = useUiStore((state) => state.setCurrentScreen);
+  const setSettingsOpen = useUiStore((state) => state.setSettingsOpen);
 
   return (
     <main className="flex h-screen min-h-screen flex-col gap-3 overflow-hidden px-3 py-3 md:gap-4 md:px-4 md:py-4">
@@ -80,6 +83,19 @@ export default function App() {
               </button>
             );
           })}
+          <button
+            aria-expanded={settingsOpen}
+            aria-label={settingsOpen ? "Close settings" : "Open settings"}
+            className={`inline-flex h-11 w-11 items-center justify-center border transition ${
+              settingsOpen
+                ? "border-sky-300/50 bg-sky-300/12 text-slate-50"
+                : "border-white/10 bg-slate-950/30 text-slate-300 hover:bg-white/[0.04]"
+            }`}
+            onClick={() => setSettingsOpen(!settingsOpen)}
+            type="button"
+          >
+            <Settings2 aria-hidden="true" className="h-4 w-4" strokeWidth={2} />
+          </button>
         </nav>
       </header>
       <section className="relative flex min-h-0 flex-1">
