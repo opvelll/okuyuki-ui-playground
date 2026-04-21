@@ -34,7 +34,7 @@ const POINTER_AXIS_GAP_SIZE = 0.08;
 const MODEL_VERTEX_PIXEL_SIZE = 4;
 const DEFAULT_OVERLAY_NORMAL = new Vector3(0, 0, 1);
 const MODELING_LINE_PREVIEW_DEFAULT_VERTEX_COLOR = "#ffffff";
-const MODELING_LINE_PREVIEW_SNAPPED_VERTEX_COLOR = "#fef08a";
+const MODELING_LINE_PREVIEW_SNAPPED_VERTEX_COLOR = "#22c55e";
 const MODELING_LINE_PREVIEW_COLORS = {
   "camera-facing": "#fdba74",
   "screen-horizontal": "#facc15",
