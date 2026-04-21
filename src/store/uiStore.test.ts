@@ -18,7 +18,9 @@ describe("uiStore", () => {
       modelingLinePreview: {
         active: false,
         currentPosition: [0, 0, 0],
+        currentSnapped: false,
         planeNormal: [0, 0, 1],
+        startSnapped: false,
         startPosition: [0, 0, 0],
       },
       modelingPointer: {
@@ -184,7 +186,9 @@ describe("uiStore", () => {
   it("resets line preview when switching modeling tools", () => {
     useUiStore.getState().setModelingLinePreview({
       currentPosition: [1, 1, 1],
+      currentSnapped: true,
       planeNormal: [0, 0, 1],
+      startSnapped: false,
       startPosition: [0, 0, 0],
     });
 

@@ -61,7 +61,9 @@ describe("App", () => {
       modelingLinePreview: {
         active: false,
         currentPosition: [0, 0, 0],
+        currentSnapped: false,
         planeNormal: [0, 0, 1],
+        startSnapped: false,
         startPosition: [0, 0, 0],
       },
       modelingPointer: {

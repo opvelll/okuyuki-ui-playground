@@ -47,7 +47,9 @@ export type ModelingPointerState = {
 export type ModelingLinePreviewState = {
   active: boolean;
   currentPosition: [number, number, number];
+  currentSnapped: boolean;
   planeNormal: [number, number, number];
+  startSnapped: boolean;
   startPosition: [number, number, number];
 };
 
@@ -226,7 +228,9 @@ export const DEFAULT_MODELING_CAMERA: CameraSnapshot = {
 const DEFAULT_MODELING_LINE_PREVIEW: ModelingLinePreviewState = {
   active: false,
   currentPosition: [0, 0, 0],
+  currentSnapped: false,
   planeNormal: [0, 0, 1],
+  startSnapped: false,
   startPosition: [0, 0, 0],
 };
 
@@ -569,7 +573,9 @@ export const useUiStore = create<UiState>()(
           modelingLinePreview: {
             active: true,
             currentPosition: preview.currentPosition,
+            currentSnapped: preview.currentSnapped,
             planeNormal: preview.planeNormal,
+            startSnapped: preview.startSnapped,
             startPosition: preview.startPosition,
           },
         }),

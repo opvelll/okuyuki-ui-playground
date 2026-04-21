@@ -122,4 +122,21 @@ describe("modelingStore", () => {
     expect(currentModel.edgeOrder).toHaveLength(1);
     expect(state.selectedVertexIds).toEqual(["vertex-1", "vertex-2"]);
   });
+
+  it("keeps a single vertex selected when both ends snap to the same target", () => {
+    const vertex = useModelingStore.getState().addVertex([0, 0, 0]);
+
+    expect(
+      useModelingStore
+        .getState()
+        .createEdgeFromPositions([0.05, 0, 0], [0.08, 0.02, 0], 0.2),
+    ).toBe(false);
+
+    const state = useModelingStore.getState();
+    const currentModel = state.modelsById[state.currentModelId];
+
+    expect(currentModel.vertexOrder).toHaveLength(1);
+    expect(currentModel.edgeOrder).toHaveLength(0);
+    expect(state.selectedVertexIds).toEqual([vertex?.id]);
+  });
 });

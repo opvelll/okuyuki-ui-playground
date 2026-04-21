@@ -33,11 +33,17 @@ const POINTER_AXIS_DASH_SIZE = 0.18;
 const POINTER_AXIS_GAP_SIZE = 0.08;
 const MODEL_VERTEX_PIXEL_SIZE = 4;
 const DEFAULT_OVERLAY_NORMAL = new Vector3(0, 0, 1);
+const MODELING_LINE_PREVIEW_DEFAULT_VERTEX_COLOR = "#ffffff";
+const MODELING_LINE_PREVIEW_SNAPPED_VERTEX_COLOR = "#fef08a";
 const MODELING_LINE_PREVIEW_COLORS = {
   "camera-facing": "#fdba74",
   "screen-horizontal": "#facc15",
   "screen-vertical": "#fb923c",
 } as const;
+
+function positionsMatch(a: Vector3Tuple, b: Vector3Tuple) {
+  return a[0] === b[0] && a[1] === b[1] && a[2] === b[2];
+}
 
 type ModelingPointerSnapConfig = {
   axisDistance: number;
@@ -434,6 +440,11 @@ function ModelingLinePreviewOverlay() {
     return null;
   }
 
+  const showCurrentPoint = !positionsMatch(
+    modelingLinePreview.startPosition,
+    modelingLinePreview.currentPosition,
+  );
+
   return (
     <group raycast={() => null}>
       {overlayGeometries.map((geometry) => (
@@ -478,25 +489,35 @@ function ModelingLinePreviewOverlay() {
           />
         </bufferGeometry>
         <pointsMaterial
-          color="#ffffff"
+          color={
+            modelingLinePreview.startSnapped
+              ? MODELING_LINE_PREVIEW_SNAPPED_VERTEX_COLOR
+              : MODELING_LINE_PREVIEW_DEFAULT_VERTEX_COLOR
+          }
           size={MODEL_VERTEX_PIXEL_SIZE}
           sizeAttenuation={false}
         />
       </points>
-      <points renderOrder={13} position={modelingLinePreview.currentPosition}>
-        <bufferGeometry>
-          <bufferAttribute
-            args={[new Float32Array([0, 0, 0]), 3]}
-            attach="attributes-position"
-            count={1}
+      {showCurrentPoint ? (
+        <points renderOrder={13} position={modelingLinePreview.currentPosition}>
+          <bufferGeometry>
+            <bufferAttribute
+              args={[new Float32Array([0, 0, 0]), 3]}
+              attach="attributes-position"
+              count={1}
+            />
+          </bufferGeometry>
+          <pointsMaterial
+            color={
+              modelingLinePreview.currentSnapped
+                ? MODELING_LINE_PREVIEW_SNAPPED_VERTEX_COLOR
+                : MODELING_LINE_PREVIEW_DEFAULT_VERTEX_COLOR
+            }
+            size={MODEL_VERTEX_PIXEL_SIZE}
+            sizeAttenuation={false}
           />
-        </bufferGeometry>
-        <pointsMaterial
-          color="#ffffff"
-          size={MODEL_VERTEX_PIXEL_SIZE}
-          sizeAttenuation={false}
-        />
-      </points>
+        </points>
+      ) : null}
     </group>
   );
 }
@@ -726,6 +747,7 @@ function ModelingInputController({
       y: number;
     } | null = null;
     let lineDragStartPosition: [number, number, number] | null = null;
+    let lineDragStartSnapped = false;
 
     const updatePointerPosition = (
       depth = useUiStore.getState().modelingPointer.depth,
@@ -806,7 +828,9 @@ function ModelingInputController({
 
         setModelingLinePreview({
           currentPosition: previewPosition,
+          currentSnapped: snappedVertex !== null,
           planeNormal: [planeNormal.x, planeNormal.y, planeNormal.z],
+          startSnapped: lineDragStartSnapped,
           startPosition: lineDragStartPosition,
         });
       }
@@ -816,6 +840,7 @@ function ModelingInputController({
       hasPointer = false;
       clickCandidate = null;
       lineDragStartPosition = null;
+      lineDragStartSnapped = false;
       clearModelingLinePreview();
       setModelingPointerHovered(false);
     };
@@ -844,6 +869,7 @@ function ModelingInputController({
           lineDragStartPosition = snappedVertex
             ? [...snappedVertex.position]
             : [...modelingPointer.position];
+          lineDragStartSnapped = snappedVertex !== null;
         }
       }
 
@@ -895,6 +921,7 @@ function ModelingInputController({
 
       clickCandidate = null;
       lineDragStartPosition = null;
+      lineDragStartSnapped = false;
       clearModelingLinePreview();
     };
 

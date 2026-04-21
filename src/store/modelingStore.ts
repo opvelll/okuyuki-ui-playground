@@ -266,6 +266,9 @@ export const useModelingStore = create<ModelingState>((set, get) => ({
       snappedEndVertex &&
       snappedStartVertex.id === snappedEndVertex.id
     ) {
+      set({
+        selectedVertexIds: [snappedStartVertex.id],
+      });
       return false;
     }
 
