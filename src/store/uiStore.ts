@@ -75,6 +75,9 @@ type PersistedUiState = {
   moveOverlayRadiusMultiplier: number;
   movePrecisionStep: number;
   moveVerticalDropGuide: boolean;
+  modelingPointerSnapEnabled: boolean;
+  modelingPointerAxisSnapDistance: number;
+  modelingPointerGridSnapStep: number;
   modelingPointerPanelRadius: number;
   modelingLineSnapDistance: number;
   modelingLineOverlayDisplayMode: MoveOverlayDisplayMode;
@@ -144,6 +147,9 @@ type UiState = PersistedUiState & {
   setMoveOverlayRadiusMultiplier: (multiplier: number) => void;
   setMovePrecisionStep: (step: number) => void;
   setMoveVerticalDropGuide: (value: boolean) => void;
+  setModelingPointerSnapEnabled: (value: boolean) => void;
+  setModelingPointerAxisSnapDistance: (value: number) => void;
+  setModelingPointerGridSnapStep: (value: number) => void;
   setModelingPointerPanelRadius: (value: number) => void;
   setModelingLineSnapDistance: (value: number) => void;
   setModelingLineOverlayDisplayMode: (value: MoveOverlayDisplayMode) => void;
@@ -246,6 +252,9 @@ export const createDefaultPersistedUiState = (): PersistedUiState => ({
   moveOverlayRadiusMultiplier: 1.15,
   movePrecisionStep: 0.1,
   moveVerticalDropGuide: true,
+  modelingPointerSnapEnabled: false,
+  modelingPointerAxisSnapDistance: 0.1,
+  modelingPointerGridSnapStep: 0.05,
   modelingPointerPanelRadius: 0.72,
   modelingLineSnapDistance: 0.45,
   modelingLineOverlayDisplayMode: "mode-1",
@@ -302,6 +311,9 @@ const createInitialUiState = (): Omit<
   | "setMoveOverlayRadiusMultiplier"
   | "setMovePrecisionStep"
   | "setMoveVerticalDropGuide"
+  | "setModelingPointerSnapEnabled"
+  | "setModelingPointerAxisSnapDistance"
+  | "setModelingPointerGridSnapStep"
   | "setModelingPointerPanelRadius"
   | "setModelingLineSnapDistance"
   | "setModelingLineOverlayDisplayMode"
@@ -420,6 +432,16 @@ export const useUiStore = create<UiState>()(
       setMovePrecisionStep: (step) => set({ movePrecisionStep: step }),
       setMoveVerticalDropGuide: (value) =>
         set({ moveVerticalDropGuide: value }),
+      setModelingPointerSnapEnabled: (value) =>
+        set({ modelingPointerSnapEnabled: value }),
+      setModelingPointerAxisSnapDistance: (value) =>
+        set({
+          modelingPointerAxisSnapDistance: Math.max(0, Math.min(value, 4)),
+        }),
+      setModelingPointerGridSnapStep: (value) =>
+        set({
+          modelingPointerGridSnapStep: Math.max(0.01, Math.min(value, 4)),
+        }),
       setModelingCamera: (camera) => set({ modelingCamera: camera }),
       setModelingPointerPanelRadius: (value) =>
         set({
@@ -582,6 +604,9 @@ export const useUiStore = create<UiState>()(
         moveOverlayRadiusMultiplier: state.moveOverlayRadiusMultiplier,
         movePrecisionStep: state.movePrecisionStep,
         moveVerticalDropGuide: state.moveVerticalDropGuide,
+        modelingPointerSnapEnabled: state.modelingPointerSnapEnabled,
+        modelingPointerAxisSnapDistance: state.modelingPointerAxisSnapDistance,
+        modelingPointerGridSnapStep: state.modelingPointerGridSnapStep,
         modelingPointerPanelRadius: state.modelingPointerPanelRadius,
         modelingLineSnapDistance: state.modelingLineSnapDistance,
         modelingLineOverlayDisplayMode: state.modelingLineOverlayDisplayMode,

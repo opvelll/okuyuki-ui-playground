@@ -167,6 +167,20 @@ describe("uiStore", () => {
     expect(useUiStore.getState().modelingPointerVerticalAxisFloorY).toBe(-32);
   });
 
+  it("clamps the modeling pointer snap controls", () => {
+    useUiStore.getState().setModelingPointerAxisSnapDistance(-1);
+    expect(useUiStore.getState().modelingPointerAxisSnapDistance).toBe(0);
+
+    useUiStore.getState().setModelingPointerGridSnapStep(0);
+    expect(useUiStore.getState().modelingPointerGridSnapStep).toBe(0.01);
+
+    useUiStore.getState().setModelingPointerAxisSnapDistance(10);
+    expect(useUiStore.getState().modelingPointerAxisSnapDistance).toBe(4);
+
+    useUiStore.getState().setModelingPointerGridSnapStep(10);
+    expect(useUiStore.getState().modelingPointerGridSnapStep).toBe(4);
+  });
+
   it("resets line preview when switching modeling tools", () => {
     useUiStore.getState().setModelingLinePreview({
       currentPosition: [1, 1, 1],

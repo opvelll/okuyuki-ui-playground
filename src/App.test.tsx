@@ -443,9 +443,37 @@ describe("App", () => {
     );
 
     expect(screen.getByText(/Line tool: drag and drop/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/^Snap$/i)).toBeInTheDocument();
+    expect(screen.getAllByText("3D Pointer")).toHaveLength(2);
+    expect(screen.getByLabelText(/^Axis Distance$/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Grid Step$/i)).toBeInTheDocument();
+    expect(screen.getAllByLabelText(/^Snap$/i)).toHaveLength(2);
     expect(screen.getByLabelText(/Snap Distance/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Overlay/i)).toBeInTheDocument();
+  });
+
+  it("shows only the 3D pointer global properties for pointer tools without extra controls", async () => {
+    const user = userEvent.setup();
+    const App = await loadApp();
+
+    render(<App />);
+
+    await user.click(
+      screen.getByRole("button", { name: /Switch to Modeling screen/i }),
+    );
+
+    expect(screen.getAllByText("3D Pointer")).toHaveLength(2);
+    expect(screen.getByLabelText(/^Axis Distance$/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Grid Step$/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/Snap Distance/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/Overlay/i)).not.toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", { name: /Switch to Vertex tool/i }),
+    );
+
+    expect(screen.getAllByText("3D Pointer")).toHaveLength(2);
+    expect(screen.queryByLabelText(/Snap Distance/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/Overlay/i)).not.toBeInTheDocument();
   });
 
   it("temporarily switches modeling controls while space is held", async () => {

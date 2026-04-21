@@ -21,6 +21,7 @@ import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { useModelingStore } from "../store/modelingStore";
 import type { MoveOverlayOrientationMode } from "../store/uiStore";
 import { getEffectiveModelingTool, useUiStore } from "../store/uiStore";
+import type { Vector3Tuple } from "../types/scene";
 import { calculateDragPlaneOverlayGeometry } from "./scene/dragPlaneOverlay";
 
 const CURSOR_DEPTH_STEP = 0.45;
@@ -37,6 +38,75 @@ const MODELING_LINE_PREVIEW_COLORS = {
   "screen-horizontal": "#facc15",
   "screen-vertical": "#fb923c",
 } as const;
+
+type ModelingPointerSnapConfig = {
+  axisDistance: number;
+  enabled: boolean;
+  gridStep: number;
+};
+
+function snapToGrid(value: number, step: number) {
+  if (step <= 0) {
+    return value;
+  }
+
+  return Number((Math.round(value / step) * step).toFixed(6));
+}
+
+export function getSnappedModelingPointerPosition(
+  position: Vector3Tuple,
+  vertexPositions: Vector3Tuple[],
+  snapConfig: ModelingPointerSnapConfig,
+): Vector3Tuple {
+  if (!snapConfig.enabled) {
+    return [...position];
+  }
+
+  const snappedPosition: Vector3Tuple = [...position];
+  const snappedAxes = new Set<number>();
+
+  if (snapConfig.axisDistance > 0) {
+    for (let axisIndex = 0; axisIndex < 3; axisIndex += 1) {
+      let closestCoordinate: number | null = null;
+      let closestDistance = snapConfig.axisDistance;
+
+      for (const vertexPosition of vertexPositions) {
+        const axisDistance = Math.abs(
+          vertexPosition[axisIndex] - position[axisIndex],
+        );
+
+        if (axisDistance >= closestDistance) {
+          continue;
+        }
+
+        closestCoordinate = vertexPosition[axisIndex];
+        closestDistance = axisDistance;
+      }
+
+      if (closestCoordinate === null) {
+        continue;
+      }
+
+      snappedPosition[axisIndex] = closestCoordinate;
+      snappedAxes.add(axisIndex);
+    }
+  }
+
+  if (snapConfig.gridStep > 0) {
+    for (let axisIndex = 0; axisIndex < 3; axisIndex += 1) {
+      if (snappedAxes.has(axisIndex)) {
+        continue;
+      }
+
+      snappedPosition[axisIndex] = snapToGrid(
+        snappedPosition[axisIndex],
+        snapConfig.gridStep,
+      );
+    }
+  }
+
+  return snappedPosition;
+}
 
 function createLineSegments(points: number[], material: LineBasicMaterial) {
   const geometry = new BufferGeometry();
@@ -584,6 +654,8 @@ function ModelingInputController({
 }: {
   controlsRef: RefObject<OrbitControlsImpl | null>;
 }) {
+  const currentModelId = useModelingStore((state) => state.currentModelId);
+  const modelsById = useModelingStore((state) => state.modelsById);
   const { camera, gl } = useThree();
   const addVertex = useModelingStore((state) => state.addVertex);
   const clearVertexSelection = useModelingStore(
@@ -603,6 +675,15 @@ function ModelingInputController({
   );
   const modelingLineSnapEnabled = useUiStore(
     (state) => state.modelingLineSnapEnabled,
+  );
+  const modelingPointerSnapEnabled = useUiStore(
+    (state) => state.modelingPointerSnapEnabled,
+  );
+  const modelingPointerAxisSnapDistance = useUiStore(
+    (state) => state.modelingPointerAxisSnapDistance,
+  );
+  const modelingPointerGridSnapStep = useUiStore(
+    (state) => state.modelingPointerGridSnapStep,
   );
   const setModelingPointerDepth = useUiStore(
     (state) => state.setModelingPointerDepth,
@@ -630,6 +711,12 @@ function ModelingInputController({
     const element = gl.domElement;
     const raycaster = new Raycaster();
     const ndc = new Vector2(0, 0);
+    const activeModel = modelsById[currentModelId];
+    const activeVertexPositions = activeModel
+      ? activeModel.vertexOrder.map(
+          (vertexId) => activeModel.verticesById[vertexId].position,
+        )
+      : [];
     let hasPointer = false;
     let cameraDragButton: number | null = null;
     let clickCandidate: {
@@ -651,12 +738,17 @@ function ModelingInputController({
       const nextPosition = raycaster.ray.origin
         .clone()
         .add(raycaster.ray.direction.clone().multiplyScalar(depth));
+      const snappedPosition = getSnappedModelingPointerPosition(
+        [nextPosition.x, nextPosition.y, nextPosition.z],
+        activeVertexPositions,
+        {
+          axisDistance: modelingPointerAxisSnapDistance,
+          enabled: modelingPointerSnapEnabled,
+          gridStep: modelingPointerGridSnapStep,
+        },
+      );
 
-      setModelingPointerPosition([
-        nextPosition.x,
-        nextPosition.y,
-        nextPosition.z,
-      ]);
+      setModelingPointerPosition(snappedPosition);
     };
 
     const updatePointerFromEvent = (event: PointerEvent | WheelEvent) => {
@@ -892,10 +984,15 @@ function ModelingInputController({
     clearVertexSelection,
     controlsRef,
     createEdgeFromPositions,
+    currentModelId,
     findNearestVertex,
     gl,
     modelingLineSnapDistance,
     modelingLineSnapEnabled,
+    modelingPointerAxisSnapDistance,
+    modelingPointerGridSnapStep,
+    modelingPointerSnapEnabled,
+    modelsById,
     clearModelingLinePreview,
     selectNearestVertex,
     setModelingCameraDragging,
