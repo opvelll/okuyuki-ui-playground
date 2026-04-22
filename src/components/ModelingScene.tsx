@@ -13,20 +13,16 @@ import {
   MOUSE,
   PointsMaterial,
   Quaternion,
-  Raycaster,
-  Vector2,
   Vector3,
 } from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { useModelingStore } from "../store/modelingStore";
 import type { MoveOverlayOrientationMode } from "../store/uiStore";
 import { getEffectiveModelingTool, useUiStore } from "../store/uiStore";
-import type { Vector3Tuple } from "../types/scene";
+import { ModelingInputController } from "./scene/ModelingInputController";
 import { calculateDragPlaneOverlayGeometry } from "./scene/dragPlaneOverlay";
+import { modelingPointerPositionsMatch } from "./scene/modelingPointerUtils";
 
-const CURSOR_DEPTH_STEP = 0.45;
-const CAMERA_DOLLY_STEP = 0.55;
-const CAMERA_DOLLY_MIN_DISTANCE = 2.4;
 const POINTER_AXIS_LENGTH = 1.25;
 const POINTER_AXIS_DASH_EXTENT = 120;
 const POINTER_AXIS_DASH_SIZE = 0.18;
@@ -40,79 +36,6 @@ const MODELING_LINE_PREVIEW_COLORS = {
   "screen-horizontal": "#facc15",
   "screen-vertical": "#fb923c",
 } as const;
-
-function positionsMatch(a: Vector3Tuple, b: Vector3Tuple) {
-  return a[0] === b[0] && a[1] === b[1] && a[2] === b[2];
-}
-
-type ModelingPointerSnapConfig = {
-  axisDistance: number;
-  enabled: boolean;
-  gridStep: number;
-};
-
-function snapToGrid(value: number, step: number) {
-  if (step <= 0) {
-    return value;
-  }
-
-  return Number((Math.round(value / step) * step).toFixed(6));
-}
-
-export function getSnappedModelingPointerPosition(
-  position: Vector3Tuple,
-  vertexPositions: Vector3Tuple[],
-  snapConfig: ModelingPointerSnapConfig,
-): Vector3Tuple {
-  if (!snapConfig.enabled) {
-    return [...position];
-  }
-
-  const snappedPosition: Vector3Tuple = [...position];
-  const snappedAxes = new Set<number>();
-
-  if (snapConfig.axisDistance > 0) {
-    for (let axisIndex = 0; axisIndex < 3; axisIndex += 1) {
-      let closestCoordinate: number | null = null;
-      let closestDistance = snapConfig.axisDistance;
-
-      for (const vertexPosition of vertexPositions) {
-        const axisDistance = Math.abs(
-          vertexPosition[axisIndex] - position[axisIndex],
-        );
-
-        if (axisDistance >= closestDistance) {
-          continue;
-        }
-
-        closestCoordinate = vertexPosition[axisIndex];
-        closestDistance = axisDistance;
-      }
-
-      if (closestCoordinate === null) {
-        continue;
-      }
-
-      snappedPosition[axisIndex] = closestCoordinate;
-      snappedAxes.add(axisIndex);
-    }
-  }
-
-  if (snapConfig.gridStep > 0) {
-    for (let axisIndex = 0; axisIndex < 3; axisIndex += 1) {
-      if (snappedAxes.has(axisIndex)) {
-        continue;
-      }
-
-      snappedPosition[axisIndex] = snapToGrid(
-        snappedPosition[axisIndex],
-        snapConfig.gridStep,
-      );
-    }
-  }
-
-  return snappedPosition;
-}
 
 function createLineSegments(points: number[], material: LineBasicMaterial) {
   const geometry = new BufferGeometry();
@@ -130,20 +53,6 @@ function createDashedLineSegments(
   const line = createLineSegments(points, material);
   line.computeLineDistances();
   return line;
-}
-
-function isEditableTarget(target: EventTarget | null) {
-  if (!(target instanceof HTMLElement)) {
-    return false;
-  }
-
-  const tagName = target.tagName;
-  return (
-    target.isContentEditable ||
-    tagName === "INPUT" ||
-    tagName === "TEXTAREA" ||
-    tagName === "SELECT"
-  );
 }
 
 function ModelingPointer() {
@@ -368,17 +277,6 @@ function ModelingPointer() {
   );
 }
 
-function getVertexSelectionDistance(
-  cameraPosition: Vector3,
-  pointerPosition: [number, number, number],
-) {
-  const pointerVector = new Vector3(...pointerPosition);
-  return Math.max(
-    0.28,
-    Math.min(cameraPosition.distanceTo(pointerVector) * 0.04, 0.8),
-  );
-}
-
 function ModelingLinePreviewOverlay() {
   const modelingLineOverlayDisplayMode = useUiStore(
     (state) => state.modelingLineOverlayDisplayMode,
@@ -440,7 +338,7 @@ function ModelingLinePreviewOverlay() {
     return null;
   }
 
-  const showCurrentPoint = !positionsMatch(
+  const showCurrentPoint = !modelingPointerPositionsMatch(
     modelingLinePreview.startPosition,
     modelingLinePreview.currentPosition,
   );
@@ -668,369 +566,6 @@ function ModelingMesh() {
       />
     </group>
   );
-}
-
-function ModelingInputController({
-  controlsRef,
-}: {
-  controlsRef: RefObject<OrbitControlsImpl | null>;
-}) {
-  const currentModelId = useModelingStore((state) => state.currentModelId);
-  const modelsById = useModelingStore((state) => state.modelsById);
-  const { camera, gl } = useThree();
-  const addVertex = useModelingStore((state) => state.addVertex);
-  const clearVertexSelection = useModelingStore(
-    (state) => state.clearVertexSelection,
-  );
-  const createEdgeFromPositions = useModelingStore(
-    (state) => state.createEdgeFromPositions,
-  );
-  const findNearestVertex = useModelingStore(
-    (state) => state.findNearestVertex,
-  );
-  const selectNearestVertex = useModelingStore(
-    (state) => state.selectNearestVertex,
-  );
-  const modelingLineSnapDistance = useUiStore(
-    (state) => state.modelingLineSnapDistance,
-  );
-  const modelingLineSnapEnabled = useUiStore(
-    (state) => state.modelingLineSnapEnabled,
-  );
-  const modelingPointerSnapEnabled = useUiStore(
-    (state) => state.modelingPointerSnapEnabled,
-  );
-  const modelingPointerAxisSnapDistance = useUiStore(
-    (state) => state.modelingPointerAxisSnapDistance,
-  );
-  const modelingPointerGridSnapStep = useUiStore(
-    (state) => state.modelingPointerGridSnapStep,
-  );
-  const setModelingPointerDepth = useUiStore(
-    (state) => state.setModelingPointerDepth,
-  );
-  const setModelingPointerHovered = useUiStore(
-    (state) => state.setModelingPointerHovered,
-  );
-  const setModelingCameraDragging = useUiStore(
-    (state) => state.setModelingCameraDragging,
-  );
-  const setModelingPointerPlane = useUiStore(
-    (state) => state.setModelingPointerPlane,
-  );
-  const setModelingPointerPosition = useUiStore(
-    (state) => state.setModelingPointerPosition,
-  );
-  const setModelingLinePreview = useUiStore(
-    (state) => state.setModelingLinePreview,
-  );
-  const clearModelingLinePreview = useUiStore(
-    (state) => state.clearModelingLinePreview,
-  );
-
-  useEffect(() => {
-    const element = gl.domElement;
-    const raycaster = new Raycaster();
-    const ndc = new Vector2(0, 0);
-    const activeModel = modelsById[currentModelId];
-    const activeVertexPositions = activeModel
-      ? activeModel.vertexOrder.map(
-          (vertexId) => activeModel.verticesById[vertexId].position,
-        )
-      : [];
-    let hasPointer = false;
-    let cameraDragButton: number | null = null;
-    let clickCandidate: {
-      button: number;
-      moved: boolean;
-      x: number;
-      y: number;
-    } | null = null;
-    let lineDragStartPosition: [number, number, number] | null = null;
-    let lineDragStartSnapped = false;
-
-    const updatePointerPosition = (
-      depth = useUiStore.getState().modelingPointer.depth,
-    ) => {
-      if (!hasPointer) {
-        return;
-      }
-
-      raycaster.setFromCamera(ndc, camera);
-      const nextPosition = raycaster.ray.origin
-        .clone()
-        .add(raycaster.ray.direction.clone().multiplyScalar(depth));
-      const snappedPosition = getSnappedModelingPointerPosition(
-        [nextPosition.x, nextPosition.y, nextPosition.z],
-        activeVertexPositions,
-        {
-          axisDistance: modelingPointerAxisSnapDistance,
-          enabled: modelingPointerSnapEnabled,
-          gridStep: modelingPointerGridSnapStep,
-        },
-      );
-
-      setModelingPointerPosition(snappedPosition);
-    };
-
-    const updatePointerFromEvent = (event: PointerEvent | WheelEvent) => {
-      const rect = element.getBoundingClientRect();
-
-      ndc.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-      ndc.y = -(((event.clientY - rect.top) / rect.height) * 2 - 1);
-      hasPointer = true;
-      setModelingPointerHovered(true);
-      updatePointerPosition();
-    };
-
-    const handlePointerMove = (event: PointerEvent) => {
-      if (
-        clickCandidate &&
-        Math.hypot(
-          event.clientX - clickCandidate.x,
-          event.clientY - clickCandidate.y,
-        ) > 5
-      ) {
-        clickCandidate = {
-          ...clickCandidate,
-          moved: true,
-        };
-      }
-
-      updatePointerFromEvent(event);
-
-      const { modelingPointer, modelingTool } = useUiStore.getState();
-      if (
-        clickCandidate?.moved &&
-        modelingTool === "line" &&
-        lineDragStartPosition
-      ) {
-        const snappedVertex =
-          modelingLineSnapEnabled && modelingLineSnapDistance > 0
-            ? findNearestVertex(
-                modelingPointer.position,
-                modelingLineSnapDistance,
-              )
-            : null;
-        const previewPosition: [number, number, number] = snappedVertex
-          ? [
-              snappedVertex.position[0],
-              snappedVertex.position[1],
-              snappedVertex.position[2],
-            ]
-          : [
-              modelingPointer.position[0],
-              modelingPointer.position[1],
-              modelingPointer.position[2],
-            ];
-        const planeNormal = new Vector3();
-        camera.getWorldDirection(planeNormal);
-
-        setModelingLinePreview({
-          currentPosition: previewPosition,
-          currentSnapped: snappedVertex !== null,
-          planeNormal: [planeNormal.x, planeNormal.y, planeNormal.z],
-          startSnapped: lineDragStartSnapped,
-          startPosition: lineDragStartPosition,
-        });
-      }
-    };
-
-    const handlePointerLeave = () => {
-      hasPointer = false;
-      clickCandidate = null;
-      lineDragStartPosition = null;
-      lineDragStartSnapped = false;
-      clearModelingLinePreview();
-      setModelingPointerHovered(false);
-    };
-
-    const handlePointerDown = (event: PointerEvent) => {
-      const effectiveTool = getEffectiveModelingTool(useUiStore.getState());
-
-      if (event.button === 0 && effectiveTool !== "camera") {
-        clickCandidate = {
-          button: event.button,
-          moved: false,
-          x: event.clientX,
-          y: event.clientY,
-        };
-
-        const { modelingPointer, modelingTool } = useUiStore.getState();
-        if (modelingTool === "line") {
-          const snappedVertex =
-            modelingLineSnapEnabled && modelingLineSnapDistance > 0
-              ? findNearestVertex(
-                  modelingPointer.position,
-                  modelingLineSnapDistance,
-                )
-              : null;
-
-          lineDragStartPosition = snappedVertex
-            ? [...snappedVertex.position]
-            : [...modelingPointer.position];
-          lineDragStartSnapped = snappedVertex !== null;
-        }
-      }
-
-      if (
-        effectiveTool === "camera" &&
-        (event.button === 0 || event.button === 2)
-      ) {
-        cameraDragButton = event.button;
-        setModelingCameraDragging(true);
-      }
-
-      updatePointerFromEvent(event);
-    };
-
-    const handlePointerUp = (event: PointerEvent) => {
-      if (cameraDragButton === event.button) {
-        cameraDragButton = null;
-        setModelingCameraDragging(false);
-      }
-
-      if (
-        clickCandidate &&
-        clickCandidate.button === event.button &&
-        event.button === 0
-      ) {
-        const { modelingPointer, modelingTool } = useUiStore.getState();
-
-        if (modelingTool === "line") {
-          if (clickCandidate.moved && lineDragStartPosition) {
-            createEdgeFromPositions(
-              lineDragStartPosition,
-              [...modelingPointer.position],
-              modelingLineSnapEnabled ? modelingLineSnapDistance : 0,
-            );
-          }
-        } else if (!clickCandidate.moved && modelingTool === "vertex") {
-          addVertex([...modelingPointer.position]);
-        } else if (!clickCandidate.moved && modelingTool === "select") {
-          selectNearestVertex(
-            modelingPointer.position,
-            event.shiftKey,
-            getVertexSelectionDistance(
-              camera.position,
-              modelingPointer.position,
-            ),
-          );
-        }
-      }
-
-      clickCandidate = null;
-      lineDragStartPosition = null;
-      lineDragStartSnapped = false;
-      clearModelingLinePreview();
-    };
-
-    const handleWheel = (event: WheelEvent) => {
-      updatePointerFromEvent(event);
-      event.preventDefault();
-
-      if (getEffectiveModelingTool(useUiStore.getState()) === "camera") {
-        const forward = new Vector3();
-        camera.getWorldDirection(forward);
-        const nextStep =
-          event.deltaY < 0 ? CAMERA_DOLLY_STEP : -CAMERA_DOLLY_STEP;
-        const controls = controlsRef.current;
-        const target = controls?.target.clone() ?? new Vector3();
-        const cameraOffset = forward.clone().multiplyScalar(nextStep);
-        const nextCameraPosition = camera.position.clone().add(cameraOffset);
-
-        if (
-          nextCameraPosition.distanceTo(target) <= CAMERA_DOLLY_MIN_DISTANCE
-        ) {
-          return;
-        }
-
-        camera.position.copy(nextCameraPosition);
-        controls?.target.add(cameraOffset);
-        controls?.update();
-        updatePointerPosition();
-        return;
-      }
-
-      const direction = event.deltaY < 0 ? 1 : -1;
-      const nextDepth =
-        useUiStore.getState().modelingPointer.depth +
-        direction * CURSOR_DEPTH_STEP;
-      setModelingPointerDepth(nextDepth);
-      updatePointerPosition(nextDepth);
-    };
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (
-        event.defaultPrevented ||
-        event.isComposing ||
-        isEditableTarget(event.target)
-      ) {
-        return;
-      }
-
-      if (event.key === "1") {
-        setModelingPointerPlane("none");
-      } else if (event.key === "2") {
-        setModelingPointerPlane("horizontal");
-      } else if (event.key === "3") {
-        setModelingPointerPlane("vertical");
-      } else if (event.key === "Escape") {
-        clearVertexSelection();
-      }
-    };
-
-    const handleContextMenu = (event: MouseEvent) => {
-      event.preventDefault();
-    };
-
-    element.addEventListener("pointermove", handlePointerMove);
-    element.addEventListener("pointerleave", handlePointerLeave);
-    element.addEventListener("pointerdown", handlePointerDown);
-    window.addEventListener("pointerup", handlePointerUp);
-    element.addEventListener("wheel", handleWheel, { passive: false });
-    element.addEventListener("contextmenu", handleContextMenu);
-    window.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      element.removeEventListener("pointermove", handlePointerMove);
-      element.removeEventListener("pointerleave", handlePointerLeave);
-      element.removeEventListener("pointerdown", handlePointerDown);
-      window.removeEventListener("pointerup", handlePointerUp);
-      element.removeEventListener("wheel", handleWheel);
-      element.removeEventListener("contextmenu", handleContextMenu);
-      window.removeEventListener("keydown", handleKeyDown);
-      setModelingCameraDragging(false);
-      clearModelingLinePreview();
-      setModelingPointerHovered(false);
-      clearVertexSelection();
-    };
-  }, [
-    addVertex,
-    camera,
-    clearVertexSelection,
-    controlsRef,
-    createEdgeFromPositions,
-    currentModelId,
-    findNearestVertex,
-    gl,
-    modelingLineSnapDistance,
-    modelingLineSnapEnabled,
-    modelingPointerAxisSnapDistance,
-    modelingPointerGridSnapStep,
-    modelingPointerSnapEnabled,
-    modelsById,
-    clearModelingLinePreview,
-    selectNearestVertex,
-    setModelingCameraDragging,
-    setModelingLinePreview,
-    setModelingPointerDepth,
-    setModelingPointerHovered,
-    setModelingPointerPlane,
-    setModelingPointerPosition,
-  ]);
-
-  return null;
 }
 
 function ModelingCameraController({

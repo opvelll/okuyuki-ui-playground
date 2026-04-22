@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getSnappedModelingPointerPosition } from "./ModelingScene";
+import { getSnappedModelingPointerPosition } from "./scene/modelingPointerUtils";
 
 describe("getSnappedModelingPointerPosition", () => {
   it("returns the original position when pointer snap is disabled", () => {

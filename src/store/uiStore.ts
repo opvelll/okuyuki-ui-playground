@@ -114,7 +114,7 @@ type PersistedUiState = {
   interactionMode: InteractionMode;
 };
 
-type UiState = PersistedUiState & {
+export type UiState = PersistedUiState & {
   axisMagnetTarget: AxisMagnetTarget | null;
   interactionState: InteractionState;
   modelingCamera: CameraSnapshot;

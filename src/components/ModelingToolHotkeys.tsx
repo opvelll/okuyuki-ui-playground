@@ -1,20 +1,7 @@
 import { useEffect } from "react";
+import { isEditableTarget } from "../lib/isEditableTarget";
 import { useModelingStore } from "../store/modelingStore";
 import { useUiStore } from "../store/uiStore";
-
-function isEditableTarget(target: EventTarget | null) {
-  if (!(target instanceof HTMLElement)) {
-    return false;
-  }
-
-  const tagName = target.tagName;
-  return (
-    target.isContentEditable ||
-    tagName === "INPUT" ||
-    tagName === "TEXTAREA" ||
-    tagName === "SELECT"
-  );
-}
 
 export function ModelingToolHotkeys() {
   const modelingTool = useUiStore((state) => state.modelingTool);

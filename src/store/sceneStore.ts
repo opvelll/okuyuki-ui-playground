@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { initialSceneObjects } from "../data/sceneObjects";
+import { compareVector3Tuple } from "../lib/vector3Tuple";
 import type { SceneObject, Vector3Tuple } from "../types/scene";
 
 type SceneState = {
@@ -12,22 +13,6 @@ type SceneState = {
   ) => void;
   updateObjectPosition: (id: string, position: Vector3Tuple) => void;
 };
-
-const positionsMatch = (
-  currentPosition: Vector3Tuple,
-  nextPosition: Vector3Tuple,
-) =>
-  currentPosition[0] === nextPosition[0] &&
-  currentPosition[1] === nextPosition[1] &&
-  currentPosition[2] === nextPosition[2];
-
-const rotationsMatch = (
-  currentRotation: Vector3Tuple,
-  nextRotation: Vector3Tuple,
-) =>
-  currentRotation[0] === nextRotation[0] &&
-  currentRotation[1] === nextRotation[1] &&
-  currentRotation[2] === nextRotation[2];
 
 const createObjectsById = () =>
   Object.fromEntries(
@@ -44,7 +29,10 @@ export const useSceneStore = create<SceneState>((set) => ({
   updateObjectRotation: (id, rotation) =>
     set((state) => {
       const targetObject = state.objectsById[id];
-      if (!targetObject || rotationsMatch(targetObject.rotation, rotation)) {
+      if (
+        !targetObject ||
+        compareVector3Tuple(targetObject.rotation, rotation)
+      ) {
         return state;
       }
 
@@ -63,8 +51,8 @@ export const useSceneStore = create<SceneState>((set) => ({
       const targetObject = state.objectsById[id];
       if (
         !targetObject ||
-        (positionsMatch(targetObject.position, transform.position) &&
-          rotationsMatch(targetObject.rotation, transform.rotation))
+        (compareVector3Tuple(targetObject.position, transform.position) &&
+          compareVector3Tuple(targetObject.rotation, transform.rotation))
       ) {
         return state;
       }
@@ -83,7 +71,10 @@ export const useSceneStore = create<SceneState>((set) => ({
   updateObjectPosition: (id, position) =>
     set((state) => {
       const targetObject = state.objectsById[id];
-      if (!targetObject || positionsMatch(targetObject.position, position)) {
+      if (
+        !targetObject ||
+        compareVector3Tuple(targetObject.position, position)
+      ) {
         return state;
       }
 
