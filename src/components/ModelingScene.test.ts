@@ -17,6 +17,8 @@ describe("getSnappedModelingPointerPosition", () => {
         {
           axisDistance: 0.05,
           axisEnabled: false,
+          edgeDistance: 0.2,
+          edgeEnabled: false,
           gridEnabled: false,
           gridStep: 0.05,
           vertexDistance: 0.2,
@@ -36,6 +38,16 @@ describe("getSnappedModelingPointerPosition", () => {
       {
         axisDistance: 0.01,
         axisEnabled: true,
+        edgeDistance: 0.05,
+        edgeEnabled: true,
+        edgeSnapTargets: [
+          {
+            edgeId: "edge-1",
+            end: [2, 0, 0],
+            start: [0, 0, 0],
+            vertexIds: ["vertex-1", "vertex-2"],
+          },
+        ],
         gridEnabled: true,
         gridStep: 0.05,
         vertexDistance: 0.05,
@@ -56,6 +68,8 @@ describe("getSnappedModelingPointerPosition", () => {
         {
           axisDistance: 0.05,
           axisEnabled: true,
+          edgeDistance: 0.05,
+          edgeEnabled: false,
           gridEnabled: true,
           gridStep: 0.05,
           vertexDistance: 0.01,
@@ -70,6 +84,8 @@ describe("getSnappedModelingPointerPosition", () => {
       getSnappedModelingPointerPosition([0.11, 0.26, -0.12], [[3, 4, 5]], {
         axisDistance: 0.05,
         axisEnabled: false,
+        edgeDistance: 0.05,
+        edgeEnabled: false,
         gridEnabled: true,
         gridStep: 0.05,
         vertexDistance: 0.01,
@@ -83,6 +99,8 @@ describe("getSnappedModelingPointerPosition", () => {
       getSnappedModelingPointerPosition([0.11, 0.26, -0.12], [[2, 0.3, -0.1]], {
         axisDistance: 0.05,
         axisEnabled: true,
+        edgeDistance: 0.05,
+        edgeEnabled: false,
         gridEnabled: false,
         gridStep: 0.05,
         vertexDistance: 0.01,
@@ -98,6 +116,8 @@ describe("getSnappedModelingPointerPosition", () => {
       {
         axisDistance: 0.05,
         axisEnabled: true,
+        edgeDistance: 0.05,
+        edgeEnabled: false,
         gridEnabled: true,
         gridStep: 0.05,
         vertexDistance: 0.01,
@@ -118,6 +138,8 @@ describe("getSnappedModelingPointerPosition", () => {
         axisDistance: 0.05,
         axisEnabled: true,
         axisSnapPositions: [[1, 2, 0]],
+        edgeDistance: 0.05,
+        edgeEnabled: false,
         gridEnabled: false,
         gridStep: 0.05,
         vertexDistance: 0.05,
@@ -128,6 +150,35 @@ describe("getSnappedModelingPointerPosition", () => {
     expect(result.position).toEqual([1, 2, 3.2]);
     expect(result.snappedAxes).toEqual([false, false, true]);
     expect(result.snappedAxisTargets).toEqual([null, null, [1, 2, 0]]);
+    expect(result.snappedVertexTarget).toBeNull();
+  });
+
+  it("snaps to the nearest point on an edge before axis or grid snapping", () => {
+    const result = getModelingPointerSnapResult([1.02, 0.08, 0], [], {
+      axisDistance: 0.05,
+      axisEnabled: true,
+      edgeDistance: 0.1,
+      edgeEnabled: true,
+      edgeSnapTargets: [
+        {
+          edgeId: "edge-1",
+          end: [2, 0, 0],
+          start: [0, 0, 0],
+          vertexIds: ["vertex-1", "vertex-2"],
+        },
+      ],
+      gridEnabled: true,
+      gridStep: 0.05,
+      vertexDistance: 0.01,
+      vertexEnabled: false,
+    });
+
+    expect(result.position).toEqual([1.02, 0, 0]);
+    expect(result.snappedEdgeTarget).toEqual({
+      edgeId: "edge-1",
+      position: [1.02, 0, 0],
+      vertexIds: ["vertex-1", "vertex-2"],
+    });
     expect(result.snappedVertexTarget).toBeNull();
   });
 

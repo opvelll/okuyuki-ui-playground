@@ -6,10 +6,20 @@ export type ModelingPointerSnapConfig = {
   axisSnapPositions?: Vector3Tuple[];
   axisDistance: number;
   axisEnabled: boolean;
+  edgeSnapTargets?: ModelingPointerEdgeSnapTarget[];
+  edgeDistance: number;
+  edgeEnabled: boolean;
   gridEnabled: boolean;
   gridStep: number;
   vertexDistance: number;
   vertexEnabled: boolean;
+};
+
+export type ModelingPointerEdgeSnapTarget = {
+  edgeId: string;
+  start: Vector3Tuple;
+  end: Vector3Tuple;
+  vertexIds: [string, string];
 };
 
 export type ModelingPointerSnapResult = {
@@ -20,6 +30,11 @@ export type ModelingPointerSnapResult = {
     Vector3Tuple | null,
     Vector3Tuple | null,
   ];
+  snappedEdgeTarget: {
+    edgeId: string;
+    position: Vector3Tuple;
+    vertexIds: [string, string];
+  } | null;
   snappedVertexTarget: Vector3Tuple | null;
 };
 
@@ -50,6 +65,16 @@ function snapToGrid(value: number, step: number) {
 
 function normalizeCoordinate(value: number) {
   return Number(value.toFixed(6));
+}
+
+function normalizeVector3Tuple(
+  vector: Pick<Vector3, "x" | "y" | "z">,
+): Vector3Tuple {
+  return [
+    normalizeCoordinate(vector.x),
+    normalizeCoordinate(vector.y),
+    normalizeCoordinate(vector.z),
+  ];
 }
 
 function projectWorldPointToScreen(
@@ -96,6 +121,7 @@ export function getModelingPointerSnapResult(
 ): ModelingPointerSnapResult {
   if (
     !snapConfig.vertexEnabled &&
+    !snapConfig.edgeEnabled &&
     !snapConfig.axisEnabled &&
     !snapConfig.gridEnabled
   ) {
@@ -103,6 +129,7 @@ export function getModelingPointerSnapResult(
       position: [...position],
       snappedAxes: [false, false, false],
       snappedAxisTargets: [null, null, null],
+      snappedEdgeTarget: null,
       snappedVertexTarget: null,
     };
   }
@@ -129,7 +156,52 @@ export function getModelingPointerSnapResult(
         position: [...closestVertexPosition],
         snappedAxes: [false, false, false],
         snappedAxisTargets: [null, null, null],
+        snappedEdgeTarget: null,
         snappedVertexTarget: [...closestVertexPosition],
+      };
+    }
+  }
+
+  if (snapConfig.edgeEnabled && snapConfig.edgeDistance > 0) {
+    let closestEdgeTarget: ModelingPointerSnapResult["snappedEdgeTarget"] =
+      null;
+    let closestDistance = snapConfig.edgeDistance;
+    const pointer = new Vector3(...position);
+
+    for (const edgeSnapTarget of snapConfig.edgeSnapTargets ?? []) {
+      const start = new Vector3(...edgeSnapTarget.start);
+      const end = new Vector3(...edgeSnapTarget.end);
+      const edgeVector = end.clone().sub(start);
+      const edgeLengthSquared = edgeVector.lengthSq();
+
+      if (edgeLengthSquared === 0) {
+        continue;
+      }
+
+      const projection = pointer.clone().sub(start).dot(edgeVector);
+      const t = Math.max(0, Math.min(1, projection / edgeLengthSquared));
+      const projectedPoint = start.add(edgeVector.multiplyScalar(t));
+      const distance = pointer.distanceTo(projectedPoint);
+
+      if (distance >= closestDistance) {
+        continue;
+      }
+
+      closestDistance = distance;
+      closestEdgeTarget = {
+        edgeId: edgeSnapTarget.edgeId,
+        position: normalizeVector3Tuple(projectedPoint),
+        vertexIds: [...edgeSnapTarget.vertexIds],
+      };
+    }
+
+    if (closestEdgeTarget) {
+      return {
+        position: [...closestEdgeTarget.position],
+        snappedAxes: [false, false, false],
+        snappedAxisTargets: [null, null, null],
+        snappedEdgeTarget: closestEdgeTarget,
+        snappedVertexTarget: null,
       };
     }
   }
@@ -139,6 +211,7 @@ export function getModelingPointerSnapResult(
       position: [...position],
       snappedAxes: [false, false, false],
       snappedAxisTargets: [null, null, null],
+      snappedEdgeTarget: null,
       snappedVertexTarget: null,
     };
   }
@@ -221,6 +294,7 @@ export function getModelingPointerSnapResult(
       snappedAxes.has(axisIndex),
     ) as ModelingPointerSnapResult["snappedAxes"],
     snappedAxisTargets,
+    snappedEdgeTarget: null,
     snappedVertexTarget: null,
   };
 }

@@ -192,4 +192,91 @@ describe("modelingStore", () => {
       [startVertex?.id, endVertex?.id],
     );
   });
+
+  it("splits a snapped edge when adding a vertex on it", () => {
+    const startVertex = useModelingStore.getState().addVertex([0, 0, 0]);
+    const endVertex = useModelingStore.getState().addVertex([2, 0, 0]);
+    useModelingStore.getState().createEdgeFromPositions([0, 0, 0], [2, 0, 0], {
+      endVertexId: endVertex?.id,
+      snapDistance: 0,
+      startVertexId: startVertex?.id,
+    });
+
+    const vertex = useModelingStore.getState().addVertex([1, 0, 0], {
+      edgeTarget: {
+        edgeId: "edge-1",
+        position: [1, 0, 0],
+        vertexIds: [startVertex?.id ?? "", endVertex?.id ?? ""],
+      },
+    });
+
+    const state = useModelingStore.getState();
+    const currentModel = state.modelsById[state.currentModelId];
+
+    expect(vertex?.position).toEqual([1, 0, 0]);
+    expect(currentModel.vertexOrder).toHaveLength(3);
+    expect(currentModel.edgeOrder).toHaveLength(2);
+    expect(
+      currentModel.edgeOrder.map(
+        (edgeId) => currentModel.edgesById[edgeId].vertexIds,
+      ),
+    ).toEqual([
+      [startVertex?.id, vertex?.id],
+      [vertex?.id, endVertex?.id],
+    ]);
+  });
+
+  it("splits a snapped edge before connecting a new line", () => {
+    const startVertex = useModelingStore.getState().addVertex([0, 0, 0]);
+    const endVertex = useModelingStore.getState().addVertex([2, 0, 0]);
+    useModelingStore.getState().createEdgeFromPositions([0, 0, 0], [2, 0, 0], {
+      endVertexId: endVertex?.id,
+      snapDistance: 0,
+      startVertexId: startVertex?.id,
+    });
+
+    expect(
+      useModelingStore
+        .getState()
+        .createEdgeFromPositions([1, 0, 0], [1, 1, 0], {
+          endEdgeTarget: null,
+          snapDistance: 0,
+          startEdgeTarget: {
+            edgeId: "edge-1",
+            position: [1, 0, 0],
+            vertexIds: [startVertex?.id ?? "", endVertex?.id ?? ""],
+          },
+        }),
+    ).toBe(true);
+
+    const state = useModelingStore.getState();
+    const currentModel = state.modelsById[state.currentModelId];
+    const insertedVertexId = currentModel.vertexOrder.find((vertexId) =>
+      comparePositions(currentModel.verticesById[vertexId].position, [1, 0, 0]),
+    );
+    const newTipVertexId = currentModel.vertexOrder.find((vertexId) =>
+      comparePositions(currentModel.verticesById[vertexId].position, [1, 1, 0]),
+    );
+
+    expect(insertedVertexId).toBeTruthy();
+    expect(newTipVertexId).toBeTruthy();
+    expect(currentModel.vertexOrder).toHaveLength(4);
+    expect(currentModel.edgeOrder).toHaveLength(3);
+    expect(
+      currentModel.edgeOrder.map(
+        (edgeId) => currentModel.edgesById[edgeId].vertexIds,
+      ),
+    ).toEqual([
+      [startVertex?.id, insertedVertexId],
+      [insertedVertexId, endVertex?.id],
+      [insertedVertexId, newTipVertexId],
+    ]);
+  });
 });
+
+function comparePositions(
+  a: [number, number, number],
+  b: [number, number, number],
+) {
+  return a[0] === b[0] && a[1] === b[1] && a[2] === b[2];
+}

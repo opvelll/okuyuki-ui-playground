@@ -73,6 +73,7 @@ describe("App", () => {
         position: [0, 0, 0],
         snappedAxes: [false, false, false],
         snappedAxisTargets: [null, null, null],
+        snappedEdgeTarget: null,
         snappedVertexTarget: null,
       },
       prototypeCamera: DEFAULT_PROTOTYPE_CAMERA,

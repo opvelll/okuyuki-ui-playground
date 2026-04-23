@@ -30,6 +30,7 @@ describe("uiStore", () => {
         position: [0, 0, 0],
         snappedAxes: [false, false, false],
         snappedAxisTargets: [null, null, null],
+        snappedEdgeTarget: null,
         snappedVertexTarget: null,
       },
       prototypeCamera: DEFAULT_PROTOTYPE_CAMERA,
@@ -185,6 +186,12 @@ describe("uiStore", () => {
     useUiStore.getState().setModelingPointerAxisSnapDistance(-1);
     expect(useUiStore.getState().modelingPointerAxisSnapDistance).toBe(0);
 
+    useUiStore.getState().setModelingPointerEdgeSnapEnabled(false);
+    expect(useUiStore.getState().modelingPointerEdgeSnapEnabled).toBe(false);
+
+    useUiStore.getState().setModelingPointerEdgeSnapDistance(-1);
+    expect(useUiStore.getState().modelingPointerEdgeSnapDistance).toBe(0);
+
     useUiStore.getState().setModelingPointerGridSnapEnabled(true);
     expect(useUiStore.getState().modelingPointerGridSnapEnabled).toBe(true);
 
@@ -193,6 +200,9 @@ describe("uiStore", () => {
 
     useUiStore.getState().setModelingPointerAxisSnapDistance(10);
     expect(useUiStore.getState().modelingPointerAxisSnapDistance).toBe(4);
+
+    useUiStore.getState().setModelingPointerEdgeSnapDistance(10);
+    expect(useUiStore.getState().modelingPointerEdgeSnapDistance).toBe(4);
 
     useUiStore.getState().setModelingPointerGridSnapStep(10);
     expect(useUiStore.getState().modelingPointerGridSnapStep).toBe(4);

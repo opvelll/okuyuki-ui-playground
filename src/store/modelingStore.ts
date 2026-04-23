@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { compareVector3Tuple } from "../lib/vector3Tuple";
 import type { Vector3Tuple } from "../types/scene";
 
 export type ModelingVertex = {
@@ -41,14 +42,33 @@ type ModelingState = ModelingSnapshot & {
     options?:
       | number
       | {
+          endEdgeTarget?: {
+            edgeId: string;
+            position: Vector3Tuple;
+            vertexIds: [string, string];
+          } | null;
           endVertexId?: string | null;
           snapDistance?: number;
+          startEdgeTarget?: {
+            edgeId: string;
+            position: Vector3Tuple;
+            vertexIds: [string, string];
+          } | null;
           startVertexId?: string | null;
         },
   ) => boolean;
   history: ModelingSnapshot[];
   historyIndex: number;
-  addVertex: (position: Vector3Tuple) => ModelingVertex | null;
+  addVertex: (
+    position: Vector3Tuple,
+    options?: {
+      edgeTarget?: {
+        edgeId: string;
+        position: Vector3Tuple;
+        vertexIds: [string, string];
+      } | null;
+    },
+  ) => ModelingVertex | null;
   clearVertexSelection: () => void;
   connectSelectedVerticesAsEdge: () => boolean;
   createFaceFromSelectedVertices: () => boolean;
@@ -73,6 +93,15 @@ const DEFAULT_SELECTION_DISTANCE = 0.45;
 
 function createModelName(index: number) {
   return `${DEFAULT_MODEL_NAME_PREFIX} ${String(index).padStart(3, "0")}`;
+}
+
+function createNextId(prefix: "edge" | "vertex", existingIds: string[]) {
+  const maxIndex = existingIds.reduce((currentMax, id) => {
+    const suffix = Number(id.slice(prefix.length + 1));
+    return Number.isFinite(suffix) ? Math.max(currentMax, suffix) : currentMax;
+  }, 0);
+
+  return `${prefix}-${maxIndex + 1}`;
 }
 
 function createEmptyModel(index: number): ModelingModel {
@@ -230,6 +259,157 @@ function findVertexById(
   return model.verticesById[vertexId] ?? null;
 }
 
+function findVertexAtPosition(model: ModelingModel, position: Vector3Tuple) {
+  return (
+    model.vertexOrder
+      .map((vertexId) => model.verticesById[vertexId])
+      .find((vertex) => compareVector3Tuple(vertex.position, position)) ?? null
+  );
+}
+
+function getPointToSegmentDistance(
+  point: Vector3Tuple,
+  start: Vector3Tuple,
+  end: Vector3Tuple,
+) {
+  const segmentX = end[0] - start[0];
+  const segmentY = end[1] - start[1];
+  const segmentZ = end[2] - start[2];
+  const segmentLengthSquared =
+    segmentX * segmentX + segmentY * segmentY + segmentZ * segmentZ;
+
+  if (segmentLengthSquared === 0) {
+    return getVertexDistance(start, point);
+  }
+
+  const pointX = point[0] - start[0];
+  const pointY = point[1] - start[1];
+  const pointZ = point[2] - start[2];
+  const t = Math.max(
+    0,
+    Math.min(
+      1,
+      (pointX * segmentX + pointY * segmentY + pointZ * segmentZ) /
+        segmentLengthSquared,
+    ),
+  );
+  const projectedPoint: Vector3Tuple = [
+    start[0] + segmentX * t,
+    start[1] + segmentY * t,
+    start[2] + segmentZ * t,
+  ];
+
+  return getVertexDistance(projectedPoint, point);
+}
+
+function findEdgeForSplit(
+  model: ModelingModel,
+  edgeTarget: {
+    edgeId: string;
+    position: Vector3Tuple;
+    vertexIds: [string, string];
+  },
+) {
+  const candidateEdgeIds = [
+    edgeTarget.edgeId,
+    ...model.edgeOrder.filter((edgeId) => edgeId !== edgeTarget.edgeId),
+  ];
+
+  for (const edgeId of candidateEdgeIds) {
+    const edge = model.edgesById[edgeId];
+
+    if (!edge) {
+      continue;
+    }
+
+    const startVertex = model.verticesById[edge.vertexIds[0]];
+    const endVertex = model.verticesById[edge.vertexIds[1]];
+
+    if (!startVertex || !endVertex) {
+      continue;
+    }
+
+    const distance = getPointToSegmentDistance(
+      edgeTarget.position,
+      startVertex.position,
+      endVertex.position,
+    );
+
+    if (distance <= 0.0005) {
+      return edge;
+    }
+  }
+
+  return null;
+}
+
+function splitEdgeAtPosition(
+  model: ModelingModel,
+  edgeTarget:
+    | {
+        edgeId: string;
+        position: Vector3Tuple;
+        vertexIds: [string, string];
+      }
+    | null
+    | undefined,
+) {
+  if (!edgeTarget) {
+    return null;
+  }
+
+  const existingVertex = findVertexAtPosition(model, edgeTarget.position);
+  if (existingVertex) {
+    return existingVertex;
+  }
+
+  const edge = findEdgeForSplit(model, edgeTarget);
+  if (!edge) {
+    return null;
+  }
+
+  const startVertex = model.verticesById[edge.vertexIds[0]];
+  const endVertex = model.verticesById[edge.vertexIds[1]];
+
+  if (!startVertex || !endVertex) {
+    return null;
+  }
+
+  if (compareVector3Tuple(startVertex.position, edgeTarget.position)) {
+    return startVertex;
+  }
+
+  if (compareVector3Tuple(endVertex.position, edgeTarget.position)) {
+    return endVertex;
+  }
+
+  const nextVertexId = createNextId("vertex", model.vertexOrder);
+  model.vertexOrder.push(nextVertexId);
+  model.verticesById[nextVertexId] = {
+    id: nextVertexId,
+    position: [...edgeTarget.position],
+  };
+
+  model.edgeOrder = model.edgeOrder.filter((edgeId) => edgeId !== edge.id);
+  delete model.edgesById[edge.id];
+
+  const nextEdgeIdA = createNextId("edge", model.edgeOrder);
+  model.edgeOrder.push(nextEdgeIdA);
+  model.edgesById[nextEdgeIdA] = {
+    id: nextEdgeIdA,
+    vertexIds: [startVertex.id, nextVertexId],
+  };
+
+  const nextEdgeIdB = createNextId("edge", model.edgeOrder);
+  model.edgeOrder.push(nextEdgeIdB);
+  model.edgesById[nextEdgeIdB] = {
+    id: nextEdgeIdB,
+    vertexIds: [nextVertexId, endVertex.id],
+  };
+
+  return model.verticesById[nextVertexId];
+}
+
 function commitSnapshot(
   state: ModelingState,
   nextSnapshot: ModelingSnapshot,
@@ -296,6 +476,14 @@ export const useModelingStore = create<ModelingState>((set, get) => ({
 
     const ensureVertex = (
       snappedVertex: ModelingVertex | null,
+      edgeTarget:
+        | {
+            edgeId: string;
+            position: Vector3Tuple;
+            vertexIds: [string, string];
+          }
+        | null
+        | undefined,
       position: Vector3Tuple,
     ) => {
       if (snappedVertex) {
@@ -303,7 +491,13 @@ export const useModelingStore = create<ModelingState>((set, get) => ({
         return snappedVertex.id;
       }
 
-      const nextVertexId = `vertex-${nextModel.vertexOrder.length + 1}`;
+      const splitVertex = splitEdgeAtPosition(nextModel, edgeTarget);
+      if (splitVertex) {
+        selectedVertexIds.push(splitVertex.id);
+        return splitVertex.id;
+      }
+
+      const nextVertexId = createNextId("vertex", nextModel.vertexOrder);
       nextModel.vertexOrder.push(nextVertexId);
       nextModel.verticesById[nextVertexId] = {
         id: nextVertexId,
@@ -313,8 +507,16 @@ export const useModelingStore = create<ModelingState>((set, get) => ({
       return nextVertexId;
     };
 
-    const startVertexId = ensureVertex(snappedStartVertex, startPosition);
-    const endVertexId = ensureVertex(snappedEndVertex, endPosition);
+    const startVertexId = ensureVertex(
+      snappedStartVertex,
+      normalizedOptions.startEdgeTarget,
+      startPosition,
+    );
+    const endVertexId = ensureVertex(
+      snappedEndVertex,
+      normalizedOptions.endEdgeTarget,
+      endPosition,
+    );
     const edgeVertexIds = [startVertexId, endVertexId] as [string, string];
 
     if (
@@ -324,7 +526,7 @@ export const useModelingStore = create<ModelingState>((set, get) => ({
       return false;
     }
 
-    const nextEdgeId = `edge-${nextModel.edgeOrder.length + 1}`;
+    const nextEdgeId = createNextId("edge", nextModel.edgeOrder);
     nextModel.edgeOrder.push(nextEdgeId);
     nextModel.edgesById[nextEdgeId] = {
       id: nextEdgeId,
@@ -344,7 +546,7 @@ export const useModelingStore = create<ModelingState>((set, get) => ({
 
     return true;
   },
-  addVertex: (position) => {
+  addVertex: (position, options) => {
     const state = get();
     const currentModel = state.modelsById[state.currentModelId];
 
@@ -352,12 +554,28 @@ export const useModelingStore = create<ModelingState>((set, get) => ({
       return null;
     }
 
-    const nextVertexId = `vertex-${currentModel.vertexOrder.length + 1}`;
+    const nextModel = cloneModel(currentModel);
+    const splitVertex = splitEdgeAtPosition(nextModel, options?.edgeTarget);
+    if (splitVertex) {
+      set({
+        ...commitSnapshot(state, {
+          currentModelId: state.currentModelId,
+          modelsById: {
+            ...state.modelsById,
+            [currentModel.id]: nextModel,
+          },
+          selectedVertexIds: [splitVertex.id],
+        }),
+      });
+
+      return splitVertex;
+    }
+
+    const nextVertexId = createNextId("vertex", nextModel.vertexOrder);
     const nextVertex: ModelingVertex = {
       id: nextVertexId,
-      position,
+      position: [...position],
     };
-    const nextModel = cloneModel(currentModel);
     nextModel.vertexOrder.push(nextVertexId);
     nextModel.verticesById[nextVertexId] = nextVertex;
 
@@ -406,7 +624,7 @@ export const useModelingStore = create<ModelingState>((set, get) => ({
     }
 
     const nextModel = cloneModel(currentModel);
-    const nextEdgeId = `edge-${nextModel.edgeOrder.length + 1}`;
+    const nextEdgeId = createNextId("edge", nextModel.edgeOrder);
     nextModel.edgeOrder.push(nextEdgeId);
     nextModel.edgesById[nextEdgeId] = {
       id: nextEdgeId,
@@ -460,7 +678,7 @@ export const useModelingStore = create<ModelingState>((set, get) => ({
         continue;
       }
 
-      const nextEdgeId = `edge-${nextModel.edgeOrder.length + 1}`;
+      const nextEdgeId = createNextId("edge", nextModel.edgeOrder);
       nextModel.edgeOrder.push(nextEdgeId);
       nextModel.edgesById[nextEdgeId] = {
         id: nextEdgeId,

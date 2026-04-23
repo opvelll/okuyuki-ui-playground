@@ -326,6 +326,12 @@ export function ModelingToolHeaderProperties() {
   const setModelingPointerAxisSnapDistance = useUiStore(
     (state) => state.setModelingPointerAxisSnapDistance,
   );
+  const setModelingPointerEdgeSnapEnabled = useUiStore(
+    (state) => state.setModelingPointerEdgeSnapEnabled,
+  );
+  const setModelingPointerEdgeSnapDistance = useUiStore(
+    (state) => state.setModelingPointerEdgeSnapDistance,
+  );
   const setModelingPointerGridSnapEnabled = useUiStore(
     (state) => state.setModelingPointerGridSnapEnabled,
   );
@@ -337,6 +343,12 @@ export function ModelingToolHeaderProperties() {
   );
   const setModelingPointerVertexSnapEnabled = useUiStore(
     (state) => state.setModelingPointerVertexSnapEnabled,
+  );
+  const modelingPointerEdgeSnapDistance = useUiStore(
+    (state) => state.modelingPointerEdgeSnapDistance,
+  );
+  const modelingPointerEdgeSnapEnabled = useUiStore(
+    (state) => state.modelingPointerEdgeSnapEnabled,
   );
   const effectiveTool = getEffectiveModelingTool({
     modelingCameraDragging,
@@ -380,6 +392,21 @@ export function ModelingToolHeaderProperties() {
           step="0.01"
           title="Maximum world-space distance used when snapping each XYZ component to nearby vertex coordinates."
           value={modelingPointerAxisSnapDistance}
+        />
+        <ToolSettingToggle
+          checked={modelingPointerEdgeSnapEnabled}
+          label="Edge Snap"
+          onChange={setModelingPointerEdgeSnapEnabled}
+          title="Toggle 3D pointer snapping onto the nearest point along an existing edge."
+        />
+        <ToolSettingNumberField
+          id="pointer-edge-snap-distance"
+          label="Edge Distance"
+          min="0"
+          onChange={setModelingPointerEdgeSnapDistance}
+          step="0.01"
+          title="Maximum world-space distance used when snapping the 3D pointer onto an existing edge."
+          value={modelingPointerEdgeSnapDistance}
         />
         <ToolSettingToggle
           checked={modelingPointerGridSnapEnabled}

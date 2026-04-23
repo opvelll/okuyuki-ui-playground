@@ -584,6 +584,24 @@ export function ModelingSettingsSection({
         value={settings.modelingPointerAxisSnapDistance}
       />
       <ToggleField
+        checked={settings.modelingPointerEdgeSnapEnabled}
+        id="modeling-pointer-edge-snap-enabled"
+        label="Pointer Edge Snap / 辺吸着"
+        onChange={settings.setModelingPointerEdgeSnapEnabled}
+      />
+      <NumberField
+        hint="Pointer Edge Snap Distance / 近くの既存辺上の最近点へ吸い付く距離。目安 0.08-0.4。"
+        id="modeling-pointer-edge-snap-distance"
+        label="Pointer Edge Snap Distance / 辺吸着距離"
+        max="4"
+        min="0"
+        onChange={handleNumberChange(
+          settings.setModelingPointerEdgeSnapDistance,
+        )}
+        step="0.01"
+        value={settings.modelingPointerEdgeSnapDistance}
+      />
+      <ToggleField
         checked={settings.modelingPointerGridSnapEnabled}
         id="modeling-pointer-grid-snap-enabled"
         label="Pointer Grid Snap / 等間隔スナップ"

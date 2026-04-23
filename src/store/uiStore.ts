@@ -39,6 +39,11 @@ export type AxisMagnetTarget = {
 
 export type ModelingPointerState = {
   depth: number;
+  snappedEdgeTarget: {
+    edgeId: string;
+    position: [number, number, number];
+    vertexIds: [string, string];
+  } | null;
   hovered: boolean;
   plane: ModelingPointerPlane;
   position: [number, number, number];
@@ -87,6 +92,8 @@ type PersistedUiState = {
   modelingPointerAxisSnapEnabled: boolean;
   modelingPointerAxisSnapDistance: number;
   modelingPointerDepthPrecisionScale: number;
+  modelingPointerEdgeSnapDistance: number;
+  modelingPointerEdgeSnapEnabled: boolean;
   modelingPointerGridSnapEnabled: boolean;
   modelingPointerGridSnapStep: number;
   modelingPointerPanelRadius: number;
@@ -161,6 +168,8 @@ export type UiState = PersistedUiState & {
   setModelingPointerAxisSnapEnabled: (value: boolean) => void;
   setModelingPointerAxisSnapDistance: (value: number) => void;
   setModelingPointerDepthPrecisionScale: (value: number) => void;
+  setModelingPointerEdgeSnapDistance: (value: number) => void;
+  setModelingPointerEdgeSnapEnabled: (value: boolean) => void;
   setModelingPointerGridSnapEnabled: (value: boolean) => void;
   setModelingPointerGridSnapStep: (value: number) => void;
   setModelingPointerPanelRadius: (value: number) => void;
@@ -205,6 +214,9 @@ export type UiState = PersistedUiState & {
   setModelingPointerSnappedAxes: (axes: [boolean, boolean, boolean]) => void;
   setModelingPointerSnappedAxisTargets: (
     targets: ModelingPointerState["snappedAxisTargets"],
+  ) => void;
+  setModelingPointerSnappedEdgeTarget: (
+    target: ModelingPointerState["snappedEdgeTarget"],
   ) => void;
   setModelingPointerSnappedVertexTarget: (
     target: ModelingPointerState["snappedVertexTarget"],
@@ -277,6 +289,8 @@ export const createDefaultPersistedUiState = (): PersistedUiState => ({
   modelingPointerAxisSnapEnabled: true,
   modelingPointerAxisSnapDistance: 0.1,
   modelingPointerDepthPrecisionScale: 0.1,
+  modelingPointerEdgeSnapDistance: 0.25,
+  modelingPointerEdgeSnapEnabled: true,
   modelingPointerGridSnapEnabled: false,
   modelingPointerGridSnapStep: 0.05,
   modelingPointerPanelRadius: 0.72,
@@ -338,6 +352,8 @@ const createInitialUiState = (): Omit<
   | "setModelingPointerAxisSnapEnabled"
   | "setModelingPointerAxisSnapDistance"
   | "setModelingPointerDepthPrecisionScale"
+  | "setModelingPointerEdgeSnapDistance"
+  | "setModelingPointerEdgeSnapEnabled"
   | "setModelingPointerGridSnapEnabled"
   | "setModelingPointerGridSnapStep"
   | "setModelingPointerPanelRadius"
@@ -381,6 +397,7 @@ const createInitialUiState = (): Omit<
   | "setModelingPointerPosition"
   | "setModelingPointerSnappedAxes"
   | "setModelingPointerSnappedAxisTargets"
+  | "setModelingPointerSnappedEdgeTarget"
   | "setModelingPointerSnappedVertexTarget"
   | "setModelingLinePreview"
   | "clearModelingLinePreview"
@@ -400,6 +417,7 @@ const createInitialUiState = (): Omit<
     position: [0, 0, 0],
     snappedAxes: [false, false, false],
     snappedAxisTargets: [null, null, null],
+    snappedEdgeTarget: null,
     snappedVertexTarget: null,
   },
   prototypeCamera: DEFAULT_PROTOTYPE_CAMERA,
@@ -477,6 +495,12 @@ export const useUiStore = create<UiState>()(
             Math.min(value, 1),
           ),
         }),
+      setModelingPointerEdgeSnapDistance: (value) =>
+        set({
+          modelingPointerEdgeSnapDistance: Math.max(0, Math.min(value, 4)),
+        }),
+      setModelingPointerEdgeSnapEnabled: (value) =>
+        set({ modelingPointerEdgeSnapEnabled: value }),
       setModelingPointerGridSnapEnabled: (value) =>
         set({ modelingPointerGridSnapEnabled: value }),
       setModelingPointerGridSnapStep: (value) =>
@@ -619,6 +643,13 @@ export const useUiStore = create<UiState>()(
             snappedAxisTargets,
           },
         })),
+      setModelingPointerSnappedEdgeTarget: (snappedEdgeTarget) =>
+        set((state) => ({
+          modelingPointer: {
+            ...state.modelingPointer,
+            snappedEdgeTarget,
+          },
+        })),
       setModelingPointerSnappedVertexTarget: (snappedVertexTarget) =>
         set((state) => ({
           modelingPointer: {
@@ -672,6 +703,8 @@ export const useUiStore = create<UiState>()(
         modelingPointerAxisSnapDistance: state.modelingPointerAxisSnapDistance,
         modelingPointerDepthPrecisionScale:
           state.modelingPointerDepthPrecisionScale,
+        modelingPointerEdgeSnapDistance: state.modelingPointerEdgeSnapDistance,
+        modelingPointerEdgeSnapEnabled: state.modelingPointerEdgeSnapEnabled,
         modelingPointerGridSnapEnabled: state.modelingPointerGridSnapEnabled,
         modelingPointerGridSnapStep: state.modelingPointerGridSnapStep,
         modelingPointerPanelRadius: state.modelingPointerPanelRadius,
