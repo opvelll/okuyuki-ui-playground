@@ -105,6 +105,7 @@ type PersistedUiState = {
   modelingPointerVertexSnapDistance: number;
   modelingPointerVertexSnapEnabled: boolean;
   modelingLineOverlayDisplayMode: MoveOverlayDisplayMode;
+  modelingLineAngleSnapStepDeg: number;
   modelingPointerVerticalAxisFloorY: number;
   modelingPointerVisibleInCameraTool: boolean;
   modelingTool: ModelingTool;
@@ -182,6 +183,7 @@ export type UiState = PersistedUiState & {
   setModelingPointerVertexSnapDistance: (value: number) => void;
   setModelingPointerVertexSnapEnabled: (value: boolean) => void;
   setModelingLineOverlayDisplayMode: (value: MoveOverlayDisplayMode) => void;
+  setModelingLineAngleSnapStepDeg: (value: number) => void;
   setModelingPointerVerticalAxisFloorY: (value: number) => void;
   setModelingPointerVisibleInCameraTool: (value: boolean) => void;
   setModelingTool: (tool: ModelingTool) => void;
@@ -310,6 +312,7 @@ export const createDefaultPersistedUiState = (): PersistedUiState => ({
   modelingPointerVertexSnapDistance: 0.45,
   modelingPointerVertexSnapEnabled: true,
   modelingLineOverlayDisplayMode: "mode-1",
+  modelingLineAngleSnapStepDeg: 45,
   modelingPointerVerticalAxisFloorY: 0,
   modelingPointerVisibleInCameraTool: false,
   modelingTool: "lasso",
@@ -373,6 +376,7 @@ const createInitialUiState = (): Omit<
   | "setModelingPointerVertexSnapDistance"
   | "setModelingPointerVertexSnapEnabled"
   | "setModelingLineOverlayDisplayMode"
+  | "setModelingLineAngleSnapStepDeg"
   | "setModelingPointerVerticalAxisFloorY"
   | "setModelingPointerVisibleInCameraTool"
   | "setModelingTool"
@@ -540,6 +544,12 @@ export const useUiStore = create<UiState>()(
       setModelingLineOverlayDisplayMode: (value) =>
         set({
           modelingLineOverlayDisplayMode: value,
+        }),
+      setModelingLineAngleSnapStepDeg: (value) =>
+        set({
+          modelingLineAngleSnapStepDeg: [15, 30, 45, 90].includes(value)
+            ? value
+            : 45,
         }),
       setModelingPointerVerticalAxisFloorY: (value) =>
         set({
@@ -755,6 +765,7 @@ export const useUiStore = create<UiState>()(
         modelingPointerVertexSnapEnabled:
           state.modelingPointerVertexSnapEnabled,
         modelingLineOverlayDisplayMode: state.modelingLineOverlayDisplayMode,
+        modelingLineAngleSnapStepDeg: state.modelingLineAngleSnapStepDeg,
         modelingPointerVerticalAxisFloorY:
           state.modelingPointerVerticalAxisFloorY,
         modelingPointerVisibleInCameraTool:

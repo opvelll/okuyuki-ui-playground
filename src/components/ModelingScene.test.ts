@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   MODELING_POINTER_PRECISION_GRID_STEP_MIN,
   getEffectiveModelingPointerGridStep,
+  getLineDirectionSnapPosition,
   getModelingPointerDepthHint,
   getModelingPointerSnapResult,
   getSnappedModelingPointerPosition,
@@ -192,6 +193,26 @@ describe("getSnappedModelingPointerPosition", () => {
     expect(getEffectiveModelingPointerGridStep(0.005, 0.1, true)).toBe(
       MODELING_POINTER_PRECISION_GRID_STEP_MIN,
     );
+  });
+
+  it("constrains line drag to the nearest world axis direction", () => {
+    expect(getLineDirectionSnapPosition([1, 2, 3], [4.2, 2.4, 3.1])).toEqual([
+      4.2, 2, 3,
+    ]);
+  });
+
+  it("constrains line drag to the nearest world 45 degree diagonal", () => {
+    const result = getLineDirectionSnapPosition([0, 0, 0], [2.1, 2.8, 0.2], 45);
+
+    expect(result[0]).toBeCloseTo(2.45, 5);
+    expect(result[1]).toBeCloseTo(2.45, 5);
+    expect(result[2]).toBe(0);
+  });
+
+  it("supports finer line drag angle steps on the main planes", () => {
+    expect(
+      getLineDirectionSnapPosition([0, 0, 0], [3.4, 1.1, 0.2], 15),
+    ).toEqual([3.447244, 0.923686, 0]);
   });
 
   it("counts near and far vertices when they overlap the pointer in screen space", () => {

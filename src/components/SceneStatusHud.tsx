@@ -62,6 +62,9 @@ export function SceneStatusHud() {
   const modelingPointerDepthPrecisionScale = useUiStore(
     (state) => state.modelingPointerDepthPrecisionScale,
   );
+  const modelingLineAngleSnapStepDeg = useUiStore(
+    (state) => state.modelingLineAngleSnapStepDeg,
+  );
   const modelingPointerVisibleInCameraTool = useUiStore(
     (state) => state.modelingPointerVisibleInCameraTool,
   );
@@ -210,7 +213,7 @@ export function SceneStatusHud() {
           : modelingTool === "vertex"
             ? `Vertex tool: click to place vertices at the 3D pointer, use the wheel for cursor depth, hold Shift for ${modelingPointerDepthPrecisionScale.toFixed(2)}x depth and grid precision, switch cursor planes with 1, 2, 3, and let the pointer snap to nearby vertices or edges when enabled.`
             : modelingTool === "line"
-              ? `Line tool: drag and drop to create a vertex, edge, and vertex, use Shift for ${modelingPointerDepthPrecisionScale.toFixed(2)}x depth and grid precision, and reuse or split existing geometry when the 3D pointer is snapped onto vertices or edges.`
+              ? `Line tool: drag and drop to create a vertex, edge, and vertex, use Shift for ${modelingPointerDepthPrecisionScale.toFixed(2)}x depth and grid precision, hold Ctrl while dragging to constrain the line to world ${modelingLineAngleSnapStepDeg.toFixed(0)} degree directions on the main planes, and reuse or split existing geometry when the 3D pointer is snapped onto vertices or edges.`
               : ""
       : interactionMode === "move"
         ? physicsEnabled

@@ -54,6 +54,44 @@ const AXIS_VECTORS: [Vector3Tuple, Vector3Tuple, Vector3Tuple] = [
   [0, 1, 0],
   [0, 0, 1],
 ];
+const FULL_CIRCLE_DEG = 360;
+
+function getLineDirectionSnapVectors(stepDeg: number) {
+  if (!(stepDeg > 0 && stepDeg <= 180)) {
+    return AXIS_VECTORS;
+  }
+
+  const uniqueDirections = new Map<string, Vector3Tuple>();
+  const registerDirection = (vector: Vector3Tuple) => {
+    const length = Math.hypot(vector[0], vector[1], vector[2]);
+    if (length <= 0) {
+      return;
+    }
+
+    const normalized: Vector3Tuple = [
+      normalizeCoordinate(vector[0] / length),
+      normalizeCoordinate(vector[1] / length),
+      normalizeCoordinate(vector[2] / length),
+    ];
+    uniqueDirections.set(normalized.join(":"), normalized);
+  };
+
+  for (
+    let angleDeg = 0;
+    angleDeg < FULL_CIRCLE_DEG;
+    angleDeg += Math.max(1, stepDeg)
+  ) {
+    const angleRad = (angleDeg * Math.PI) / 180;
+    const cosine = Math.cos(angleRad);
+    const sine = Math.sin(angleRad);
+
+    registerDirection([cosine, sine, 0]);
+    registerDirection([cosine, 0, sine]);
+    registerDirection([0, cosine, sine]);
+  }
+
+  return [...uniqueDirections.values()];
+}
 
 function snapToGrid(value: number, step: number) {
   if (step <= 0) {
@@ -112,6 +150,48 @@ export function getEffectiveModelingPointerGridStep(
     : gridStep;
 
   return normalizeCoordinate(effectiveGridStep);
+}
+
+export function getLineDirectionSnapPosition(
+  startPosition: Vector3Tuple,
+  currentPosition: Vector3Tuple,
+  stepDeg = 45,
+) {
+  const delta = new Vector3(...currentPosition).sub(
+    new Vector3(...startPosition),
+  );
+
+  if (delta.lengthSq() === 0) {
+    return [...startPosition] as Vector3Tuple;
+  }
+
+  let bestPosition = [...currentPosition] as Vector3Tuple;
+  let bestDistance = Number.POSITIVE_INFINITY;
+
+  for (const directionVector of getLineDirectionSnapVectors(stepDeg)) {
+    const direction = new Vector3(...directionVector);
+    const projectedLength = delta.dot(direction);
+
+    if (projectedLength < 0) {
+      continue;
+    }
+
+    const snappedPosition = new Vector3(...startPosition).add(
+      direction.multiplyScalar(projectedLength),
+    );
+    const distance = snappedPosition.distanceTo(
+      new Vector3(...currentPosition),
+    );
+
+    if (distance >= bestDistance) {
+      continue;
+    }
+
+    bestDistance = distance;
+    bestPosition = normalizeVector3Tuple(snappedPosition);
+  }
+
+  return bestPosition;
 }
 
 export function getModelingPointerSnapResult(

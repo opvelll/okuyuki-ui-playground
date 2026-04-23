@@ -8,6 +8,7 @@ import { useModelingStore } from "../../store/modelingStore";
 import { getEffectiveModelingTool, useUiStore } from "../../store/uiStore";
 import {
   getEffectiveModelingPointerGridStep,
+  getLineDirectionSnapPosition,
   getModelingPointerSnapResult,
 } from "./modelingPointerUtils";
 import {
@@ -62,6 +63,9 @@ export function ModelingInputController({
   );
   const modelingPointerVertexSnapEnabled = useUiStore(
     (state) => state.modelingPointerVertexSnapEnabled,
+  );
+  const modelingLineAngleSnapStepDeg = useUiStore(
+    (state) => state.modelingLineAngleSnapStepDeg,
   );
   const setModelingPointerDepth = useUiStore(
     (state) => state.setModelingPointerDepth,
@@ -176,10 +180,15 @@ export function ModelingInputController({
         : [...activeVertexPositions, lineDragStartSnapPosition];
     };
 
-    const updatePointerPosition = (
+    const updatePointerPosition = ({
       depth = useUiStore.getState().modelingPointer.depth,
+      directionSnapMode = false,
       precisionMode = false,
-    ) => {
+    }: {
+      depth?: number;
+      directionSnapMode?: boolean;
+      precisionMode?: boolean;
+    } = {}) => {
       if (!hasPointer) {
         return;
       }
@@ -194,8 +203,20 @@ export function ModelingInputController({
       const nextPosition = raycaster.ray.origin
         .clone()
         .add(raycaster.ray.direction.clone().multiplyScalar(depth));
+      const pointerPosition =
+        directionSnapMode && lineDragStartPosition
+          ? getLineDirectionSnapPosition(
+              lineDragStartPosition,
+              [nextPosition.x, nextPosition.y, nextPosition.z],
+              modelingLineAngleSnapStepDeg,
+            )
+          : ([nextPosition.x, nextPosition.y, nextPosition.z] as [
+              number,
+              number,
+              number,
+            ]);
       const snapResult = getModelingPointerSnapResult(
-        [nextPosition.x, nextPosition.y, nextPosition.z],
+        pointerPosition,
         activeVertexPositions,
         {
           axisSnapPositions:
@@ -230,7 +251,10 @@ export function ModelingInputController({
       ndc.y = -(((event.clientY - rect.top) / rect.height) * 2 - 1);
       hasPointer = true;
       setModelingPointerHovered(true);
-      updatePointerPosition(undefined, event.shiftKey);
+      updatePointerPosition({
+        directionSnapMode: event.ctrlKey,
+        precisionMode: event.shiftKey,
+      });
     };
 
     const getCanvasPoint = (event: PointerEvent) => {
@@ -458,7 +482,11 @@ export function ModelingInputController({
       const nextDepth =
         useUiStore.getState().modelingPointer.depth + direction * depthStep;
       setModelingPointerDepth(nextDepth);
-      updatePointerPosition(nextDepth, event.shiftKey);
+      updatePointerPosition({
+        depth: nextDepth,
+        directionSnapMode: event.ctrlKey,
+        precisionMode: event.shiftKey,
+      });
     };
 
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -480,7 +508,9 @@ export function ModelingInputController({
         clearModelingLassoSelection();
         clearVertexSelection();
       } else if (event.key === "Shift") {
-        updatePointerPosition(undefined, true);
+        updatePointerPosition({ precisionMode: true });
+      } else if (event.key === "Control") {
+        updatePointerPosition({ directionSnapMode: true });
       }
     };
 
@@ -494,7 +524,9 @@ export function ModelingInputController({
       }
 
       if (event.key === "Shift") {
-        updatePointerPosition(undefined, false);
+        updatePointerPosition({ precisionMode: false });
+      } else if (event.key === "Control") {
+        updatePointerPosition({ directionSnapMode: false });
       }
     };
 
@@ -548,6 +580,7 @@ export function ModelingInputController({
     modelingPointerGridSnapStep,
     modelingPointerVertexSnapDistance,
     modelingPointerVertexSnapEnabled,
+    modelingLineAngleSnapStepDeg,
     modelsById,
     selectVertices,
     setModelingCameraDragging,

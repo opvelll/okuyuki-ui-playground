@@ -471,6 +471,7 @@ describe("App", () => {
     expect(screen.getByLabelText(/^Vertex Snap$/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/^Axis Snap$/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/^Grid Snap$/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Angle Step$/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Overlay/i)).toBeInTheDocument();
   });
 

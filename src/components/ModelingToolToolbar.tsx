@@ -68,6 +68,13 @@ const overlayDisplayOptions = [
   value: MoveOverlayDisplayMode;
 }>;
 
+const lineAngleSnapStepOptions = [
+  { label: "15 deg", value: 15 },
+  { label: "30 deg", value: 30 },
+  { label: "45 deg", value: 45 },
+  { label: "90 deg", value: 90 },
+] as const;
+
 const fieldClasses =
   "h-7 border border-white/10 bg-slate-900/80 px-1 text-[0.68rem] text-slate-50 outline-none transition focus:border-sky-200/60 focus:ring-2 focus:ring-sky-300/30";
 
@@ -144,6 +151,53 @@ function ToolSettingToggle({
         <span className="block h-4.5 w-8 rounded-full bg-slate-400/35 transition peer-checked:bg-sky-300" />
         <span className="pointer-events-none absolute left-[2px] h-3.5 w-3.5 rounded-full bg-slate-50 transition peer-checked:translate-x-[14px]" />
       </span>
+    </label>
+  );
+}
+
+function ToolSettingSelectField<T extends string | number>({
+  id,
+  label,
+  onChange,
+  options,
+  title,
+  value,
+  widthClass = "w-20",
+}: {
+  id: string;
+  label: string;
+  onChange: (value: T) => void;
+  options: ReadonlyArray<{ label: string; value: T }>;
+  title: string;
+  value: T;
+  widthClass?: string;
+}) {
+  return (
+    <label
+      className="flex items-center gap-1.5 text-[0.68rem] text-slate-100/88"
+      htmlFor={id}
+      title={title}
+    >
+      <span>{label}</span>
+      <select
+        className={`${fieldClasses} ${widthClass}`}
+        id={id}
+        onChange={(event) => {
+          const matchingOption = options.find(
+            (option) => String(option.value) === event.target.value,
+          );
+          if (matchingOption) {
+            onChange(matchingOption.value);
+          }
+        }}
+        value={String(value)}
+      >
+        {options.map((option) => (
+          <option key={option.label} value={String(option.value)}>
+            {option.label}
+          </option>
+        ))}
+      </select>
     </label>
   );
 }
@@ -361,6 +415,9 @@ export function ModelingToolHeaderProperties() {
   const modelingLineOverlayDisplayMode = useUiStore(
     (state) => state.modelingLineOverlayDisplayMode,
   );
+  const modelingLineAngleSnapStepDeg = useUiStore(
+    (state) => state.modelingLineAngleSnapStepDeg,
+  );
   const modelingPointerAxisSnapEnabled = useUiStore(
     (state) => state.modelingPointerAxisSnapEnabled,
   );
@@ -381,6 +438,9 @@ export function ModelingToolHeaderProperties() {
   );
   const setModelingLineOverlayDisplayMode = useUiStore(
     (state) => state.setModelingLineOverlayDisplayMode,
+  );
+  const setModelingLineAngleSnapStepDeg = useUiStore(
+    (state) => state.setModelingLineAngleSnapStepDeg,
   );
   const setModelingPointerAxisSnapEnabled = useUiStore(
     (state) => state.setModelingPointerAxisSnapEnabled,
@@ -488,29 +548,26 @@ export function ModelingToolHeaderProperties() {
       </div>
       {modelingTool === "line" ? (
         <div className={propertyPanelClasses}>
-          <label
-            className="flex items-center gap-1.5 text-[0.68rem] text-slate-100/88"
-            htmlFor="line-overlay-display"
+          <ToolSettingSelectField
+            id="line-angle-snap-step"
+            label="Angle Step"
+            onChange={setModelingLineAngleSnapStepDeg}
+            options={lineAngleSnapStepOptions}
+            title="Angular step used while holding Ctrl during a line drag. The snap directions are generated on the XY, XZ, and YZ planes."
+            value={modelingLineAngleSnapStepDeg}
+            widthClass="w-18"
+          />
+          <ToolSettingSelectField
+            id="line-overlay-display"
+            label="Overlay"
+            onChange={(value) =>
+              setModelingLineOverlayDisplayMode(value as MoveOverlayDisplayMode)
+            }
+            options={overlayDisplayOptions}
             title="Preview panel display during drag. 1 uses camera-facing, 2 uses screen-vertical, 3 uses screen-horizontal."
-          >
-            <span>Overlay</span>
-            <select
-              className={`${fieldClasses} w-14`}
-              id="line-overlay-display"
-              onChange={(event) =>
-                setModelingLineOverlayDisplayMode(
-                  event.target.value as MoveOverlayDisplayMode,
-                )
-              }
-              value={modelingLineOverlayDisplayMode}
-            >
-              {overlayDisplayOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
+            value={modelingLineOverlayDisplayMode}
+            widthClass="w-14"
+          />
         </div>
       ) : null}
     </div>

@@ -225,6 +225,16 @@ describe("uiStore", () => {
     expect(useUiStore.getState().modelingPointerDepthPrecisionScale).toBe(1);
   });
 
+  it("uses only the supported line angle snap steps", () => {
+    expect(useUiStore.getState().modelingLineAngleSnapStepDeg).toBe(45);
+
+    useUiStore.getState().setModelingLineAngleSnapStepDeg(15);
+    expect(useUiStore.getState().modelingLineAngleSnapStepDeg).toBe(15);
+
+    useUiStore.getState().setModelingLineAngleSnapStepDeg(22);
+    expect(useUiStore.getState().modelingLineAngleSnapStepDeg).toBe(45);
+  });
+
   it("resets line preview when switching modeling tools", () => {
     useUiStore.getState().setModelingLinePreview({
       currentPosition: [1, 1, 1],
