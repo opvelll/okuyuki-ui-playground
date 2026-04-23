@@ -179,6 +179,18 @@ describe("uiStore", () => {
     expect(useUiStore.getState().modelingPointerVerticalAxisFloorY).toBe(-32);
   });
 
+  it("stores the below-floor horizontal axis display mode", () => {
+    expect(useUiStore.getState().modelingPointerAxisBelowFloorDisplay).toBe(
+      "hidden",
+    );
+
+    useUiStore.getState().setModelingPointerAxisBelowFloorDisplay("faded");
+
+    expect(useUiStore.getState().modelingPointerAxisBelowFloorDisplay).toBe(
+      "faded",
+    );
+  });
+
   it("clamps the modeling pointer snap controls", () => {
     useUiStore.getState().setModelingPointerVertexSnapEnabled(false);
     expect(useUiStore.getState().modelingPointerVertexSnapEnabled).toBe(false);

@@ -54,6 +54,15 @@ const MODELING_LINE_PREVIEW_COLORS = {
   "screen-vertical": "#fb923c",
 } as const;
 const AXIS_KEYS = ["x", "y", "z"] as const;
+const HORIZONTAL_AXIS_FADED_OPACITY = 0.18;
+const HORIZONTAL_AXIS_DASH_FADED_OPACITY = 0.12;
+
+export function shouldShowModelingPointerHorizontalAxes(
+  pointerY: number,
+  verticalAxisFloorY: number,
+) {
+  return pointerY >= verticalAxisFloorY;
+}
 
 function renderModelingAxisSnapGuides(
   position: [number, number, number],
@@ -132,11 +141,26 @@ function ModelingPointer() {
   const verticalAxisFloorY = useUiStore(
     (state) => state.modelingPointerVerticalAxisFloorY,
   );
+  const horizontalAxisBelowFloorDisplay = useUiStore(
+    (state) => state.modelingPointerAxisBelowFloorDisplay,
+  );
   const effectiveTool = getEffectiveModelingTool({
     modelingCameraDragging,
     modelingCameraOverride,
     modelingTool,
   });
+  const showHorizontalAxes = shouldShowModelingPointerHorizontalAxes(
+    position[1],
+    verticalAxisFloorY,
+  );
+  const renderHorizontalAxes =
+    showHorizontalAxes || horizontalAxisBelowFloorDisplay === "faded";
+  const horizontalAxisOpacity = showHorizontalAxes
+    ? 1
+    : HORIZONTAL_AXIS_FADED_OPACITY;
+  const horizontalAxisDashOpacity = showHorizontalAxes
+    ? 0.7
+    : HORIZONTAL_AXIS_DASH_FADED_OPACITY;
   const xAxisLine = useMemo(() => {
     const geometry = new BufferGeometry();
     geometry.setAttribute(
@@ -146,9 +170,13 @@ function ModelingPointer() {
         3,
       ),
     );
-    const material = new LineBasicMaterial({ color: "#f87171" });
+    const material = new LineBasicMaterial({
+      color: "#f87171",
+      opacity: horizontalAxisOpacity,
+      transparent: horizontalAxisOpacity < 1,
+    });
     return new LineSegments(geometry, material);
-  }, []);
+  }, [horizontalAxisOpacity]);
   const yAxisLine = useMemo(() => {
     const clipLocalY = verticalAxisFloorY - position[1];
     const visibleStart = Math.max(-POINTER_AXIS_LENGTH, clipLocalY);
@@ -168,9 +196,13 @@ function ModelingPointer() {
         3,
       ),
     );
-    const material = new LineBasicMaterial({ color: "#60a5fa" });
+    const material = new LineBasicMaterial({
+      color: "#60a5fa",
+      opacity: horizontalAxisOpacity,
+      transparent: horizontalAxisOpacity < 1,
+    });
     return new LineSegments(geometry, material);
-  }, []);
+  }, [horizontalAxisOpacity]);
   const xAxisDashLine = useMemo(() => {
     const geometry = new BufferGeometry();
     geometry.setAttribute(
@@ -197,13 +229,13 @@ function ModelingPointer() {
       color: "#fca5a5",
       dashSize: POINTER_AXIS_DASH_SIZE,
       gapSize: POINTER_AXIS_GAP_SIZE,
-      opacity: 0.7,
-      transparent: true,
+      opacity: horizontalAxisDashOpacity,
+      transparent: horizontalAxisDashOpacity < 1,
     });
     const line = new LineSegments(geometry, material);
     line.computeLineDistances();
     return line;
-  }, []);
+  }, [horizontalAxisDashOpacity]);
   const yAxisDashLine = useMemo(() => {
     const clipLocalY = verticalAxisFloorY - position[1];
     const points: number[] = [];
@@ -252,13 +284,13 @@ function ModelingPointer() {
       color: "#93c5fd",
       dashSize: POINTER_AXIS_DASH_SIZE,
       gapSize: POINTER_AXIS_GAP_SIZE,
-      opacity: 0.7,
-      transparent: true,
+      opacity: horizontalAxisDashOpacity,
+      transparent: horizontalAxisDashOpacity < 1,
     });
     const line = new LineSegments(geometry, material);
     line.computeLineDistances();
     return line;
-  }, []);
+  }, [horizontalAxisDashOpacity]);
   const panelGeometry = useMemo(
     () => new CircleGeometry(panelRadius, 48),
     [panelRadius],
@@ -305,12 +337,20 @@ function ModelingPointer() {
         snappedAxisTargets,
         7,
       )}
-      <primitive object={xAxisDashLine} renderOrder={8} />
+      {renderHorizontalAxes ? (
+        <primitive object={xAxisDashLine} renderOrder={8} />
+      ) : null}
       <primitive object={yAxisDashLine} renderOrder={8} />
-      <primitive object={zAxisDashLine} renderOrder={8} />
-      <primitive object={xAxisLine} renderOrder={10} />
+      {renderHorizontalAxes ? (
+        <primitive object={zAxisDashLine} renderOrder={8} />
+      ) : null}
+      {renderHorizontalAxes ? (
+        <primitive object={xAxisLine} renderOrder={10} />
+      ) : null}
       <primitive object={yAxisLine} renderOrder={10} />
-      <primitive object={zAxisLine} renderOrder={10} />
+      {renderHorizontalAxes ? (
+        <primitive object={zAxisLine} renderOrder={10} />
+      ) : null}
       {plane === "horizontal" ? (
         <mesh
           geometry={panelGeometry}

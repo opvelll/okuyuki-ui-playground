@@ -18,12 +18,14 @@ import {
   isAxisMagnetReferenceFrame,
   isDepthDirection,
   isGridSnapPattern,
+  isModelingPointerAxisBelowFloorDisplay,
   isModelingTool,
   isOverlayDisplayMode,
   isRigidBodyType,
   isRotateDirection,
   isRotateDragReleaseBehavior,
   isRotateTwistAxis,
+  modelingPointerAxisBelowFloorDisplayOptions,
   modelingToolOptions,
   overlayDisplayOptions,
   rigidBodyOptions,
@@ -669,6 +671,18 @@ export function ModelingSettingsSection({
         )}
         step="0.1"
         value={settings.modelingPointerVerticalAxisFloorY}
+      />
+      <SelectField
+        hint="Vertical Axis Floor Y より下に入ったときの X/Z 軸の見え方。hide は非表示、fade は薄く残します。"
+        id="modeling-pointer-axis-below-floor-display"
+        label="Below Floor Axis Display / 下限下の XZ 軸表示"
+        onChange={(value) => {
+          if (isModelingPointerAxisBelowFloorDisplay(value)) {
+            settings.setModelingPointerAxisBelowFloorDisplay(value);
+          }
+        }}
+        options={modelingPointerAxisBelowFloorDisplayOptions}
+        value={settings.modelingPointerAxisBelowFloorDisplay}
       />
     </section>
   );

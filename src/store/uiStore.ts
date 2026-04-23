@@ -37,6 +37,7 @@ export type ModelingRectangleMode =
   | "upright-x-fixed"
   | "upright-z-fixed"
   | "upright-left-square";
+export type ModelingPointerAxisBelowFloorDisplay = "hidden" | "faded";
 export type AxisMagnetTarget = {
   axis: "x" | "y" | "z";
   direction: "negative" | "positive";
@@ -116,6 +117,7 @@ type PersistedUiState = {
   modelingLineAngleSnapStepDeg: number;
   modelingRectangleMode: ModelingRectangleMode;
   modelingPointerVerticalAxisFloorY: number;
+  modelingPointerAxisBelowFloorDisplay: ModelingPointerAxisBelowFloorDisplay;
   modelingPointerVisibleInCameraTool: boolean;
   modelingTool: ModelingTool;
   objectAngularDamping: number;
@@ -195,6 +197,9 @@ export type UiState = PersistedUiState & {
   setModelingLineAngleSnapStepDeg: (value: number) => void;
   setModelingRectangleMode: (value: ModelingRectangleMode) => void;
   setModelingPointerVerticalAxisFloorY: (value: number) => void;
+  setModelingPointerAxisBelowFloorDisplay: (
+    value: ModelingPointerAxisBelowFloorDisplay,
+  ) => void;
   setModelingPointerVisibleInCameraTool: (value: boolean) => void;
   setModelingTool: (tool: ModelingTool) => void;
   setObjectAngularDamping: (value: number) => void;
@@ -327,6 +332,7 @@ export const createDefaultPersistedUiState = (): PersistedUiState => ({
   modelingLineAngleSnapStepDeg: 45,
   modelingRectangleMode: "upright-up-fixed",
   modelingPointerVerticalAxisFloorY: 0,
+  modelingPointerAxisBelowFloorDisplay: "hidden",
   modelingPointerVisibleInCameraTool: false,
   modelingTool: "lasso",
   objectAngularDamping: 0.9,
@@ -392,6 +398,7 @@ const createInitialUiState = (): Omit<
   | "setModelingLineAngleSnapStepDeg"
   | "setModelingRectangleMode"
   | "setModelingPointerVerticalAxisFloorY"
+  | "setModelingPointerAxisBelowFloorDisplay"
   | "setModelingPointerVisibleInCameraTool"
   | "setModelingTool"
   | "setObjectAngularDamping"
@@ -572,6 +579,10 @@ export const useUiStore = create<UiState>()(
       setModelingPointerVerticalAxisFloorY: (value) =>
         set({
           modelingPointerVerticalAxisFloorY: Math.max(-32, Math.min(value, 32)),
+        }),
+      setModelingPointerAxisBelowFloorDisplay: (value) =>
+        set({
+          modelingPointerAxisBelowFloorDisplay: value,
         }),
       setModelingPointerVisibleInCameraTool: (value) =>
         set({ modelingPointerVisibleInCameraTool: value }),
@@ -789,6 +800,8 @@ export const useUiStore = create<UiState>()(
         modelingRectangleMode: state.modelingRectangleMode,
         modelingPointerVerticalAxisFloorY:
           state.modelingPointerVerticalAxisFloorY,
+        modelingPointerAxisBelowFloorDisplay:
+          state.modelingPointerAxisBelowFloorDisplay,
         modelingPointerVisibleInCameraTool:
           state.modelingPointerVisibleInCameraTool,
         modelingTool: state.modelingTool,

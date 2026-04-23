@@ -1,5 +1,6 @@
 import { PerspectiveCamera } from "three";
 import { describe, expect, it } from "vitest";
+import { shouldShowModelingPointerHorizontalAxes } from "./ModelingScene";
 import {
   MODELING_POINTER_PRECISION_GRID_STEP_MIN,
   getEffectiveModelingPointerGridStep,
@@ -14,6 +15,17 @@ import {
   appendLassoPoint,
   isPointInsideLasso,
 } from "./scene/modelingSelectionUtils";
+
+describe("shouldShowModelingPointerHorizontalAxes", () => {
+  it("hides x and z axes when the pointer is below the vertical axis floor", () => {
+    expect(shouldShowModelingPointerHorizontalAxes(-0.1, 0)).toBe(false);
+  });
+
+  it("keeps x and z axes visible at or above the vertical axis floor", () => {
+    expect(shouldShowModelingPointerHorizontalAxes(0, 0)).toBe(true);
+    expect(shouldShowModelingPointerHorizontalAxes(0.1, 0)).toBe(true);
+  });
+});
 
 describe("getSnappedModelingPointerPosition", () => {
   it("returns the original position when pointer snap is disabled", () => {

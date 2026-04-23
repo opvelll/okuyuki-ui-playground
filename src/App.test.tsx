@@ -437,6 +437,9 @@ describe("App", () => {
       screen.getByLabelText(/Vertical Axis Floor Y \/ 縦軸の下限高さ/i),
     ).toBeInTheDocument();
     expect(
+      screen.getByLabelText(/Below Floor Axis Display \/ 下限下の XZ 軸表示/i),
+    ).toBeInTheDocument();
+    expect(
       screen.getByLabelText(
         /Pointer Visible In Camera Tool \/ カメラツールでも表示/i,
       ),

@@ -1,4 +1,5 @@
 import type {
+  ModelingPointerAxisBelowFloorDisplay,
   ModelingTool,
   MoveAlwaysSnapMode,
   MoveAxisMagnetReferenceFrame,
@@ -96,6 +97,11 @@ export const modelingToolOptions = [
   { label: "camera move", value: "camera" },
 ] as const satisfies readonly Option<ModelingTool>[];
 
+export const modelingPointerAxisBelowFloorDisplayOptions = [
+  { label: "hide", value: "hidden" },
+  { label: "fade", value: "faded" },
+] as const satisfies readonly Option<ModelingPointerAxisBelowFloorDisplay>[];
+
 export const isOverlayDisplayMode = createOptionChecker(overlayDisplayOptions);
 export const isDepthDirection = createOptionChecker(depthDirectionOptions);
 export const isAxisMagnetReferenceFrame = createOptionChecker(
@@ -110,6 +116,9 @@ export const isRotateDragReleaseBehavior = createOptionChecker(
 );
 export const isRigidBodyType = createOptionChecker(rigidBodyOptions);
 export const isModelingTool = createOptionChecker(modelingToolOptions);
+export const isModelingPointerAxisBelowFloorDisplay = createOptionChecker(
+  modelingPointerAxisBelowFloorDisplayOptions,
+);
 
 export function parseNumberInput(value: string) {
   const parsedValue = Number(value);
