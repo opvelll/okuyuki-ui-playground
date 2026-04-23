@@ -4,22 +4,22 @@ import { compareVector3Tuple } from "../lib/vector3Tuple";
 import type { Vector3Tuple } from "../types/scene";
 import type { ModelingRectangleMode } from "./uiStore";
 
-export type ModelingVertex = {
+type ModelingVertex = {
   id: string;
   position: Vector3Tuple;
 };
 
-export type ModelingEdge = {
+type ModelingEdge = {
   id: string;
   vertexIds: [string, string];
 };
 
-export type ModelingFace = {
+type ModelingFace = {
   id: string;
   vertexIds: [string, string, string];
 };
 
-export type ModelingModel = {
+type ModelingModel = {
   edgeOrder: string[];
   edgesById: Record<string, ModelingEdge>;
   faceOrder: string[];

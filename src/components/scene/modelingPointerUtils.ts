@@ -3,7 +3,7 @@ import { compareVector3Tuple } from "../../lib/vector3Tuple";
 import type { ModelingRectangleMode } from "../../store/uiStore";
 import type { Vector3Tuple } from "../../types/scene";
 
-export type ModelingPointerSnapConfig = {
+type ModelingPointerSnapConfig = {
   axisSnapPositions?: Vector3Tuple[];
   axisDistance: number;
   axisEnabled: boolean;
@@ -16,14 +16,14 @@ export type ModelingPointerSnapConfig = {
   vertexEnabled: boolean;
 };
 
-export type ModelingPointerEdgeSnapTarget = {
+type ModelingPointerEdgeSnapTarget = {
   edgeId: string;
   start: Vector3Tuple;
   end: Vector3Tuple;
   vertexIds: [string, string];
 };
 
-export type ModelingPointerSnapResult = {
+type ModelingPointerSnapResult = {
   position: Vector3Tuple;
   snappedAxes: [boolean, boolean, boolean];
   snappedAxisTargets: [
@@ -48,7 +48,7 @@ export type ModelingPointerDepthHint = {
   };
 };
 
-export type RectangleDiagonalVertices = {
+type RectangleDiagonalVertices = {
   corners: [Vector3Tuple, Vector3Tuple, Vector3Tuple, Vector3Tuple];
   planeNormal: Vector3Tuple;
 };
@@ -625,15 +625,4 @@ export function getModelingPointerDepthHint(
     nearCount,
     pointerScreenPosition,
   };
-}
-
-export function getVertexSelectionDistance(
-  cameraPosition: Vector3,
-  pointerPosition: Vector3Tuple,
-) {
-  const pointerVector = new Vector3(...pointerPosition);
-  return Math.max(
-    0.28,
-    Math.min(cameraPosition.distanceTo(pointerVector) * 0.04, 0.8),
-  );
 }

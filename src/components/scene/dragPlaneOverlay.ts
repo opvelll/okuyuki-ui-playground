@@ -9,7 +9,7 @@ export type DragPlaneOverlayState = {
   startPoint: Vector3;
 };
 
-export type DragPlaneOverlayGeometry = {
+type DragPlaneOverlayGeometry = {
   center: Vector3;
   linePoints: [Vector3, Vector3];
   radius: number;
