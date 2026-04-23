@@ -53,6 +53,20 @@ type RectangleDiagonalVertices = {
   planeNormal: Vector3Tuple;
 };
 
+type BoxDiagonalVertices = {
+  corners: [
+    Vector3Tuple,
+    Vector3Tuple,
+    Vector3Tuple,
+    Vector3Tuple,
+    Vector3Tuple,
+    Vector3Tuple,
+    Vector3Tuple,
+    Vector3Tuple,
+  ];
+  edges: Array<[Vector3Tuple, Vector3Tuple]>;
+};
+
 const WORLD_UP = new Vector3(0, 1, 0);
 const WORLD_X = new Vector3(1, 0, 0);
 const WORLD_Z = new Vector3(0, 0, 1);
@@ -352,6 +366,51 @@ export function getRectangleVerticesFromDiagonal(
   return {
     corners: [startPosition, cornerAlongU, projectedEndPosition, cornerAlongV],
     planeNormal,
+  };
+}
+
+export function getBoxVerticesFromDiagonal(
+  startPosition: Vector3Tuple,
+  endPosition: Vector3Tuple,
+): BoxDiagonalVertices | null {
+  const minX = Math.min(startPosition[0], endPosition[0]);
+  const maxX = Math.max(startPosition[0], endPosition[0]);
+  const minY = Math.min(startPosition[1], endPosition[1]);
+  const maxY = Math.max(startPosition[1], endPosition[1]);
+  const minZ = Math.min(startPosition[2], endPosition[2]);
+  const maxZ = Math.max(startPosition[2], endPosition[2]);
+
+  if (minX === maxX || minY === maxY || minZ === maxZ) {
+    return null;
+  }
+
+  const corners = [
+    [minX, minY, minZ],
+    [maxX, minY, minZ],
+    [maxX, maxY, minZ],
+    [minX, maxY, minZ],
+    [minX, minY, maxZ],
+    [maxX, minY, maxZ],
+    [maxX, maxY, maxZ],
+    [minX, maxY, maxZ],
+  ] as const satisfies BoxDiagonalVertices["corners"];
+
+  return {
+    corners,
+    edges: [
+      [corners[0], corners[1]],
+      [corners[1], corners[2]],
+      [corners[2], corners[3]],
+      [corners[3], corners[0]],
+      [corners[4], corners[5]],
+      [corners[5], corners[6]],
+      [corners[6], corners[7]],
+      [corners[7], corners[4]],
+      [corners[0], corners[4]],
+      [corners[1], corners[5]],
+      [corners[2], corners[6]],
+      [corners[3], corners[7]],
+    ],
   };
 }
 

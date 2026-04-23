@@ -258,7 +258,9 @@ export function SceneStatusHud() {
               ? `Line tool: drag and drop to create a vertex, edge, and vertex, use Shift for ${modelingPointerDepthPrecisionScale.toFixed(2)}x depth and grid precision, hold Ctrl while dragging to constrain the line to world ${modelingLineAngleSnapStepDeg.toFixed(0)} degree directions on the main planes, and reuse or split existing geometry when the 3D pointer is snapped onto vertices or edges.`
               : modelingTool === "rectangle"
                 ? `Rectangle tool: drag a diagonal to create a shape, use Shift for ${modelingPointerDepthPrecisionScale.toFixed(2)}x depth and grid precision, and compare the experimental modes: +Y fixed keeps world up fixed, +X fixed keeps world +X fixed, +Z fixed keeps world +Z fixed, left-square makes a square from the diagonal plus a fixed left direction, and XZ plane lays the shape on the XZ plane.`
-                : ""
+                : modelingTool === "box"
+                  ? "Box tool: drag a diagonal to create an axis-aligned cuboid. The generated edges stay parallel to the world X, Y, and Z axes, and nearby snapped vertices or edges are reused or split at the drag endpoints."
+                  : ""
       : interactionMode === "move"
         ? physicsEnabled
           ? selectedObjectId

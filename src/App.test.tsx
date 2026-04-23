@@ -83,6 +83,7 @@ describe("App", () => {
         startSnapped: false,
         startPosition: [0, 0, 0],
         tool: "line",
+        wireframeEdges: [],
       },
       modelingPointer: {
         depth: 8,

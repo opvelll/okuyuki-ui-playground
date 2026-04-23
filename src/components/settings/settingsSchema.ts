@@ -94,6 +94,7 @@ export const modelingToolOptions = [
   { label: "vertex", value: "vertex" },
   { label: "line", value: "line" },
   { label: "rectangle", value: "rectangle" },
+  { label: "box", value: "box" },
   { label: "camera move", value: "camera" },
 ] as const satisfies readonly Option<ModelingTool>[];
 

@@ -204,6 +204,41 @@ describe("modelingStore", () => {
     ]);
   });
 
+  it("creates a box from a dragged diagonal as triangles on each face", () => {
+    expect(
+      useModelingStore.getState().createBoxFromDiagonal([4, 6, 8], [1, 2, 3]),
+    ).toBe(true);
+
+    const state = useModelingStore.getState();
+    const currentModel = state.modelsById[state.currentModelId];
+    const positions = currentModel.vertexOrder.map(
+      (vertexId) => currentModel.verticesById[vertexId].position,
+    );
+
+    expect(positions).toEqual([
+      [1, 2, 3],
+      [4, 2, 3],
+      [4, 6, 3],
+      [1, 6, 3],
+      [1, 2, 8],
+      [4, 2, 8],
+      [4, 6, 8],
+      [1, 6, 8],
+    ]);
+    expect(currentModel.edgeOrder).toHaveLength(12);
+    expect(currentModel.faceOrder).toHaveLength(12);
+    expect(state.selectedVertexIds).toEqual([
+      "vertex-1",
+      "vertex-2",
+      "vertex-3",
+      "vertex-4",
+      "vertex-5",
+      "vertex-6",
+      "vertex-7",
+      "vertex-8",
+    ]);
+  });
+
   it("deletes selected vertices and removes dependent geometry that references them", () => {
     const vertexA = useModelingStore.getState().addVertex([0, 0, 0]);
     const vertexB = useModelingStore.getState().addVertex([1, 0, 0]);

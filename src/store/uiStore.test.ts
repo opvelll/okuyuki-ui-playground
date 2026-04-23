@@ -28,6 +28,7 @@ describe("uiStore", () => {
         startSnapped: false,
         startPosition: [0, 0, 0],
         tool: "line",
+        wireframeEdges: [],
       },
       modelingPointer: {
         depth: 8,
@@ -268,6 +269,7 @@ describe("uiStore", () => {
       startSnapped: false,
       startPosition: [0, 0, 0],
       tool: "line",
+      wireframeEdges: [],
     });
 
     useUiStore.getState().setModelingTool("camera");

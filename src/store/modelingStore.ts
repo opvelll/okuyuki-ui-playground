@@ -1,5 +1,8 @@
 import { create } from "zustand";
-import { getRectangleVerticesFromDiagonal } from "../components/scene/modelingPointerUtils";
+import {
+  getBoxVerticesFromDiagonal,
+  getRectangleVerticesFromDiagonal,
+} from "../components/scene/modelingPointerUtils";
 import { compareVector3Tuple } from "../lib/vector3Tuple";
 import type { Vector3Tuple } from "../types/scene";
 import type { ModelingRectangleMode } from "./uiStore";
@@ -79,6 +82,24 @@ type ModelingState = ModelingSnapshot & {
     endPosition: Vector3Tuple,
     options: {
       mode: ModelingRectangleMode;
+      endEdgeTarget?: {
+        edgeId: string;
+        position: Vector3Tuple;
+        vertexIds: [string, string];
+      } | null;
+      endVertexId?: string | null;
+      startEdgeTarget?: {
+        edgeId: string;
+        position: Vector3Tuple;
+        vertexIds: [string, string];
+      } | null;
+      startVertexId?: string | null;
+    },
+  ) => boolean;
+  createBoxFromDiagonal: (
+    startPosition: Vector3Tuple,
+    endPosition: Vector3Tuple,
+    options?: {
       endEdgeTarget?: {
         edgeId: string;
         position: Vector3Tuple;
@@ -874,6 +895,170 @@ export const useModelingStore = create<ModelingState>((set, get) => ({
           [currentModel.id]: nextModel,
         },
         selectedVertexIds: [...state.selectedVertexIds],
+      }),
+    });
+
+    return true;
+  },
+  createBoxFromDiagonal: (startPosition, endPosition, options = {}) => {
+    const state = get();
+    const currentModel = state.modelsById[state.currentModelId];
+
+    if (!currentModel) {
+      return false;
+    }
+
+    const boxGeometry = getBoxVerticesFromDiagonal(startPosition, endPosition);
+
+    if (!boxGeometry) {
+      return false;
+    }
+
+    const nextModel = cloneModel(currentModel);
+    const selectedVertexIds: string[] = [];
+    const snappedStartVertex = findVertexById(
+      currentModel,
+      options.startVertexId,
+    );
+    const snappedEndVertex = findVertexById(currentModel, options.endVertexId);
+    const startCorner = boxGeometry.corners.find((corner) =>
+      compareVector3Tuple(corner, startPosition),
+    );
+    const endCorner = boxGeometry.corners.find((corner) =>
+      compareVector3Tuple(corner, endPosition),
+    );
+    const cornerVertexIds = boxGeometry.corners.map((corner) =>
+      ensureVertexInModel(
+        nextModel,
+        selectedVertexIds,
+        corner,
+        (() => {
+          const isStartCorner =
+            startCorner !== undefined &&
+            compareVector3Tuple(corner, startCorner);
+          const isEndCorner =
+            endCorner !== undefined && compareVector3Tuple(corner, endCorner);
+
+          return {
+            edgeTarget: isStartCorner
+              ? options.startEdgeTarget
+              : isEndCorner
+                ? options.endEdgeTarget
+                : null,
+            snappedVertex: isStartCorner
+              ? snappedStartVertex
+              : isEndCorner
+                ? snappedEndVertex
+                : null,
+          };
+        })(),
+      ),
+    );
+
+    if (new Set(cornerVertexIds).size !== boxGeometry.corners.length) {
+      return false;
+    }
+
+    let changed = false;
+    const cornerIndexToVertexId = cornerVertexIds;
+    const edgeVertexIdsList: [string, string][] = [
+      [cornerIndexToVertexId[0], cornerIndexToVertexId[1]],
+      [cornerIndexToVertexId[1], cornerIndexToVertexId[2]],
+      [cornerIndexToVertexId[2], cornerIndexToVertexId[3]],
+      [cornerIndexToVertexId[3], cornerIndexToVertexId[0]],
+      [cornerIndexToVertexId[4], cornerIndexToVertexId[5]],
+      [cornerIndexToVertexId[5], cornerIndexToVertexId[6]],
+      [cornerIndexToVertexId[6], cornerIndexToVertexId[7]],
+      [cornerIndexToVertexId[7], cornerIndexToVertexId[4]],
+      [cornerIndexToVertexId[0], cornerIndexToVertexId[4]],
+      [cornerIndexToVertexId[1], cornerIndexToVertexId[5]],
+      [cornerIndexToVertexId[2], cornerIndexToVertexId[6]],
+      [cornerIndexToVertexId[3], cornerIndexToVertexId[7]],
+    ];
+
+    for (const edgeVertexIds of edgeVertexIdsList) {
+      changed = ensureEdgeInModel(nextModel, edgeVertexIds) || changed;
+    }
+
+    const faceVertexIdsList: [string, string, string][] = [
+      [
+        cornerIndexToVertexId[0],
+        cornerIndexToVertexId[1],
+        cornerIndexToVertexId[2],
+      ],
+      [
+        cornerIndexToVertexId[0],
+        cornerIndexToVertexId[2],
+        cornerIndexToVertexId[3],
+      ],
+      [
+        cornerIndexToVertexId[4],
+        cornerIndexToVertexId[6],
+        cornerIndexToVertexId[5],
+      ],
+      [
+        cornerIndexToVertexId[4],
+        cornerIndexToVertexId[7],
+        cornerIndexToVertexId[6],
+      ],
+      [
+        cornerIndexToVertexId[0],
+        cornerIndexToVertexId[5],
+        cornerIndexToVertexId[1],
+      ],
+      [
+        cornerIndexToVertexId[0],
+        cornerIndexToVertexId[4],
+        cornerIndexToVertexId[5],
+      ],
+      [
+        cornerIndexToVertexId[3],
+        cornerIndexToVertexId[2],
+        cornerIndexToVertexId[6],
+      ],
+      [
+        cornerIndexToVertexId[3],
+        cornerIndexToVertexId[6],
+        cornerIndexToVertexId[7],
+      ],
+      [
+        cornerIndexToVertexId[0],
+        cornerIndexToVertexId[3],
+        cornerIndexToVertexId[7],
+      ],
+      [
+        cornerIndexToVertexId[0],
+        cornerIndexToVertexId[7],
+        cornerIndexToVertexId[4],
+      ],
+      [
+        cornerIndexToVertexId[1],
+        cornerIndexToVertexId[5],
+        cornerIndexToVertexId[6],
+      ],
+      [
+        cornerIndexToVertexId[1],
+        cornerIndexToVertexId[6],
+        cornerIndexToVertexId[2],
+      ],
+    ];
+
+    for (const faceVertexIds of faceVertexIdsList) {
+      changed = ensureFaceInModel(nextModel, faceVertexIds) || changed;
+    }
+
+    if (!changed) {
+      return false;
+    }
+
+    set({
+      ...commitSnapshot(state, {
+        currentModelId: state.currentModelId,
+        modelsById: {
+          ...state.modelsById,
+          [currentModel.id]: nextModel,
+        },
+        selectedVertexIds,
       }),
     });
 

@@ -580,6 +580,9 @@ function ModelingLinePreviewOverlay() {
   const showRectangleOutline =
     modelingLinePreview.tool === "rectangle" &&
     modelingLinePreview.polygonPoints.length === 4;
+  const showBoxWireframe =
+    modelingLinePreview.tool === "box" &&
+    modelingLinePreview.wireframeEdges.length > 0;
   const showCurrentAxisSnapGuides =
     showCurrentPoint &&
     modelingPointerPositionsMatch(
@@ -634,6 +637,21 @@ function ModelingLinePreviewOverlay() {
           transparent
         />
       ) : null}
+      {showBoxWireframe
+        ? modelingLinePreview.wireframeEdges.map(([startPoint, endPoint]) => (
+            <Line
+              color={MODELING_LINE_PREVIEW_DEFAULT_LINE_COLOR}
+              depthTest={false}
+              depthWrite={false}
+              key={`${startPoint.join(":")}-${endPoint.join(":")}`}
+              lineWidth={1.4}
+              opacity={0.88}
+              points={[new Vector3(...startPoint), new Vector3(...endPoint)]}
+              renderOrder={12}
+              transparent
+            />
+          ))
+        : null}
       <Line
         color={
           linePreviewAxisSnapped

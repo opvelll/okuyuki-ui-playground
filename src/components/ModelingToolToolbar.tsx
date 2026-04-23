@@ -1,4 +1,5 @@
 import {
+  Box,
   Camera,
   CircleDashed,
   MousePointer2,
@@ -50,6 +51,11 @@ const pointerSubtools = [
     label: "Rectangle",
     tool: "rectangle",
   },
+  {
+    description: "drag a diagonal to create an axis-aligned box",
+    label: "Box",
+    tool: "box",
+  },
 ] as const;
 
 const pointerSubtoolIcons: Record<
@@ -65,6 +71,7 @@ const pointerSubtoolIcons: Record<
   rectangle: () => (
     <Square aria-hidden="true" className="h-3.5 w-3.5" strokeWidth={2} />
   ),
+  box: () => <Box aria-hidden="true" className="h-3.5 w-3.5" strokeWidth={2} />,
 };
 
 const overlayDisplayOptions = [
@@ -253,7 +260,8 @@ export function ModelingToolToolbar() {
   const pointerToolActive =
     modelingTool === "vertex" ||
     modelingTool === "line" ||
-    modelingTool === "rectangle";
+    modelingTool === "rectangle" ||
+    modelingTool === "box";
 
   return (
     <aside className="absolute left-3 top-3 z-20 w-52 border border-white/12 bg-slate-950/80 shadow-[0_14px_28px_rgba(3,10,20,0.22)] backdrop-blur md:left-4 md:top-4">
@@ -612,6 +620,21 @@ export function ModelingToolHeaderProperties() {
           />
           <ToolSettingSelectField
             id="rectangle-overlay-display"
+            label="Overlay"
+            onChange={(value) =>
+              setModelingLineOverlayDisplayMode(value as MoveOverlayDisplayMode)
+            }
+            options={overlayDisplayOptions}
+            title="Preview panel display during drag. 1 uses camera-facing, 2 uses screen-vertical, 3 uses screen-horizontal."
+            value={modelingLineOverlayDisplayMode}
+            widthClass="w-14"
+          />
+        </div>
+      ) : null}
+      {modelingTool === "box" ? (
+        <div className={propertyPanelClasses}>
+          <ToolSettingSelectField
+            id="box-overlay-display"
             label="Overlay"
             onChange={(value) =>
               setModelingLineOverlayDisplayMode(value as MoveOverlayDisplayMode)

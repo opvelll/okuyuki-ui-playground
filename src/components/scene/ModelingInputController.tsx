@@ -7,6 +7,7 @@ import { compareVector3Tuple } from "../../lib/vector3Tuple";
 import { useModelingStore } from "../../store/modelingStore";
 import { getEffectiveModelingTool, useUiStore } from "../../store/uiStore";
 import {
+  getBoxVerticesFromDiagonal,
   getEffectiveModelingPointerGridStep,
   getLineDirectionSnapPosition,
   getModelingPointerSnapResult,
@@ -40,6 +41,9 @@ export function ModelingInputController({
   );
   const createRectangleFromDiagonal = useModelingStore(
     (state) => state.createRectangleFromDiagonal,
+  );
+  const createBoxFromDiagonal = useModelingStore(
+    (state) => state.createBoxFromDiagonal,
   );
   const selectVertices = useModelingStore((state) => state.selectVertices);
   const modelingPointerAxisSnapEnabled = useUiStore(
@@ -325,6 +329,7 @@ export function ModelingInputController({
             startSnapped: lineDragStartSnapped,
             startPosition: lineDragStartPosition,
             tool: "line",
+            wireframeEdges: [],
           });
         } else if (modelingTool === "rectangle") {
           const rectanglePreview = getRectangleDragPreview(
@@ -350,6 +355,32 @@ export function ModelingInputController({
             startSnapped: lineDragStartSnapped,
             startPosition: lineDragStartPosition,
             tool: "rectangle",
+            wireframeEdges: [],
+          });
+        } else if (modelingTool === "box") {
+          const boxPreview = getBoxVerticesFromDiagonal(
+            lineDragStartPosition,
+            modelingPointer.position,
+          );
+          const planeNormal = new Vector3();
+          camera.getWorldDirection(planeNormal);
+
+          if (!boxPreview) {
+            clearModelingLinePreview();
+            return;
+          }
+
+          setModelingLinePreview({
+            currentPosition: [...modelingPointer.position],
+            currentSnapped:
+              modelingPointer.snappedVertexTarget !== null ||
+              modelingPointer.snappedEdgeTarget !== null,
+            planeNormal: [planeNormal.x, planeNormal.y, planeNormal.z],
+            polygonPoints: [],
+            startSnapped: lineDragStartSnapped,
+            startPosition: lineDragStartPosition,
+            tool: "box",
+            wireframeEdges: boxPreview.edges,
           });
         }
       }
@@ -390,7 +421,11 @@ export function ModelingInputController({
             phase: "dragging",
             points: lassoPoints,
           });
-        } else if (modelingTool === "line" || modelingTool === "rectangle") {
+        } else if (
+          modelingTool === "line" ||
+          modelingTool === "rectangle" ||
+          modelingTool === "box"
+        ) {
           lineDragStartPosition = [...modelingPointer.position];
           lineDragStartEdgeTarget = modelingPointer.snappedEdgeTarget;
           lineDragStartVertexId = findVertexIdByPosition(
@@ -503,6 +538,26 @@ export function ModelingInputController({
                     : null,
                 endVertexId: lineDragEndVertexId,
                 mode: modelingRectangleMode,
+                startEdgeTarget:
+                  lineDragStartVertexId === null
+                    ? lineDragStartEdgeTarget
+                    : null,
+                startVertexId: lineDragStartVertexId,
+              },
+            );
+          }
+        } else if (modelingTool === "box") {
+          if (clickCandidate.moved && lineDragStartPosition) {
+            const lineDragEndVertexId = findVertexIdByPosition(
+              modelingPointer.snappedVertexTarget,
+            );
+
+            createBoxFromDiagonal(
+              lineDragStartPosition,
+              [...modelingPointer.position],
+              {
+                endEdgeTarget: modelingPointer.snappedEdgeTarget,
+                endVertexId: lineDragEndVertexId,
                 startEdgeTarget:
                   lineDragStartVertexId === null
                     ? lineDragStartEdgeTarget
@@ -651,6 +706,7 @@ export function ModelingInputController({
     clearVertexSelection,
     clearModelingLinePreview,
     controlsRef,
+    createBoxFromDiagonal,
     createEdgeFromPositions,
     createRectangleFromDiagonal,
     currentModelId,

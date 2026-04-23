@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { shouldShowModelingPointerHorizontalAxes } from "./ModelingScene";
 import {
   MODELING_POINTER_PRECISION_GRID_STEP_MIN,
+  getBoxVerticesFromDiagonal,
   getEffectiveModelingPointerGridStep,
   getLineDirectionSnapPosition,
   getModelingPointerDepthHint,
@@ -314,6 +315,71 @@ describe("getSnappedModelingPointerPosition", () => {
         [-2.605551, 4, 6],
       ],
       planeNormal: [0, 0.83205, -0.5547],
+    });
+  });
+
+  it("builds axis-aligned box corners and edges from a diagonal", () => {
+    expect(getBoxVerticesFromDiagonal([4, 6, 8], [1, 2, 3])).toEqual({
+      corners: [
+        [1, 2, 3],
+        [4, 2, 3],
+        [4, 6, 3],
+        [1, 6, 3],
+        [1, 2, 8],
+        [4, 2, 8],
+        [4, 6, 8],
+        [1, 6, 8],
+      ],
+      edges: [
+        [
+          [1, 2, 3],
+          [4, 2, 3],
+        ],
+        [
+          [4, 2, 3],
+          [4, 6, 3],
+        ],
+        [
+          [4, 6, 3],
+          [1, 6, 3],
+        ],
+        [
+          [1, 6, 3],
+          [1, 2, 3],
+        ],
+        [
+          [1, 2, 8],
+          [4, 2, 8],
+        ],
+        [
+          [4, 2, 8],
+          [4, 6, 8],
+        ],
+        [
+          [4, 6, 8],
+          [1, 6, 8],
+        ],
+        [
+          [1, 6, 8],
+          [1, 2, 8],
+        ],
+        [
+          [1, 2, 3],
+          [1, 2, 8],
+        ],
+        [
+          [4, 2, 3],
+          [4, 2, 8],
+        ],
+        [
+          [4, 6, 3],
+          [4, 6, 8],
+        ],
+        [
+          [1, 6, 3],
+          [1, 6, 8],
+        ],
+      ],
     });
   });
 

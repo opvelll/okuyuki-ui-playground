@@ -5,7 +5,13 @@ export type MoveDepthWheelDirection = "normal" | "inverted";
 export type InteractionState = "idle" | "active" | "dragging";
 export type InteractionMode = "move" | "rotate";
 export type AppScreen = "prototype" | "modeling";
-export type ModelingTool = "lasso" | "vertex" | "line" | "rectangle" | "camera";
+export type ModelingTool =
+  | "lasso"
+  | "vertex"
+  | "line"
+  | "rectangle"
+  | "box"
+  | "camera";
 type EffectiveModelingTool = "pointer" | "camera";
 export type MoveAlwaysSnapMode = "off" | "axis-magnet" | "grid";
 export type MoveAxisMagnetReferenceFrame = "local" | "world";
@@ -71,7 +77,8 @@ export type ModelingLinePreviewState = {
   polygonPoints: Array<[number, number, number]>;
   startSnapped: boolean;
   startPosition: [number, number, number];
-  tool: "line" | "rectangle";
+  tool: "line" | "rectangle" | "box";
+  wireframeEdges: Array<[[number, number, number], [number, number, number]]>;
 };
 
 export type ModelingLassoSelectionState = {
@@ -289,6 +296,7 @@ const DEFAULT_MODELING_LINE_PREVIEW: ModelingLinePreviewState = {
   startSnapped: false,
   startPosition: [0, 0, 0],
   tool: "line",
+  wireframeEdges: [],
 };
 
 const DEFAULT_MODELING_LASSO_SELECTION: ModelingLassoSelectionState = {
@@ -725,6 +733,7 @@ export const useUiStore = create<UiState>()(
             startSnapped: preview.startSnapped,
             startPosition: preview.startPosition,
             tool: preview.tool,
+            wireframeEdges: preview.wireframeEdges,
           },
         }),
       clearModelingLinePreview: () =>
