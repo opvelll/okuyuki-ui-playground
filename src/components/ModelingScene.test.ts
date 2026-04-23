@@ -6,6 +6,8 @@ import {
   getLineDirectionSnapPosition,
   getModelingPointerDepthHint,
   getModelingPointerSnapResult,
+  getRectangleDragPosition,
+  getRectangleVerticesFromDiagonal,
   getSnappedModelingPointerPosition,
 } from "./scene/modelingPointerUtils";
 import {
@@ -213,6 +215,62 @@ describe("getSnappedModelingPointerPosition", () => {
     expect(
       getLineDirectionSnapPosition([0, 0, 0], [3.4, 1.1, 0.2], 15),
     ).toEqual([3.447244, 0.923686, 0]);
+  });
+
+  it("projects flat rectangle drags onto the xz plane", () => {
+    expect(getRectangleDragPosition([1, 2, 3], [4, 5, 6], "flat-xz")).toEqual([
+      4, 2, 6,
+    ]);
+  });
+
+  it("builds flat rectangle corners from a diagonal", () => {
+    expect(
+      getRectangleVerticesFromDiagonal([1, 2, 3], [4, 6, 9], "flat-xz"),
+    ).toEqual({
+      corners: [
+        [1, 2, 3],
+        [4, 2, 3],
+        [4, 2, 9],
+        [1, 2, 9],
+      ],
+      planeNormal: [0, 1, 0],
+    });
+  });
+
+  it("builds upright-up-fixed rectangle corners from a diagonal", () => {
+    expect(
+      getRectangleVerticesFromDiagonal(
+        [1, 2, 3],
+        [4, 6, 8],
+        "upright-up-fixed",
+      ),
+    ).toEqual({
+      corners: [
+        [1, 2, 3],
+        [4, 2, 8],
+        [4, 6, 8],
+        [1, 6, 3],
+      ],
+      planeNormal: [0.857493, 0, -0.514496],
+    });
+  });
+
+  it("builds upright-left-square corners from a diagonal", () => {
+    expect(
+      getRectangleVerticesFromDiagonal(
+        [1, 2, 3],
+        [1, 6, 9],
+        "upright-left-square",
+      ),
+    ).toEqual({
+      corners: [
+        [1, 2, 3],
+        [4.605551, 4, 6],
+        [1, 6, 9],
+        [-2.605551, 4, 6],
+      ],
+      planeNormal: [0, 0.83205, -0.5547],
+    });
   });
 
   it("counts near and far vertices when they overlap the pointer in screen space", () => {

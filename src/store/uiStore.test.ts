@@ -24,8 +24,10 @@ describe("uiStore", () => {
         currentPosition: [0, 0, 0],
         currentSnapped: false,
         planeNormal: [0, 0, 1],
+        polygonPoints: [],
         startSnapped: false,
         startPosition: [0, 0, 0],
+        tool: "line",
       },
       modelingPointer: {
         depth: 8,
@@ -235,13 +237,25 @@ describe("uiStore", () => {
     expect(useUiStore.getState().modelingLineAngleSnapStepDeg).toBe(45);
   });
 
+  it("stores rectangle mode settings", () => {
+    expect(useUiStore.getState().modelingRectangleMode).toBe(
+      "upright-up-fixed",
+    );
+
+    useUiStore.getState().setModelingRectangleMode("flat-xz");
+
+    expect(useUiStore.getState().modelingRectangleMode).toBe("flat-xz");
+  });
+
   it("resets line preview when switching modeling tools", () => {
     useUiStore.getState().setModelingLinePreview({
       currentPosition: [1, 1, 1],
       currentSnapped: true,
       planeNormal: [0, 0, 1],
+      polygonPoints: [],
       startSnapped: false,
       startPosition: [0, 0, 0],
+      tool: "line",
     });
 
     useUiStore.getState().setModelingTool("camera");

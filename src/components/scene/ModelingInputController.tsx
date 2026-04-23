@@ -10,6 +10,8 @@ import {
   getEffectiveModelingPointerGridStep,
   getLineDirectionSnapPosition,
   getModelingPointerSnapResult,
+  getRectangleDragPosition,
+  getRectangleVerticesFromDiagonal,
 } from "./modelingPointerUtils";
 import {
   appendLassoPoint,
@@ -35,6 +37,9 @@ export function ModelingInputController({
   );
   const createEdgeFromPositions = useModelingStore(
     (state) => state.createEdgeFromPositions,
+  );
+  const createRectangleFromDiagonal = useModelingStore(
+    (state) => state.createRectangleFromDiagonal,
   );
   const selectVertices = useModelingStore((state) => state.selectVertices);
   const modelingPointerAxisSnapEnabled = useUiStore(
@@ -66,6 +71,9 @@ export function ModelingInputController({
   );
   const modelingLineAngleSnapStepDeg = useUiStore(
     (state) => state.modelingLineAngleSnapStepDeg,
+  );
+  const modelingRectangleMode = useUiStore(
+    (state) => state.modelingRectangleMode,
   );
   const setModelingPointerDepth = useUiStore(
     (state) => state.setModelingPointerDepth,
@@ -149,6 +157,20 @@ export function ModelingInputController({
     let lineDragStartVertexId: string | null = null;
     let lineDragStartSnapped = false;
     let lassoPoints: Array<[number, number]> = [];
+
+    const getRectangleDragPreview = (
+      currentPosition: [number, number, number],
+    ) => {
+      if (!lineDragStartPosition) {
+        return null;
+      }
+
+      return getRectangleVerticesFromDiagonal(
+        lineDragStartPosition,
+        currentPosition,
+        modelingRectangleMode,
+      );
+    };
 
     const findVertexIdByPosition = (
       position: [number, number, number] | null,
@@ -288,23 +310,48 @@ export function ModelingInputController({
           phase: "dragging",
           points: lassoPoints,
         });
-      } else if (
-        clickCandidate?.moved &&
-        modelingTool === "line" &&
-        lineDragStartPosition
-      ) {
-        const planeNormal = new Vector3();
-        camera.getWorldDirection(planeNormal);
+      } else if (clickCandidate?.moved && lineDragStartPosition) {
+        if (modelingTool === "line") {
+          const planeNormal = new Vector3();
+          camera.getWorldDirection(planeNormal);
 
-        setModelingLinePreview({
-          currentPosition: [...modelingPointer.position],
-          currentSnapped:
-            modelingPointer.snappedVertexTarget !== null ||
-            modelingPointer.snappedEdgeTarget !== null,
-          planeNormal: [planeNormal.x, planeNormal.y, planeNormal.z],
-          startSnapped: lineDragStartSnapped,
-          startPosition: lineDragStartPosition,
-        });
+          setModelingLinePreview({
+            currentPosition: [...modelingPointer.position],
+            currentSnapped:
+              modelingPointer.snappedVertexTarget !== null ||
+              modelingPointer.snappedEdgeTarget !== null,
+            planeNormal: [planeNormal.x, planeNormal.y, planeNormal.z],
+            polygonPoints: [],
+            startSnapped: lineDragStartSnapped,
+            startPosition: lineDragStartPosition,
+            tool: "line",
+          });
+        } else if (modelingTool === "rectangle") {
+          const rectanglePreview = getRectangleDragPreview(
+            modelingPointer.position,
+          );
+
+          if (!rectanglePreview) {
+            clearModelingLinePreview();
+            return;
+          }
+
+          setModelingLinePreview({
+            currentPosition: rectanglePreview.corners[2],
+            currentSnapped: compareVector3Tuple(
+              rectanglePreview.corners[2],
+              modelingPointer.position,
+            )
+              ? modelingPointer.snappedVertexTarget !== null ||
+                modelingPointer.snappedEdgeTarget !== null
+              : false,
+            planeNormal: rectanglePreview.planeNormal,
+            polygonPoints: rectanglePreview.corners,
+            startSnapped: lineDragStartSnapped,
+            startPosition: lineDragStartPosition,
+            tool: "rectangle",
+          });
+        }
       }
     };
 
@@ -343,7 +390,7 @@ export function ModelingInputController({
             phase: "dragging",
             points: lassoPoints,
           });
-        } else if (modelingTool === "line") {
+        } else if (modelingTool === "line" || modelingTool === "rectangle") {
           lineDragStartPosition = [...modelingPointer.position];
           lineDragStartEdgeTarget = modelingPointer.snappedEdgeTarget;
           lineDragStartVertexId = findVertexIdByPosition(
@@ -420,6 +467,42 @@ export function ModelingInputController({
                 endEdgeTarget: modelingPointer.snappedEdgeTarget,
                 endVertexId: lineDragEndVertexId,
                 snapDistance: 0,
+                startEdgeTarget:
+                  lineDragStartVertexId === null
+                    ? lineDragStartEdgeTarget
+                    : null,
+                startVertexId: lineDragStartVertexId,
+              },
+            );
+          }
+        } else if (modelingTool === "rectangle") {
+          if (clickCandidate.moved && lineDragStartPosition) {
+            const projectedEndPosition = getRectangleDragPosition(
+              lineDragStartPosition,
+              modelingPointer.position,
+              modelingRectangleMode,
+            );
+            const lineDragEndVertexId = compareVector3Tuple(
+              projectedEndPosition,
+              modelingPointer.position,
+            )
+              ? findVertexIdByPosition(modelingPointer.snappedVertexTarget)
+              : null;
+
+            createRectangleFromDiagonal(
+              lineDragStartPosition,
+              projectedEndPosition,
+              {
+                endEdgeTarget:
+                  lineDragEndVertexId === null &&
+                  compareVector3Tuple(
+                    projectedEndPosition,
+                    modelingPointer.position,
+                  )
+                    ? modelingPointer.snappedEdgeTarget
+                    : null,
+                endVertexId: lineDragEndVertexId,
+                mode: modelingRectangleMode,
                 startEdgeTarget:
                   lineDragStartVertexId === null
                     ? lineDragStartEdgeTarget
@@ -569,6 +652,7 @@ export function ModelingInputController({
     clearModelingLinePreview,
     controlsRef,
     createEdgeFromPositions,
+    createRectangleFromDiagonal,
     currentModelId,
     gl,
     modelingPointerAxisSnapEnabled,
@@ -581,6 +665,7 @@ export function ModelingInputController({
     modelingPointerVertexSnapDistance,
     modelingPointerVertexSnapEnabled,
     modelingLineAngleSnapStepDeg,
+    modelingRectangleMode,
     modelsById,
     selectVertices,
     setModelingCameraDragging,

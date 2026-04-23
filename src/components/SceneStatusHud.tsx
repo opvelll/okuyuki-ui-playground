@@ -36,6 +36,11 @@ const ROTATE_TWIST_AXIS_LABELS = {
   "+y": "+Y",
   "+z": "+Z",
 } as const;
+const RECTANGLE_MODE_LABELS = {
+  "flat-xz": "flat-xz",
+  "upright-left-square": "left-square",
+  "upright-up-fixed": "upright-up",
+} as const;
 
 export function SceneStatusHud() {
   const [fps, setFps] = useState(0);
@@ -64,6 +69,9 @@ export function SceneStatusHud() {
   );
   const modelingLineAngleSnapStepDeg = useUiStore(
     (state) => state.modelingLineAngleSnapStepDeg,
+  );
+  const modelingRectangleMode = useUiStore(
+    (state) => state.modelingRectangleMode,
   );
   const modelingPointerVisibleInCameraTool = useUiStore(
     (state) => state.modelingPointerVisibleInCameraTool,
@@ -135,6 +143,9 @@ export function SceneStatusHud() {
           ["select", `${modelingSelectedVertexIds.length} vertices`],
           ["depth", modelingPointer.depth.toFixed(2)],
           ["plane", modelingPointer.plane],
+          ...(modelingTool === "rectangle"
+            ? [["rect", RECTANGLE_MODE_LABELS[modelingRectangleMode]] as const]
+            : []),
           [
             "pointer",
             modelingPointer.hovered &&
@@ -214,7 +225,9 @@ export function SceneStatusHud() {
             ? `Vertex tool: click to place vertices at the 3D pointer, use the wheel for cursor depth, hold Shift for ${modelingPointerDepthPrecisionScale.toFixed(2)}x depth and grid precision, switch cursor planes with 1, 2, 3, and let the pointer snap to nearby vertices or edges when enabled.`
             : modelingTool === "line"
               ? `Line tool: drag and drop to create a vertex, edge, and vertex, use Shift for ${modelingPointerDepthPrecisionScale.toFixed(2)}x depth and grid precision, hold Ctrl while dragging to constrain the line to world ${modelingLineAngleSnapStepDeg.toFixed(0)} degree directions on the main planes, and reuse or split existing geometry when the 3D pointer is snapped onto vertices or edges.`
-              : ""
+              : modelingTool === "rectangle"
+                ? `Rectangle tool: drag a diagonal to create a shape, use Shift for ${modelingPointerDepthPrecisionScale.toFixed(2)}x depth and grid precision, and compare the experimental modes: upright-up keeps world up fixed, left-square makes a square from the diagonal plus a fixed left direction, and flat-xz lays the shape on the XZ plane.`
+                : ""
       : interactionMode === "move"
         ? physicsEnabled
           ? selectedObjectId

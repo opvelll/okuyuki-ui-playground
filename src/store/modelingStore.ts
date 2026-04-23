@@ -1,6 +1,8 @@
 import { create } from "zustand";
+import { getRectangleVerticesFromDiagonal } from "../components/scene/modelingPointerUtils";
 import { compareVector3Tuple } from "../lib/vector3Tuple";
 import type { Vector3Tuple } from "../types/scene";
+import type { ModelingRectangleMode } from "./uiStore";
 
 export type ModelingVertex = {
   id: string;
@@ -72,6 +74,25 @@ type ModelingState = ModelingSnapshot & {
   clearVertexSelection: () => void;
   connectSelectedVerticesAsEdge: () => boolean;
   createFaceFromSelectedVertices: () => boolean;
+  createRectangleFromDiagonal: (
+    startPosition: Vector3Tuple,
+    endPosition: Vector3Tuple,
+    options: {
+      mode: ModelingRectangleMode;
+      endEdgeTarget?: {
+        edgeId: string;
+        position: Vector3Tuple;
+        vertexIds: [string, string];
+      } | null;
+      endVertexId?: string | null;
+      startEdgeTarget?: {
+        edgeId: string;
+        position: Vector3Tuple;
+        vertexIds: [string, string];
+      } | null;
+      startVertexId?: string | null;
+    },
+  ) => boolean;
   deleteSelectedVertices: () => boolean;
   findNearestVertex: (
     pointerPosition: Vector3Tuple,
@@ -411,6 +432,77 @@ function splitEdgeAtPosition(
   return model.verticesById[nextVertexId];
 }
 
+function ensureVertexInModel(
+  model: ModelingModel,
+  selectedVertexIds: string[],
+  position: Vector3Tuple,
+  options?: {
+    edgeTarget?: {
+      edgeId: string;
+      position: Vector3Tuple;
+      vertexIds: [string, string];
+    } | null;
+    snappedVertex?: ModelingVertex | null;
+  },
+) {
+  if (options?.snappedVertex) {
+    selectedVertexIds.push(options.snappedVertex.id);
+    return options.snappedVertex.id;
+  }
+
+  const existingVertex = findVertexAtPosition(model, position);
+  if (existingVertex) {
+    selectedVertexIds.push(existingVertex.id);
+    return existingVertex.id;
+  }
+
+  const splitVertex = splitEdgeAtPosition(model, options?.edgeTarget);
+  if (splitVertex) {
+    selectedVertexIds.push(splitVertex.id);
+    return splitVertex.id;
+  }
+
+  const nextVertexId = createNextId("vertex", model.vertexOrder);
+  model.vertexOrder.push(nextVertexId);
+  model.verticesById[nextVertexId] = {
+    id: nextVertexId,
+    position: [...position],
+  };
+  selectedVertexIds.push(nextVertexId);
+  return nextVertexId;
+}
+
+function ensureEdgeInModel(model: ModelingModel, vertexIds: [string, string]) {
+  if (vertexIds[0] === vertexIds[1] || hasEdge(model, vertexIds)) {
+    return false;
+  }
+
+  const nextEdgeId = createNextId("edge", model.edgeOrder);
+  model.edgeOrder.push(nextEdgeId);
+  model.edgesById[nextEdgeId] = {
+    id: nextEdgeId,
+    vertexIds,
+  };
+  return true;
+}
+
+function ensureFaceInModel(
+  model: ModelingModel,
+  vertexIds: [string, string, string],
+) {
+  if (new Set(vertexIds).size !== 3 || hasFace(model, vertexIds)) {
+    return false;
+  }
+
+  const nextFaceId = `face-${model.faceOrder.length + 1}`;
+  model.faceOrder.push(nextFaceId);
+  model.facesById[nextFaceId] = {
+    id: nextFaceId,
+    vertexIds,
+  };
+  return true;
+}
+
 function commitSnapshot(
   state: ModelingState,
   nextSnapshot: ModelingSnapshot,
@@ -475,64 +567,29 @@ export const useModelingStore = create<ModelingState>((set, get) => ({
     const nextModel = cloneModel(currentModel);
     const selectedVertexIds: string[] = [];
 
-    const ensureVertex = (
-      snappedVertex: ModelingVertex | null,
-      edgeTarget:
-        | {
-            edgeId: string;
-            position: Vector3Tuple;
-            vertexIds: [string, string];
-          }
-        | null
-        | undefined,
-      position: Vector3Tuple,
-    ) => {
-      if (snappedVertex) {
-        selectedVertexIds.push(snappedVertex.id);
-        return snappedVertex.id;
-      }
-
-      const splitVertex = splitEdgeAtPosition(nextModel, edgeTarget);
-      if (splitVertex) {
-        selectedVertexIds.push(splitVertex.id);
-        return splitVertex.id;
-      }
-
-      const nextVertexId = createNextId("vertex", nextModel.vertexOrder);
-      nextModel.vertexOrder.push(nextVertexId);
-      nextModel.verticesById[nextVertexId] = {
-        id: nextVertexId,
-        position: [...position],
-      };
-      selectedVertexIds.push(nextVertexId);
-      return nextVertexId;
-    };
-
-    const startVertexId = ensureVertex(
-      snappedStartVertex,
-      normalizedOptions.startEdgeTarget,
+    const startVertexId = ensureVertexInModel(
+      nextModel,
+      selectedVertexIds,
       startPosition,
+      {
+        edgeTarget: normalizedOptions.startEdgeTarget,
+        snappedVertex: snappedStartVertex,
+      },
     );
-    const endVertexId = ensureVertex(
-      snappedEndVertex,
-      normalizedOptions.endEdgeTarget,
+    const endVertexId = ensureVertexInModel(
+      nextModel,
+      selectedVertexIds,
       endPosition,
+      {
+        edgeTarget: normalizedOptions.endEdgeTarget,
+        snappedVertex: snappedEndVertex,
+      },
     );
     const edgeVertexIds = [startVertexId, endVertexId] as [string, string];
 
-    if (
-      edgeVertexIds[0] === edgeVertexIds[1] ||
-      hasEdge(nextModel, edgeVertexIds)
-    ) {
+    if (!ensureEdgeInModel(nextModel, edgeVertexIds)) {
       return false;
     }
-
-    const nextEdgeId = createNextId("edge", nextModel.edgeOrder);
-    nextModel.edgeOrder.push(nextEdgeId);
-    nextModel.edgesById[nextEdgeId] = {
-      id: nextEdgeId,
-      vertexIds: edgeVertexIds,
-    };
 
     set({
       ...commitSnapshot(state, {
@@ -542,6 +599,121 @@ export const useModelingStore = create<ModelingState>((set, get) => ({
           [currentModel.id]: nextModel,
         },
         selectedVertexIds,
+      }),
+    });
+
+    return true;
+  },
+  createRectangleFromDiagonal: (startPosition, endPosition, options) => {
+    const state = get();
+    const currentModel = state.modelsById[state.currentModelId];
+
+    if (!currentModel) {
+      return false;
+    }
+
+    const rectangleGeometry = getRectangleVerticesFromDiagonal(
+      startPosition,
+      endPosition,
+      options.mode,
+    );
+
+    if (!rectangleGeometry) {
+      return false;
+    }
+
+    const nextModel = cloneModel(currentModel);
+    const selectedVertexIds: string[] = [];
+    const snappedStartVertex = findVertexById(
+      currentModel,
+      options.startVertexId,
+    );
+    const snappedEndVertex = findVertexById(currentModel, options.endVertexId);
+    const endPositionMatchesSnap =
+      snappedEndVertex &&
+      compareVector3Tuple(
+        snappedEndVertex.position,
+        rectangleGeometry.corners[2],
+      );
+    const startVertexId = ensureVertexInModel(
+      nextModel,
+      selectedVertexIds,
+      rectangleGeometry.corners[0],
+      {
+        edgeTarget: options.startEdgeTarget,
+        snappedVertex: snappedStartVertex,
+      },
+    );
+    const corner1VertexId = ensureVertexInModel(
+      nextModel,
+      selectedVertexIds,
+      rectangleGeometry.corners[1],
+    );
+    const endVertexId = ensureVertexInModel(
+      nextModel,
+      selectedVertexIds,
+      rectangleGeometry.corners[2],
+      {
+        edgeTarget: endPositionMatchesSnap ? options.endEdgeTarget : null,
+        snappedVertex: endPositionMatchesSnap ? snappedEndVertex : null,
+      },
+    );
+    const corner3VertexId = ensureVertexInModel(
+      nextModel,
+      selectedVertexIds,
+      rectangleGeometry.corners[3],
+    );
+
+    if (
+      new Set([startVertexId, corner1VertexId, endVertexId, corner3VertexId])
+        .size !== 4
+    ) {
+      return false;
+    }
+
+    let changed = false;
+    const edgeVertexIdsList: [string, string][] = [
+      [startVertexId, corner1VertexId],
+      [corner1VertexId, endVertexId],
+      [endVertexId, corner3VertexId],
+      [corner3VertexId, startVertexId],
+      [startVertexId, endVertexId],
+    ];
+
+    for (const edgeVertexIds of edgeVertexIdsList) {
+      changed = ensureEdgeInModel(nextModel, edgeVertexIds) || changed;
+    }
+
+    changed =
+      ensureFaceInModel(nextModel, [
+        startVertexId,
+        corner1VertexId,
+        endVertexId,
+      ]) || changed;
+    changed =
+      ensureFaceInModel(nextModel, [
+        startVertexId,
+        endVertexId,
+        corner3VertexId,
+      ]) || changed;
+
+    if (!changed) {
+      return false;
+    }
+
+    set({
+      ...commitSnapshot(state, {
+        currentModelId: state.currentModelId,
+        modelsById: {
+          ...state.modelsById,
+          [currentModel.id]: nextModel,
+        },
+        selectedVertexIds: [
+          startVertexId,
+          corner1VertexId,
+          endVertexId,
+          corner3VertexId,
+        ],
       }),
     });
 

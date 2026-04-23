@@ -63,8 +63,10 @@ describe("App", () => {
         currentPosition: [0, 0, 0],
         currentSnapped: false,
         planeNormal: [0, 0, 1],
+        polygonPoints: [],
         startSnapped: false,
         startPosition: [0, 0, 0],
+        tool: "line",
       },
       modelingPointer: {
         depth: 8,

@@ -5,7 +5,7 @@ export type MoveDepthWheelDirection = "normal" | "inverted";
 export type InteractionState = "idle" | "active" | "dragging";
 export type InteractionMode = "move" | "rotate";
 export type AppScreen = "prototype" | "modeling";
-export type ModelingTool = "lasso" | "vertex" | "line" | "camera";
+export type ModelingTool = "lasso" | "vertex" | "line" | "rectangle" | "camera";
 export type EffectiveModelingTool = "pointer" | "camera";
 export type MoveAlwaysSnapMode = "off" | "axis-magnet" | "grid";
 export type MoveAxisMagnetReferenceFrame = "local" | "world";
@@ -31,6 +31,10 @@ export type SettingsMenu =
   | "modeling-ui";
 export type PhysicsRigidBodyType = "dynamic" | "fixed" | "kinematicPosition";
 export type ModelingPointerPlane = "none" | "horizontal" | "vertical";
+export type ModelingRectangleMode =
+  | "flat-xz"
+  | "upright-up-fixed"
+  | "upright-left-square";
 export type AxisMagnetTarget = {
   axis: "x" | "y" | "z";
   direction: "negative" | "positive";
@@ -61,8 +65,10 @@ export type ModelingLinePreviewState = {
   currentPosition: [number, number, number];
   currentSnapped: boolean;
   planeNormal: [number, number, number];
+  polygonPoints: Array<[number, number, number]>;
   startSnapped: boolean;
   startPosition: [number, number, number];
+  tool: "line" | "rectangle";
 };
 
 export type ModelingLassoSelectionState = {
@@ -106,6 +112,7 @@ type PersistedUiState = {
   modelingPointerVertexSnapEnabled: boolean;
   modelingLineOverlayDisplayMode: MoveOverlayDisplayMode;
   modelingLineAngleSnapStepDeg: number;
+  modelingRectangleMode: ModelingRectangleMode;
   modelingPointerVerticalAxisFloorY: number;
   modelingPointerVisibleInCameraTool: boolean;
   modelingTool: ModelingTool;
@@ -184,6 +191,7 @@ export type UiState = PersistedUiState & {
   setModelingPointerVertexSnapEnabled: (value: boolean) => void;
   setModelingLineOverlayDisplayMode: (value: MoveOverlayDisplayMode) => void;
   setModelingLineAngleSnapStepDeg: (value: number) => void;
+  setModelingRectangleMode: (value: ModelingRectangleMode) => void;
   setModelingPointerVerticalAxisFloorY: (value: number) => void;
   setModelingPointerVisibleInCameraTool: (value: boolean) => void;
   setModelingTool: (tool: ModelingTool) => void;
@@ -270,8 +278,10 @@ const DEFAULT_MODELING_LINE_PREVIEW: ModelingLinePreviewState = {
   currentPosition: [0, 0, 0],
   currentSnapped: false,
   planeNormal: [0, 0, 1],
+  polygonPoints: [],
   startSnapped: false,
   startPosition: [0, 0, 0],
+  tool: "line",
 };
 
 const DEFAULT_MODELING_LASSO_SELECTION: ModelingLassoSelectionState = {
@@ -313,6 +323,7 @@ export const createDefaultPersistedUiState = (): PersistedUiState => ({
   modelingPointerVertexSnapEnabled: true,
   modelingLineOverlayDisplayMode: "mode-1",
   modelingLineAngleSnapStepDeg: 45,
+  modelingRectangleMode: "upright-up-fixed",
   modelingPointerVerticalAxisFloorY: 0,
   modelingPointerVisibleInCameraTool: false,
   modelingTool: "lasso",
@@ -377,6 +388,7 @@ const createInitialUiState = (): Omit<
   | "setModelingPointerVertexSnapEnabled"
   | "setModelingLineOverlayDisplayMode"
   | "setModelingLineAngleSnapStepDeg"
+  | "setModelingRectangleMode"
   | "setModelingPointerVerticalAxisFloorY"
   | "setModelingPointerVisibleInCameraTool"
   | "setModelingTool"
@@ -551,6 +563,10 @@ export const useUiStore = create<UiState>()(
             ? value
             : 45,
         }),
+      setModelingRectangleMode: (value) =>
+        set({
+          modelingRectangleMode: value,
+        }),
       setModelingPointerVerticalAxisFloorY: (value) =>
         set({
           modelingPointerVerticalAxisFloorY: Math.max(-32, Math.min(value, 32)),
@@ -692,8 +708,10 @@ export const useUiStore = create<UiState>()(
             currentPosition: preview.currentPosition,
             currentSnapped: preview.currentSnapped,
             planeNormal: preview.planeNormal,
+            polygonPoints: preview.polygonPoints,
             startSnapped: preview.startSnapped,
             startPosition: preview.startPosition,
+            tool: preview.tool,
           },
         }),
       clearModelingLinePreview: () =>
@@ -766,6 +784,7 @@ export const useUiStore = create<UiState>()(
           state.modelingPointerVertexSnapEnabled,
         modelingLineOverlayDisplayMode: state.modelingLineOverlayDisplayMode,
         modelingLineAngleSnapStepDeg: state.modelingLineAngleSnapStepDeg,
+        modelingRectangleMode: state.modelingRectangleMode,
         modelingPointerVerticalAxisFloorY:
           state.modelingPointerVerticalAxisFloorY,
         modelingPointerVisibleInCameraTool:

@@ -1,5 +1,6 @@
 import { type Camera, Vector3 } from "three";
 import { compareVector3Tuple } from "../../lib/vector3Tuple";
+import type { ModelingRectangleMode } from "../../store/uiStore";
 import type { Vector3Tuple } from "../../types/scene";
 
 export type ModelingPointerSnapConfig = {
@@ -46,6 +47,15 @@ export type ModelingPointerDepthHint = {
     y: number;
   };
 };
+
+export type RectangleDiagonalVertices = {
+  corners: [Vector3Tuple, Vector3Tuple, Vector3Tuple, Vector3Tuple];
+  planeNormal: Vector3Tuple;
+};
+
+const WORLD_UP = new Vector3(0, 1, 0);
+const WORLD_X = new Vector3(1, 0, 0);
+const WORLD_Z = new Vector3(0, 0, 1);
 
 export const MODELING_POINTER_PRECISION_GRID_STEP_MIN = 0.001;
 
@@ -192,6 +202,132 @@ export function getLineDirectionSnapPosition(
   }
 
   return bestPosition;
+}
+
+export function getRectangleDragPosition(
+  startPosition: Vector3Tuple,
+  currentPosition: Vector3Tuple,
+  mode: ModelingRectangleMode,
+): Vector3Tuple {
+  switch (mode) {
+    case "flat-xz":
+      return [currentPosition[0], startPosition[1], currentPosition[2]];
+    default:
+      return [...currentPosition];
+  }
+}
+
+export function getRectangleVerticesFromDiagonal(
+  startPosition: Vector3Tuple,
+  endPosition: Vector3Tuple,
+  mode: ModelingRectangleMode,
+): RectangleDiagonalVertices | null {
+  const projectedEndPosition = getRectangleDragPosition(
+    startPosition,
+    endPosition,
+    mode,
+  );
+
+  const diagonal = new Vector3(...projectedEndPosition).sub(
+    new Vector3(...startPosition),
+  );
+
+  if (diagonal.lengthSq() === 0) {
+    return null;
+  }
+
+  let cornerAlongU: Vector3Tuple;
+  let cornerAlongV: Vector3Tuple;
+  let planeNormal: Vector3Tuple;
+
+  if (mode === "flat-xz") {
+    const dx = projectedEndPosition[0] - startPosition[0];
+    const dz = projectedEndPosition[2] - startPosition[2];
+
+    if (dx === 0 || dz === 0) {
+      return null;
+    }
+
+    cornerAlongU = [
+      projectedEndPosition[0],
+      startPosition[1],
+      startPosition[2],
+    ];
+    cornerAlongV = [
+      startPosition[0],
+      startPosition[1],
+      projectedEndPosition[2],
+    ];
+    planeNormal = [0, 1, 0];
+  } else if (mode === "upright-up-fixed") {
+    const horizontal = new Vector3(
+      projectedEndPosition[0] - startPosition[0],
+      0,
+      projectedEndPosition[2] - startPosition[2],
+    );
+    const verticalDelta = projectedEndPosition[1] - startPosition[1];
+
+    if (horizontal.lengthSq() <= 1e-8 || Math.abs(verticalDelta) <= 1e-8) {
+      return null;
+    }
+
+    let left = WORLD_UP.clone().cross(horizontal);
+    if (left.lengthSq() <= 1e-8) {
+      left = WORLD_Z.clone().cross(horizontal);
+    }
+    if (left.lengthSq() <= 1e-8) {
+      left = WORLD_X.clone().cross(horizontal);
+    }
+    if (left.lengthSq() <= 1e-8) {
+      return null;
+    }
+
+    const cornerAlongUVector = new Vector3(...startPosition).add(horizontal);
+    const cornerAlongVVector = new Vector3(...startPosition).add(
+      WORLD_UP.clone().multiplyScalar(verticalDelta),
+    );
+
+    cornerAlongU = normalizeVector3Tuple(cornerAlongUVector);
+    cornerAlongV = normalizeVector3Tuple(cornerAlongVVector);
+    planeNormal = normalizeVector3Tuple(left.normalize());
+  } else {
+    let left = WORLD_UP.clone().cross(diagonal);
+    if (left.lengthSq() <= 1e-8) {
+      left = WORLD_Z.clone().cross(diagonal);
+    }
+    if (left.lengthSq() <= 1e-8) {
+      left = WORLD_X.clone().cross(diagonal);
+    }
+    if (left.lengthSq() <= 1e-8) {
+      return null;
+    }
+
+    left.normalize();
+    const center = new Vector3(...startPosition)
+      .add(new Vector3(...projectedEndPosition))
+      .multiplyScalar(0.5);
+    const perpendicular = left.multiplyScalar(diagonal.length());
+    const cornerAlongUVector = center
+      .clone()
+      .add(perpendicular.clone().multiplyScalar(0.5));
+    const cornerAlongVVector = center
+      .clone()
+      .sub(perpendicular.clone().multiplyScalar(0.5));
+
+    cornerAlongU = normalizeVector3Tuple(cornerAlongUVector);
+    cornerAlongV = normalizeVector3Tuple(cornerAlongVVector);
+    planeNormal = normalizeVector3Tuple(
+      new Vector3(...projectedEndPosition)
+        .sub(new Vector3(...startPosition))
+        .cross(perpendicular)
+        .normalize(),
+    );
+  }
+
+  return {
+    corners: [startPosition, cornerAlongU, projectedEndPosition, cornerAlongV],
+    planeNormal,
+  };
 }
 
 export function getModelingPointerSnapResult(

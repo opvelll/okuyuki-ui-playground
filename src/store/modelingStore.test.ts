@@ -77,6 +77,85 @@ describe("modelingStore", () => {
     expect(currentModel.faceOrder).toHaveLength(1);
   });
 
+  it("creates a rectangle from a dragged diagonal as two triangle faces", () => {
+    expect(
+      useModelingStore
+        .getState()
+        .createRectangleFromDiagonal([0, 0, 0], [2, 1, 3], {
+          mode: "flat-xz",
+        }),
+    ).toBe(true);
+
+    const state = useModelingStore.getState();
+    const currentModel = state.modelsById[state.currentModelId];
+    const positions = currentModel.vertexOrder.map(
+      (vertexId) => currentModel.verticesById[vertexId].position,
+    );
+
+    expect(positions).toEqual([
+      [0, 0, 0],
+      [2, 0, 0],
+      [2, 0, 3],
+      [0, 0, 3],
+    ]);
+    expect(currentModel.edgeOrder).toHaveLength(5);
+    expect(currentModel.faceOrder).toHaveLength(2);
+    expect(state.selectedVertexIds).toEqual([
+      "vertex-1",
+      "vertex-2",
+      "vertex-3",
+      "vertex-4",
+    ]);
+  });
+
+  it("creates an upright-up-fixed rectangle from the diagonal", () => {
+    expect(
+      useModelingStore
+        .getState()
+        .createRectangleFromDiagonal([1, 2, 3], [4, 6, 8], {
+          mode: "upright-up-fixed",
+        }),
+    ).toBe(true);
+
+    const state = useModelingStore.getState();
+    const currentModel = state.modelsById[state.currentModelId];
+    const faceVertexIds =
+      currentModel.facesById[currentModel.faceOrder[0]].vertexIds;
+    const facePositions = faceVertexIds.map(
+      (vertexId) => currentModel.verticesById[vertexId].position,
+    );
+
+    expect(facePositions).toEqual([
+      [1, 2, 3],
+      [4, 2, 8],
+      [4, 6, 8],
+    ]);
+  });
+
+  it("creates a left-square shape from the diagonal", () => {
+    expect(
+      useModelingStore
+        .getState()
+        .createRectangleFromDiagonal([1, 2, 3], [1, 6, 9], {
+          mode: "upright-left-square",
+        }),
+    ).toBe(true);
+
+    const state = useModelingStore.getState();
+    const currentModel = state.modelsById[state.currentModelId];
+    const faceVertexIds =
+      currentModel.facesById[currentModel.faceOrder[0]].vertexIds;
+    const facePositions = faceVertexIds.map(
+      (vertexId) => currentModel.verticesById[vertexId].position,
+    );
+
+    expect(facePositions).toEqual([
+      [1, 2, 3],
+      [4.605551, 4, 6],
+      [1, 6, 9],
+    ]);
+  });
+
   it("deletes selected vertices and removes dependent geometry that references them", () => {
     const vertexA = useModelingStore.getState().addVertex([0, 0, 0]);
     const vertexB = useModelingStore.getState().addVertex([1, 0, 0]);

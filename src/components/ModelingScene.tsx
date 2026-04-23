@@ -537,6 +537,9 @@ function ModelingLinePreviewOverlay() {
     modelingLinePreview.startPosition,
     modelingLinePreview.currentPosition,
   );
+  const showRectangleOutline =
+    modelingLinePreview.tool === "rectangle" &&
+    modelingLinePreview.polygonPoints.length === 4;
   const showCurrentAxisSnapGuides =
     showCurrentPoint &&
     modelingPointerPositionsMatch(
@@ -574,6 +577,23 @@ function ModelingLinePreviewOverlay() {
           />
         </mesh>
       ))}
+      {showRectangleOutline ? (
+        <Line
+          color={MODELING_LINE_PREVIEW_DEFAULT_LINE_COLOR}
+          depthTest={false}
+          depthWrite={false}
+          lineWidth={1.6}
+          opacity={0.92}
+          points={[
+            ...modelingLinePreview.polygonPoints.map(
+              (point) => new Vector3(...point),
+            ),
+            new Vector3(...modelingLinePreview.polygonPoints[0]),
+          ]}
+          renderOrder={12}
+          transparent
+        />
+      ) : null}
       <Line
         color={
           linePreviewAxisSnapped

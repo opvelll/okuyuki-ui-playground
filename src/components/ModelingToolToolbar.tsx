@@ -5,11 +5,13 @@ import {
   PenLine,
   Plus,
   Redo2,
+  Square,
   Undo2,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useModelingStore } from "../store/modelingStore";
 import {
+  type ModelingRectangleMode,
   type MoveOverlayDisplayMode,
   getEffectiveModelingTool,
   useUiStore,
@@ -43,6 +45,11 @@ const pointerSubtools = [
     label: "Line",
     tool: "line",
   },
+  {
+    description: "drag a diagonal to create a rectangle",
+    label: "Rectangle",
+    tool: "rectangle",
+  },
 ] as const;
 
 const pointerSubtoolIcons: Record<
@@ -54,6 +61,9 @@ const pointerSubtoolIcons: Record<
   ),
   line: () => (
     <PenLine aria-hidden="true" className="h-3.5 w-3.5" strokeWidth={2} />
+  ),
+  rectangle: () => (
+    <Square aria-hidden="true" className="h-3.5 w-3.5" strokeWidth={2} />
   ),
 };
 
@@ -74,6 +84,15 @@ const lineAngleSnapStepOptions = [
   { label: "45 deg", value: 45 },
   { label: "90 deg", value: 90 },
 ] as const;
+
+const rectangleModeOptions = [
+  { label: "立てる / 上固定", value: "upright-up-fixed" },
+  { label: "左固定 / 正方形", value: "upright-left-square" },
+  { label: "寝かせる / XZ", value: "flat-xz" },
+] as const satisfies ReadonlyArray<{
+  label: string;
+  value: ModelingRectangleMode;
+}>;
 
 const fieldClasses =
   "h-7 border border-white/10 bg-slate-900/80 px-1 text-[0.68rem] text-slate-50 outline-none transition focus:border-sky-200/60 focus:ring-2 focus:ring-sky-300/30";
@@ -230,7 +249,9 @@ export function ModelingToolToolbar() {
   const canUndo = historyIndex > 0;
   const selectionToolActive = modelingTool === "lasso";
   const pointerToolActive =
-    modelingTool === "vertex" || modelingTool === "line";
+    modelingTool === "vertex" ||
+    modelingTool === "line" ||
+    modelingTool === "rectangle";
 
   return (
     <aside className="absolute left-3 top-3 z-20 w-52 border border-white/12 bg-slate-950/80 shadow-[0_14px_28px_rgba(3,10,20,0.22)] backdrop-blur md:left-4 md:top-4">
@@ -418,6 +439,9 @@ export function ModelingToolHeaderProperties() {
   const modelingLineAngleSnapStepDeg = useUiStore(
     (state) => state.modelingLineAngleSnapStepDeg,
   );
+  const modelingRectangleMode = useUiStore(
+    (state) => state.modelingRectangleMode,
+  );
   const modelingPointerAxisSnapEnabled = useUiStore(
     (state) => state.modelingPointerAxisSnapEnabled,
   );
@@ -441,6 +465,9 @@ export function ModelingToolHeaderProperties() {
   );
   const setModelingLineAngleSnapStepDeg = useUiStore(
     (state) => state.setModelingLineAngleSnapStepDeg,
+  );
+  const setModelingRectangleMode = useUiStore(
+    (state) => state.setModelingRectangleMode,
   );
   const setModelingPointerAxisSnapEnabled = useUiStore(
     (state) => state.setModelingPointerAxisSnapEnabled,
@@ -559,6 +586,30 @@ export function ModelingToolHeaderProperties() {
           />
           <ToolSettingSelectField
             id="line-overlay-display"
+            label="Overlay"
+            onChange={(value) =>
+              setModelingLineOverlayDisplayMode(value as MoveOverlayDisplayMode)
+            }
+            options={overlayDisplayOptions}
+            title="Preview panel display during drag. 1 uses camera-facing, 2 uses screen-vertical, 3 uses screen-horizontal."
+            value={modelingLineOverlayDisplayMode}
+            widthClass="w-14"
+          />
+        </div>
+      ) : null}
+      {modelingTool === "rectangle" ? (
+        <div className={propertyPanelClasses}>
+          <ToolSettingSelectField
+            id="rectangle-mode"
+            label="Mode"
+            onChange={setModelingRectangleMode}
+            options={rectangleModeOptions}
+            title="Experimental rectangle generation modes for validation."
+            value={modelingRectangleMode}
+            widthClass="w-30"
+          />
+          <ToolSettingSelectField
+            id="rectangle-overlay-display"
             label="Overlay"
             onChange={(value) =>
               setModelingLineOverlayDisplayMode(value as MoveOverlayDisplayMode)
