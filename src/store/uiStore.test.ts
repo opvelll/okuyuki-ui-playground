@@ -30,6 +30,7 @@ describe("uiStore", () => {
         position: [0, 0, 0],
         snappedAxes: [false, false, false],
         snappedAxisTargets: [null, null, null],
+        snappedVertexTarget: null,
       },
       prototypeCamera: DEFAULT_PROTOTYPE_CAMERA,
       selectedObjectId: null,
@@ -172,6 +173,12 @@ describe("uiStore", () => {
   });
 
   it("clamps the modeling pointer snap controls", () => {
+    useUiStore.getState().setModelingPointerVertexSnapEnabled(false);
+    expect(useUiStore.getState().modelingPointerVertexSnapEnabled).toBe(false);
+
+    useUiStore.getState().setModelingPointerVertexSnapDistance(-1);
+    expect(useUiStore.getState().modelingPointerVertexSnapDistance).toBe(0);
+
     useUiStore.getState().setModelingPointerAxisSnapEnabled(false);
     expect(useUiStore.getState().modelingPointerAxisSnapEnabled).toBe(false);
 
@@ -189,6 +196,9 @@ describe("uiStore", () => {
 
     useUiStore.getState().setModelingPointerGridSnapStep(10);
     expect(useUiStore.getState().modelingPointerGridSnapStep).toBe(4);
+
+    useUiStore.getState().setModelingPointerVertexSnapDistance(10);
+    expect(useUiStore.getState().modelingPointerVertexSnapDistance).toBe(4);
   });
 
   it("uses and clamps the modeling pointer depth precision scale", () => {

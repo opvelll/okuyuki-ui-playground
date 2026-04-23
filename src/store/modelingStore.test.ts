@@ -139,4 +139,28 @@ describe("modelingStore", () => {
     expect(currentModel.edgeOrder).toHaveLength(0);
     expect(state.selectedVertexIds).toEqual([vertex?.id]);
   });
+
+  it("reuses explicitly provided snapped vertex ids even when snap distance is zero", () => {
+    const startVertex = useModelingStore.getState().addVertex([0, 0, 0]);
+    const endVertex = useModelingStore.getState().addVertex([2, 0, 0]);
+
+    expect(
+      useModelingStore
+        .getState()
+        .createEdgeFromPositions([0, 0, 0], [2, 0, 0], {
+          endVertexId: endVertex?.id,
+          snapDistance: 0,
+          startVertexId: startVertex?.id,
+        }),
+    ).toBe(true);
+
+    const state = useModelingStore.getState();
+    const currentModel = state.modelsById[state.currentModelId];
+
+    expect(currentModel.vertexOrder).toHaveLength(2);
+    expect(currentModel.edgeOrder).toHaveLength(1);
+    expect(currentModel.edgesById[currentModel.edgeOrder[0]].vertexIds).toEqual(
+      [startVertex?.id, endVertex?.id],
+    );
+  });
 });

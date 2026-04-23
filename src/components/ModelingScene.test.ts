@@ -17,9 +17,33 @@ describe("getSnappedModelingPointerPosition", () => {
           axisEnabled: false,
           gridEnabled: false,
           gridStep: 0.05,
+          vertexDistance: 0.2,
+          vertexEnabled: false,
         },
       ),
     ).toEqual([0.11, 0.26, -0.12]);
+  });
+
+  it("snaps directly to the nearest vertex before axis or grid snapping", () => {
+    const result = getModelingPointerSnapResult(
+      [0.11, 0.26, -0.12],
+      [
+        [0.1, 0.3, -0.1],
+        [0.5, 0.5, 0.5],
+      ],
+      {
+        axisDistance: 0.01,
+        axisEnabled: true,
+        gridEnabled: true,
+        gridStep: 0.05,
+        vertexDistance: 0.05,
+        vertexEnabled: true,
+      },
+    );
+
+    expect(result.position).toEqual([0.1, 0.3, -0.1]);
+    expect(result.snappedVertexTarget).toEqual([0.1, 0.3, -0.1]);
+    expect(result.snappedAxes).toEqual([false, false, false]);
   });
 
   it("snaps matching axes to nearby vertex world coordinates first", () => {
@@ -32,6 +56,8 @@ describe("getSnappedModelingPointerPosition", () => {
           axisEnabled: true,
           gridEnabled: true,
           gridStep: 0.05,
+          vertexDistance: 0.01,
+          vertexEnabled: false,
         },
       ),
     ).toEqual([0.1, 0.3, -0.1]);
@@ -44,6 +70,8 @@ describe("getSnappedModelingPointerPosition", () => {
         axisEnabled: false,
         gridEnabled: true,
         gridStep: 0.05,
+        vertexDistance: 0.01,
+        vertexEnabled: false,
       }),
     ).toEqual([0.1, 0.25, -0.1]);
   });
@@ -55,6 +83,8 @@ describe("getSnappedModelingPointerPosition", () => {
         axisEnabled: true,
         gridEnabled: false,
         gridStep: 0.05,
+        vertexDistance: 0.01,
+        vertexEnabled: false,
       }),
     ).toEqual([0.11, 0.3, -0.1]);
   });
@@ -68,11 +98,14 @@ describe("getSnappedModelingPointerPosition", () => {
         axisEnabled: true,
         gridEnabled: true,
         gridStep: 0.05,
+        vertexDistance: 0.01,
+        vertexEnabled: false,
       },
     );
 
     expect(result.snappedAxes).toEqual([false, false, true]);
     expect(result.snappedAxisTargets).toEqual([null, null, [0.1, 0.3, 5]]);
+    expect(result.snappedVertexTarget).toBeNull();
   });
 
   it("scales grid snap step in precision mode and clamps its minimum", () => {

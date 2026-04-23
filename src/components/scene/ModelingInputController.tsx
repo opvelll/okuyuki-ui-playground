@@ -3,6 +3,7 @@ import { type RefObject, useEffect } from "react";
 import { Raycaster, Vector2, Vector3 } from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { isEditableTarget } from "../../lib/isEditableTarget";
+import { compareVector3Tuple } from "../../lib/vector3Tuple";
 import { useModelingStore } from "../../store/modelingStore";
 import { getEffectiveModelingTool, useUiStore } from "../../store/uiStore";
 import {
@@ -30,17 +31,8 @@ export function ModelingInputController({
   const createEdgeFromPositions = useModelingStore(
     (state) => state.createEdgeFromPositions,
   );
-  const findNearestVertex = useModelingStore(
-    (state) => state.findNearestVertex,
-  );
   const selectNearestVertex = useModelingStore(
     (state) => state.selectNearestVertex,
-  );
-  const modelingLineSnapDistance = useUiStore(
-    (state) => state.modelingLineSnapDistance,
-  );
-  const modelingLineSnapEnabled = useUiStore(
-    (state) => state.modelingLineSnapEnabled,
   );
   const modelingPointerAxisSnapEnabled = useUiStore(
     (state) => state.modelingPointerAxisSnapEnabled,
@@ -56,6 +48,12 @@ export function ModelingInputController({
   );
   const modelingPointerGridSnapStep = useUiStore(
     (state) => state.modelingPointerGridSnapStep,
+  );
+  const modelingPointerVertexSnapDistance = useUiStore(
+    (state) => state.modelingPointerVertexSnapDistance,
+  );
+  const modelingPointerVertexSnapEnabled = useUiStore(
+    (state) => state.modelingPointerVertexSnapEnabled,
   );
   const setModelingPointerDepth = useUiStore(
     (state) => state.setModelingPointerDepth,
@@ -78,6 +76,9 @@ export function ModelingInputController({
   const setModelingPointerSnappedAxisTargets = useUiStore(
     (state) => state.setModelingPointerSnappedAxisTargets,
   );
+  const setModelingPointerSnappedVertexTarget = useUiStore(
+    (state) => state.setModelingPointerSnappedVertexTarget,
+  );
   const setModelingLinePreview = useUiStore(
     (state) => state.setModelingLinePreview,
   );
@@ -90,11 +91,14 @@ export function ModelingInputController({
     const raycaster = new Raycaster();
     const ndc = new Vector2(0, 0);
     const activeModel = modelsById[currentModelId];
-    const activeVertexPositions = activeModel
+    const activeVertices = activeModel
       ? activeModel.vertexOrder.map(
-          (vertexId) => activeModel.verticesById[vertexId].position,
+          (vertexId) => activeModel.verticesById[vertexId],
         )
       : [];
+    const activeVertexPositions = activeVertices.map(
+      (vertex) => vertex.position,
+    );
     let hasPointer = false;
     let cameraDragButton: number | null = null;
     let clickCandidate: {
@@ -104,7 +108,22 @@ export function ModelingInputController({
       y: number;
     } | null = null;
     let lineDragStartPosition: [number, number, number] | null = null;
+    let lineDragStartVertexId: string | null = null;
     let lineDragStartSnapped = false;
+
+    const findVertexIdByPosition = (
+      position: [number, number, number] | null,
+    ) => {
+      if (!position) {
+        return null;
+      }
+
+      return (
+        activeVertices.find((vertex) =>
+          compareVector3Tuple(vertex.position, position),
+        )?.id ?? null
+      );
+    };
 
     const updatePointerPosition = (
       depth = useUiStore.getState().modelingPointer.depth,
@@ -132,12 +151,15 @@ export function ModelingInputController({
           axisEnabled: modelingPointerAxisSnapEnabled,
           gridEnabled: modelingPointerGridSnapEnabled,
           gridStep: effectiveGridStep,
+          vertexDistance: modelingPointerVertexSnapDistance,
+          vertexEnabled: modelingPointerVertexSnapEnabled,
         },
       );
 
       setModelingPointerPosition(snapResult.position);
       setModelingPointerSnappedAxes(snapResult.snappedAxes);
       setModelingPointerSnappedAxisTargets(snapResult.snappedAxisTargets);
+      setModelingPointerSnappedVertexTarget(snapResult.snappedVertexTarget);
     };
 
     const updatePointerFromEvent = (event: PointerEvent | WheelEvent) => {
@@ -172,30 +194,12 @@ export function ModelingInputController({
         modelingTool === "line" &&
         lineDragStartPosition
       ) {
-        const snappedVertex =
-          modelingLineSnapEnabled && modelingLineSnapDistance > 0
-            ? findNearestVertex(
-                modelingPointer.position,
-                modelingLineSnapDistance,
-              )
-            : null;
-        const previewPosition: [number, number, number] = snappedVertex
-          ? [
-              snappedVertex.position[0],
-              snappedVertex.position[1],
-              snappedVertex.position[2],
-            ]
-          : [
-              modelingPointer.position[0],
-              modelingPointer.position[1],
-              modelingPointer.position[2],
-            ];
         const planeNormal = new Vector3();
         camera.getWorldDirection(planeNormal);
 
         setModelingLinePreview({
-          currentPosition: previewPosition,
-          currentSnapped: snappedVertex !== null,
+          currentPosition: [...modelingPointer.position],
+          currentSnapped: modelingPointer.snappedVertexTarget !== null,
           planeNormal: [planeNormal.x, planeNormal.y, planeNormal.z],
           startSnapped: lineDragStartSnapped,
           startPosition: lineDragStartPosition,
@@ -207,11 +211,13 @@ export function ModelingInputController({
       hasPointer = false;
       clickCandidate = null;
       lineDragStartPosition = null;
+      lineDragStartVertexId = null;
       lineDragStartSnapped = false;
       clearModelingLinePreview();
       setModelingPointerHovered(false);
       setModelingPointerSnappedAxes([false, false, false]);
       setModelingPointerSnappedAxisTargets([null, null, null]);
+      setModelingPointerSnappedVertexTarget(null);
     };
 
     const handlePointerDown = (event: PointerEvent) => {
@@ -227,18 +233,11 @@ export function ModelingInputController({
 
         const { modelingPointer, modelingTool } = useUiStore.getState();
         if (modelingTool === "line") {
-          const snappedVertex =
-            modelingLineSnapEnabled && modelingLineSnapDistance > 0
-              ? findNearestVertex(
-                  modelingPointer.position,
-                  modelingLineSnapDistance,
-                )
-              : null;
-
-          lineDragStartPosition = snappedVertex
-            ? [...snappedVertex.position]
-            : [...modelingPointer.position];
-          lineDragStartSnapped = snappedVertex !== null;
+          lineDragStartPosition = [...modelingPointer.position];
+          lineDragStartVertexId = findVertexIdByPosition(
+            modelingPointer.snappedVertexTarget,
+          );
+          lineDragStartSnapped = lineDragStartVertexId !== null;
         }
       }
 
@@ -268,10 +267,17 @@ export function ModelingInputController({
 
         if (modelingTool === "line") {
           if (clickCandidate.moved && lineDragStartPosition) {
+            const lineDragEndVertexId = findVertexIdByPosition(
+              modelingPointer.snappedVertexTarget,
+            );
             createEdgeFromPositions(
               lineDragStartPosition,
               [...modelingPointer.position],
-              modelingLineSnapEnabled ? modelingLineSnapDistance : 0,
+              {
+                endVertexId: lineDragEndVertexId,
+                snapDistance: 0,
+                startVertexId: lineDragStartVertexId,
+              },
             );
           }
         } else if (!clickCandidate.moved && modelingTool === "vertex") {
@@ -290,6 +296,7 @@ export function ModelingInputController({
 
       clickCandidate = null;
       lineDragStartPosition = null;
+      lineDragStartVertexId = null;
       lineDragStartSnapped = false;
       clearModelingLinePreview();
     };
@@ -404,15 +411,14 @@ export function ModelingInputController({
     controlsRef,
     createEdgeFromPositions,
     currentModelId,
-    findNearestVertex,
     gl,
-    modelingLineSnapDistance,
-    modelingLineSnapEnabled,
     modelingPointerAxisSnapEnabled,
     modelingPointerAxisSnapDistance,
     modelingPointerDepthPrecisionScale,
     modelingPointerGridSnapEnabled,
     modelingPointerGridSnapStep,
+    modelingPointerVertexSnapDistance,
+    modelingPointerVertexSnapEnabled,
     modelsById,
     selectNearestVertex,
     setModelingCameraDragging,
@@ -423,6 +429,7 @@ export function ModelingInputController({
     setModelingPointerPosition,
     setModelingPointerSnappedAxes,
     setModelingPointerSnappedAxisTargets,
+    setModelingPointerSnappedVertexTarget,
   ]);
 
   return null;

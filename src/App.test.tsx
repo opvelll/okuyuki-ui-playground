@@ -73,6 +73,7 @@ describe("App", () => {
         position: [0, 0, 0],
         snappedAxes: [false, false, false],
         snappedAxisTargets: [null, null, null],
+        snappedVertexTarget: null,
       },
       prototypeCamera: DEFAULT_PROTOTYPE_CAMERA,
       selectedObjectId: null,
@@ -404,6 +405,12 @@ describe("App", () => {
     await user.click(screen.getByTitle(/modeling pointer/i));
 
     expect(
+      screen.getByLabelText(/Pointer Vertex Snap \/ 頂点吸着/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(/Pointer Vertex Snap Distance \/ 頂点吸着距離/i),
+    ).toBeInTheDocument();
+    expect(
       screen.getByLabelText(/Pointer Axis Snap \/ 軸吸着/i),
     ).toBeInTheDocument();
     expect(
@@ -414,12 +421,6 @@ describe("App", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByLabelText(/Pointer Grid Snap Step \/ 等間隔ステップ/i),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByLabelText(/Line Snap \/ lineツール吸着/i),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByLabelText(/Line Snap Distance \/ 吸着距離/i),
     ).toBeInTheDocument();
     expect(
       screen.getByLabelText(/Line Overlay \/ lineドラッグ表示/i),
@@ -461,12 +462,12 @@ describe("App", () => {
 
     expect(screen.getByText(/Line tool: drag and drop/i)).toBeInTheDocument();
     expect(screen.getAllByText("3D Pointer")).toHaveLength(1);
+    expect(screen.getByLabelText(/^Vertex Distance$/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/^Axis Distance$/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/^Grid Step$/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Vertex Snap$/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/^Axis Snap$/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/^Grid Snap$/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/^Snap$/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Snap Distance/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Overlay/i)).toBeInTheDocument();
   });
 
@@ -481,8 +482,10 @@ describe("App", () => {
     );
 
     expect(screen.getAllByText("3D Pointer")).toHaveLength(1);
+    expect(screen.getByLabelText(/^Vertex Distance$/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/^Axis Distance$/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/^Grid Step$/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Vertex Snap$/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/^Axis Snap$/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/^Grid Snap$/i)).toBeInTheDocument();
     expect(screen.queryByLabelText(/Snap Distance/i)).not.toBeInTheDocument();

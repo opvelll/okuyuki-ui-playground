@@ -299,12 +299,6 @@ export function ModelingToolHeaderProperties() {
   const modelingLineOverlayDisplayMode = useUiStore(
     (state) => state.modelingLineOverlayDisplayMode,
   );
-  const modelingLineSnapDistance = useUiStore(
-    (state) => state.modelingLineSnapDistance,
-  );
-  const modelingLineSnapEnabled = useUiStore(
-    (state) => state.modelingLineSnapEnabled,
-  );
   const modelingPointerAxisSnapEnabled = useUiStore(
     (state) => state.modelingPointerAxisSnapEnabled,
   );
@@ -317,14 +311,14 @@ export function ModelingToolHeaderProperties() {
   const modelingPointerGridSnapStep = useUiStore(
     (state) => state.modelingPointerGridSnapStep,
   );
+  const modelingPointerVertexSnapDistance = useUiStore(
+    (state) => state.modelingPointerVertexSnapDistance,
+  );
+  const modelingPointerVertexSnapEnabled = useUiStore(
+    (state) => state.modelingPointerVertexSnapEnabled,
+  );
   const setModelingLineOverlayDisplayMode = useUiStore(
     (state) => state.setModelingLineOverlayDisplayMode,
-  );
-  const setModelingLineSnapDistance = useUiStore(
-    (state) => state.setModelingLineSnapDistance,
-  );
-  const setModelingLineSnapEnabled = useUiStore(
-    (state) => state.setModelingLineSnapEnabled,
   );
   const setModelingPointerAxisSnapEnabled = useUiStore(
     (state) => state.setModelingPointerAxisSnapEnabled,
@@ -337,6 +331,12 @@ export function ModelingToolHeaderProperties() {
   );
   const setModelingPointerGridSnapStep = useUiStore(
     (state) => state.setModelingPointerGridSnapStep,
+  );
+  const setModelingPointerVertexSnapDistance = useUiStore(
+    (state) => state.setModelingPointerVertexSnapDistance,
+  );
+  const setModelingPointerVertexSnapEnabled = useUiStore(
+    (state) => state.setModelingPointerVertexSnapEnabled,
   );
   const effectiveTool = getEffectiveModelingTool({
     modelingCameraDragging,
@@ -351,6 +351,21 @@ export function ModelingToolHeaderProperties() {
   return (
     <div className="absolute left-1/2 top-3 z-20 flex w-max max-w-[calc(100vw-8rem)] -translate-x-1/2 flex-nowrap items-start justify-center gap-1 overflow-x-auto px-1 pb-1">
       <div className={propertyPanelClasses}>
+        <ToolSettingToggle
+          checked={modelingPointerVertexSnapEnabled}
+          label="Vertex Snap"
+          onChange={setModelingPointerVertexSnapEnabled}
+          title="Toggle 3D pointer snapping directly onto nearby existing vertices."
+        />
+        <ToolSettingNumberField
+          id="pointer-vertex-snap-distance"
+          label="Vertex Distance"
+          min="0"
+          onChange={setModelingPointerVertexSnapDistance}
+          step="0.01"
+          title="Maximum world-space distance used when snapping the 3D pointer onto a nearby vertex."
+          value={modelingPointerVertexSnapDistance}
+        />
         <ToolSettingToggle
           checked={modelingPointerAxisSnapEnabled}
           label="Axis Snap"
@@ -384,21 +399,6 @@ export function ModelingToolHeaderProperties() {
       </div>
       {modelingTool === "line" ? (
         <div className={propertyPanelClasses}>
-          <ToolSettingToggle
-            checked={modelingLineSnapEnabled}
-            label="Snap"
-            onChange={setModelingLineSnapEnabled}
-            title="Toggle snapping start and end to nearby existing vertices."
-          />
-          <ToolSettingNumberField
-            id="line-snap-distance"
-            label="Snap Distance"
-            min="0.05"
-            onChange={setModelingLineSnapDistance}
-            step="0.05"
-            title="Distance threshold used when snapping to an existing vertex."
-            value={modelingLineSnapDistance}
-          />
           <label
             className="flex items-center gap-1.5 text-[0.68rem] text-slate-100/88"
             htmlFor="line-overlay-display"

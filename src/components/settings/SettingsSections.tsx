@@ -548,6 +548,24 @@ export function ModelingSettingsSection({
         value={settings.modelingTool}
       />
       <ToggleField
+        checked={settings.modelingPointerVertexSnapEnabled}
+        id="modeling-pointer-vertex-snap-enabled"
+        label="Pointer Vertex Snap / 頂点吸着"
+        onChange={settings.setModelingPointerVertexSnapEnabled}
+      />
+      <NumberField
+        hint="Pointer Vertex Snap Distance / 近くの既存頂点そのものへ吸い付く距離。目安 0.15-0.8。"
+        id="modeling-pointer-vertex-snap-distance"
+        label="Pointer Vertex Snap Distance / 頂点吸着距離"
+        max="4"
+        min="0"
+        onChange={handleNumberChange(
+          settings.setModelingPointerVertexSnapDistance,
+        )}
+        step="0.01"
+        value={settings.modelingPointerVertexSnapDistance}
+      />
+      <ToggleField
         checked={settings.modelingPointerAxisSnapEnabled}
         id="modeling-pointer-axis-snap-enabled"
         label="Pointer Axis Snap / 軸吸着"
@@ -592,22 +610,6 @@ export function ModelingSettingsSection({
         onChange={handleNumberChange(settings.setModelingPointerGridSnapStep)}
         step="0.01"
         value={settings.modelingPointerGridSnapStep}
-      />
-      <ToggleField
-        checked={settings.modelingLineSnapEnabled}
-        id="modeling-line-snap-enabled"
-        label="Line Snap / lineツール吸着"
-        onChange={settings.setModelingLineSnapEnabled}
-      />
-      <NumberField
-        hint="Line Snap Distance / line ツールの始点・終点が既存頂点へ吸い付く距離。目安 0.15-0.8。"
-        id="modeling-line-snap-distance"
-        label="Line Snap Distance / 吸着距離"
-        max="4"
-        min="0.05"
-        onChange={handleNumberChange(settings.setModelingLineSnapDistance)}
-        step="0.05"
-        value={settings.modelingLineSnapDistance}
       />
       <SelectField
         hint="line ツールのドラッグ中に表示する preview panel の組み合わせ。"

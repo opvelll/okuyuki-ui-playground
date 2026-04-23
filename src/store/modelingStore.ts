@@ -38,7 +38,13 @@ type ModelingState = ModelingSnapshot & {
   createEdgeFromPositions: (
     startPosition: Vector3Tuple,
     endPosition: Vector3Tuple,
-    snapDistance?: number,
+    options?:
+      | number
+      | {
+          endVertexId?: string | null;
+          snapDistance?: number;
+          startVertexId?: string | null;
+        },
   ) => boolean;
   history: ModelingSnapshot[];
   historyIndex: number;
@@ -212,6 +218,17 @@ function findNearestVertexInModel(
     ).vertex;
 }
 
+function findVertexById(
+  model: ModelingModel,
+  vertexId: string | null | undefined,
+) {
+  if (!vertexId) {
+    return null;
+  }
+
+  return model.verticesById[vertexId] ?? null;
+}
+
 function commitSnapshot(
   state: ModelingState,
   nextSnapshot: ModelingSnapshot,
@@ -241,7 +258,7 @@ export const useModelingStore = create<ModelingState>((set, get) => ({
   createEdgeFromPositions: (
     startPosition,
     endPosition,
-    snapDistance = DEFAULT_SELECTION_DISTANCE,
+    options = DEFAULT_SELECTION_DISTANCE,
   ) => {
     const state = get();
     const currentModel = state.modelsById[state.currentModelId];
@@ -250,16 +267,17 @@ export const useModelingStore = create<ModelingState>((set, get) => ({
       return false;
     }
 
-    const snappedStartVertex = findNearestVertexInModel(
-      currentModel,
-      startPosition,
-      snapDistance,
-    );
-    const snappedEndVertex = findNearestVertexInModel(
-      currentModel,
-      endPosition,
-      snapDistance,
-    );
+    const normalizedOptions =
+      typeof options === "number" ? { snapDistance: options } : options;
+    const snapDistance =
+      normalizedOptions.snapDistance ?? DEFAULT_SELECTION_DISTANCE;
+
+    const snappedStartVertex =
+      findVertexById(currentModel, normalizedOptions.startVertexId) ??
+      findNearestVertexInModel(currentModel, startPosition, snapDistance);
+    const snappedEndVertex =
+      findVertexById(currentModel, normalizedOptions.endVertexId) ??
+      findNearestVertexInModel(currentModel, endPosition, snapDistance);
 
     if (
       snappedStartVertex &&

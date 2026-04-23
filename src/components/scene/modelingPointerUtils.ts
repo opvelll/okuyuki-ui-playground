@@ -7,6 +7,8 @@ export type ModelingPointerSnapConfig = {
   axisEnabled: boolean;
   gridEnabled: boolean;
   gridStep: number;
+  vertexDistance: number;
+  vertexEnabled: boolean;
 };
 
 export type ModelingPointerSnapResult = {
@@ -17,6 +19,7 @@ export type ModelingPointerSnapResult = {
     Vector3Tuple | null,
     Vector3Tuple | null,
   ];
+  snappedVertexTarget: Vector3Tuple | null;
 };
 
 export const MODELING_POINTER_PRECISION_GRID_STEP_MIN = 0.001;
@@ -59,11 +62,52 @@ export function getModelingPointerSnapResult(
   vertexPositions: Vector3Tuple[],
   snapConfig: ModelingPointerSnapConfig,
 ): ModelingPointerSnapResult {
+  if (
+    !snapConfig.vertexEnabled &&
+    !snapConfig.axisEnabled &&
+    !snapConfig.gridEnabled
+  ) {
+    return {
+      position: [...position],
+      snappedAxes: [false, false, false],
+      snappedAxisTargets: [null, null, null],
+      snappedVertexTarget: null,
+    };
+  }
+
+  if (snapConfig.vertexEnabled && snapConfig.vertexDistance > 0) {
+    let closestVertexPosition: Vector3Tuple | null = null;
+    let closestDistance = snapConfig.vertexDistance;
+
+    for (const vertexPosition of vertexPositions) {
+      const distance = new Vector3(...position).distanceTo(
+        new Vector3(...vertexPosition),
+      );
+
+      if (distance >= closestDistance) {
+        continue;
+      }
+
+      closestDistance = distance;
+      closestVertexPosition = vertexPosition;
+    }
+
+    if (closestVertexPosition) {
+      return {
+        position: [...closestVertexPosition],
+        snappedAxes: [false, false, false],
+        snappedAxisTargets: [null, null, null],
+        snappedVertexTarget: [...closestVertexPosition],
+      };
+    }
+  }
+
   if (!snapConfig.axisEnabled && !snapConfig.gridEnabled) {
     return {
       position: [...position],
       snappedAxes: [false, false, false],
       snappedAxisTargets: [null, null, null],
+      snappedVertexTarget: null,
     };
   }
 
@@ -144,6 +188,7 @@ export function getModelingPointerSnapResult(
       snappedAxes.has(axisIndex),
     ) as ModelingPointerSnapResult["snappedAxes"],
     snappedAxisTargets,
+    snappedVertexTarget: null,
   };
 }
 
