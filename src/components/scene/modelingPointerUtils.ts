@@ -125,6 +125,38 @@ function normalizeVector3Tuple(
   ];
 }
 
+function getFixedAxisRectangleVertices(
+  startPosition: Vector3Tuple,
+  projectedEndPosition: Vector3Tuple,
+  fixedAxis: Vector3,
+) {
+  const diagonal = new Vector3(...projectedEndPosition).sub(
+    new Vector3(...startPosition),
+  );
+  const fixedDelta = diagonal.dot(fixedAxis);
+  const spanningDelta = diagonal
+    .clone()
+    .sub(fixedAxis.clone().multiplyScalar(fixedDelta));
+
+  if (spanningDelta.lengthSq() <= 1e-8 || Math.abs(fixedDelta) <= 1e-8) {
+    return null;
+  }
+
+  const cornerAlongUVector = new Vector3(...startPosition).add(spanningDelta);
+  const cornerAlongVVector = new Vector3(...startPosition).add(
+    fixedAxis.clone().multiplyScalar(fixedDelta),
+  );
+  const planeNormal = normalizeVector3Tuple(
+    fixedAxis.clone().cross(spanningDelta).normalize(),
+  );
+
+  return {
+    cornerAlongU: normalizeVector3Tuple(cornerAlongUVector),
+    cornerAlongV: normalizeVector3Tuple(cornerAlongVVector),
+    planeNormal,
+  };
+}
+
 function projectWorldPointToScreen(
   point: Vector3Tuple,
   camera: Camera,
@@ -259,37 +291,30 @@ export function getRectangleVerticesFromDiagonal(
       projectedEndPosition[2],
     ];
     planeNormal = [0, 1, 0];
-  } else if (mode === "upright-up-fixed") {
-    const horizontal = new Vector3(
-      projectedEndPosition[0] - startPosition[0],
-      0,
-      projectedEndPosition[2] - startPosition[2],
+  } else if (
+    mode === "upright-up-fixed" ||
+    mode === "upright-x-fixed" ||
+    mode === "upright-z-fixed"
+  ) {
+    const fixedAxis =
+      mode === "upright-up-fixed"
+        ? WORLD_UP
+        : mode === "upright-x-fixed"
+          ? WORLD_X
+          : WORLD_Z;
+    const fixedAxisRectangle = getFixedAxisRectangleVertices(
+      startPosition,
+      projectedEndPosition,
+      fixedAxis,
     );
-    const verticalDelta = projectedEndPosition[1] - startPosition[1];
 
-    if (horizontal.lengthSq() <= 1e-8 || Math.abs(verticalDelta) <= 1e-8) {
+    if (!fixedAxisRectangle) {
       return null;
     }
 
-    let left = WORLD_UP.clone().cross(horizontal);
-    if (left.lengthSq() <= 1e-8) {
-      left = WORLD_Z.clone().cross(horizontal);
-    }
-    if (left.lengthSq() <= 1e-8) {
-      left = WORLD_X.clone().cross(horizontal);
-    }
-    if (left.lengthSq() <= 1e-8) {
-      return null;
-    }
-
-    const cornerAlongUVector = new Vector3(...startPosition).add(horizontal);
-    const cornerAlongVVector = new Vector3(...startPosition).add(
-      WORLD_UP.clone().multiplyScalar(verticalDelta),
-    );
-
-    cornerAlongU = normalizeVector3Tuple(cornerAlongUVector);
-    cornerAlongV = normalizeVector3Tuple(cornerAlongVVector);
-    planeNormal = normalizeVector3Tuple(left.normalize());
+    cornerAlongU = fixedAxisRectangle.cornerAlongU;
+    cornerAlongV = fixedAxisRectangle.cornerAlongV;
+    planeNormal = fixedAxisRectangle.planeNormal;
   } else {
     let left = WORLD_UP.clone().cross(diagonal);
     if (left.lengthSq() <= 1e-8) {

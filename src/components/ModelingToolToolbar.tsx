@@ -86,9 +86,11 @@ const lineAngleSnapStepOptions = [
 ] as const;
 
 const rectangleModeOptions = [
-  { label: "立てる / 上固定", value: "upright-up-fixed" },
+  { label: "+Y 固定", value: "upright-up-fixed" },
+  { label: "+X 固定", value: "upright-x-fixed" },
+  { label: "+Z 固定", value: "upright-z-fixed" },
   { label: "左固定 / 正方形", value: "upright-left-square" },
-  { label: "寝かせる / XZ", value: "flat-xz" },
+  { label: "XZ 平面", value: "flat-xz" },
 ] as const satisfies ReadonlyArray<{
   label: string;
   value: ModelingRectangleMode;

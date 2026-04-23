@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useModelingStore } from "../store/modelingStore";
 import { getEffectiveModelingTool, useUiStore } from "../store/uiStore";
 
@@ -37,10 +37,38 @@ const ROTATE_TWIST_AXIS_LABELS = {
   "+z": "+Z",
 } as const;
 const RECTANGLE_MODE_LABELS = {
-  "flat-xz": "flat-xz",
+  "flat-xz": "xz-plane",
   "upright-left-square": "left-square",
-  "upright-up-fixed": "upright-up",
+  "upright-up-fixed": "+y-fixed",
+  "upright-x-fixed": "+x-fixed",
+  "upright-z-fixed": "+z-fixed",
 } as const;
+
+const HUD_VALUE_WIDTH_CLASSES: Partial<Record<string, string>> = {
+  arcball: "w-[5ch]",
+  axis: "w-[6ch]",
+  depth: "w-[10ch]",
+  fps: "w-[3ch]",
+  history: "w-[5ch]",
+  magnet: "w-[14ch]",
+  mesh: "w-[10ch]",
+  model: "w-[8ch]",
+  overlay: "w-[12ch]",
+  plane: "w-[6ch]",
+  pointer: "w-[6ch]",
+  pos: "w-[14ch]",
+  radius: "w-[7ch]",
+  rect: "w-[8ch]",
+  release: "w-[10ch]",
+  screen: "w-[8ch]",
+  select: "w-[10ch]",
+  selected: "w-[10ch]",
+  snap: "w-[18ch]",
+  state: "w-[6ch]",
+  strength: "w-[6ch]",
+  tool: "w-[10ch]",
+  twist: "w-[11ch]",
+};
 
 export function SceneStatusHud() {
   const [fps, setFps] = useState(0);
@@ -214,6 +242,9 @@ export function SceneStatusHud() {
             ["release", rotateDragReleaseBehavior],
             ["axis", ROTATE_TWIST_AXIS_LABELS[rotateTwistAxis]],
           ];
+  const hudEntries = showFps
+    ? ([["fps", String(fps)] as const, ...hudItems] as const)
+    : hudItems;
 
   const helperText =
     currentScreen === "modeling"
@@ -226,7 +257,7 @@ export function SceneStatusHud() {
             : modelingTool === "line"
               ? `Line tool: drag and drop to create a vertex, edge, and vertex, use Shift for ${modelingPointerDepthPrecisionScale.toFixed(2)}x depth and grid precision, hold Ctrl while dragging to constrain the line to world ${modelingLineAngleSnapStepDeg.toFixed(0)} degree directions on the main planes, and reuse or split existing geometry when the 3D pointer is snapped onto vertices or edges.`
               : modelingTool === "rectangle"
-                ? `Rectangle tool: drag a diagonal to create a shape, use Shift for ${modelingPointerDepthPrecisionScale.toFixed(2)}x depth and grid precision, and compare the experimental modes: upright-up keeps world up fixed, left-square makes a square from the diagonal plus a fixed left direction, and flat-xz lays the shape on the XZ plane.`
+                ? `Rectangle tool: drag a diagonal to create a shape, use Shift for ${modelingPointerDepthPrecisionScale.toFixed(2)}x depth and grid precision, and compare the experimental modes: +Y fixed keeps world up fixed, +X fixed keeps world +X fixed, +Z fixed keeps world +Z fixed, left-square makes a square from the diagonal plus a fixed left direction, and XZ plane lays the shape on the XZ plane.`
                 : ""
       : interactionMode === "move"
         ? physicsEnabled
@@ -266,29 +297,25 @@ export function SceneStatusHud() {
   }, []);
 
   return (
-    <aside className="pointer-events-none absolute bottom-3 left-3 z-20 w-[min(24rem,calc(100%-1.5rem))] border border-white/12 bg-slate-950/82 px-3 py-3 text-slate-50 shadow-[0_16px_32px_rgba(3,10,20,0.22)] backdrop-blur md:bottom-4 md:left-4 md:w-[22rem]">
-      <p className="text-[0.62rem] font-bold uppercase tracking-[0.22em] text-sky-100/62">
-        {currentScreen === "modeling"
-          ? "Modeling Screen"
-          : interactionMode === "move"
-            ? "Object Move"
-            : "Object Rotate"}
-      </p>
-      <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-[0.8rem] leading-5">
-        {showFps ? (
-          <Fragment>
-            <dt className="text-slate-300/62">fps</dt>
-            <dd>{fps}</dd>
-          </Fragment>
-        ) : null}
-        {hudItems.map(([label, value]) => (
-          <Fragment key={label}>
-            <dt className="text-slate-300/62">{label}</dt>
-            <dd className="min-w-0 break-words">{value}</dd>
-          </Fragment>
+    <aside className="pointer-events-none absolute inset-x-3 bottom-3 z-20 border border-white/12 bg-slate-950/82 px-3 py-3 text-slate-50 shadow-[0_16px_32px_rgba(3,10,20,0.22)] backdrop-blur md:inset-x-4 md:bottom-4">
+      <div className="flex flex-nowrap items-center gap-3 overflow-hidden text-[0.76rem] leading-5 whitespace-nowrap">
+        {hudEntries.map(([label, value]) => (
+          <div
+            className="grid shrink-0 grid-cols-[4rem_auto] items-baseline gap-1.5"
+            key={label}
+          >
+            <span className="w-[4rem] text-slate-300/62">{label}</span>
+            <span
+              className={`overflow-hidden text-ellipsis font-medium tabular-nums text-slate-50 ${
+                HUD_VALUE_WIDTH_CLASSES[label] ?? "w-[10ch]"
+              }`}
+            >
+              {value}
+            </span>
+          </div>
         ))}
-      </dl>
-      <p className="mt-2 border-t border-white/8 pt-2 text-[0.74rem] leading-5 text-slate-200/78">
+      </div>
+      <p className="mt-2 border-t border-white/8 pt-2 text-[0.72rem] leading-5 text-slate-200/78">
         {helperText}
       </p>
     </aside>

@@ -255,6 +255,38 @@ describe("getSnappedModelingPointerPosition", () => {
     });
   });
 
+  it("builds upright-x-fixed rectangle corners from a diagonal", () => {
+    expect(
+      getRectangleVerticesFromDiagonal([1, 2, 3], [5, 6, 8], "upright-x-fixed"),
+    ).toEqual({
+      corners: [
+        [1, 2, 3],
+        [1, 6, 8],
+        [5, 6, 8],
+        [5, 2, 3],
+      ],
+      planeNormal: [0, -0.780869, 0.624695],
+    });
+  });
+
+  it("builds upright-z-fixed rectangle corners from a diagonal", () => {
+    const rectangle = getRectangleVerticesFromDiagonal(
+      [1, 2, 3],
+      [5, 6, 9],
+      "upright-z-fixed",
+    );
+
+    expect(rectangle?.corners).toEqual([
+      [1, 2, 3],
+      [5, 6, 3],
+      [5, 6, 9],
+      [1, 2, 9],
+    ]);
+    expect(rectangle?.planeNormal[0]).toBeCloseTo(-Math.SQRT1_2, 6);
+    expect(rectangle?.planeNormal[1]).toBeCloseTo(Math.SQRT1_2, 6);
+    expect(rectangle?.planeNormal[2]).toBe(0);
+  });
+
   it("builds upright-left-square corners from a diagonal", () => {
     expect(
       getRectangleVerticesFromDiagonal(

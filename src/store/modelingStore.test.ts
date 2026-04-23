@@ -132,6 +132,54 @@ describe("modelingStore", () => {
     ]);
   });
 
+  it("creates an upright-x-fixed rectangle from the diagonal", () => {
+    expect(
+      useModelingStore
+        .getState()
+        .createRectangleFromDiagonal([1, 2, 3], [5, 6, 8], {
+          mode: "upright-x-fixed",
+        }),
+    ).toBe(true);
+
+    const state = useModelingStore.getState();
+    const currentModel = state.modelsById[state.currentModelId];
+    const faceVertexIds =
+      currentModel.facesById[currentModel.faceOrder[0]].vertexIds;
+    const facePositions = faceVertexIds.map(
+      (vertexId) => currentModel.verticesById[vertexId].position,
+    );
+
+    expect(facePositions).toEqual([
+      [1, 2, 3],
+      [1, 6, 8],
+      [5, 6, 8],
+    ]);
+  });
+
+  it("creates an upright-z-fixed rectangle from the diagonal", () => {
+    expect(
+      useModelingStore
+        .getState()
+        .createRectangleFromDiagonal([1, 2, 3], [5, 6, 9], {
+          mode: "upright-z-fixed",
+        }),
+    ).toBe(true);
+
+    const state = useModelingStore.getState();
+    const currentModel = state.modelsById[state.currentModelId];
+    const faceVertexIds =
+      currentModel.facesById[currentModel.faceOrder[0]].vertexIds;
+    const facePositions = faceVertexIds.map(
+      (vertexId) => currentModel.verticesById[vertexId].position,
+    );
+
+    expect(facePositions).toEqual([
+      [1, 2, 3],
+      [5, 6, 3],
+      [5, 6, 9],
+    ]);
+  });
+
   it("creates a left-square shape from the diagonal", () => {
     expect(
       useModelingStore

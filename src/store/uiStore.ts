@@ -34,6 +34,8 @@ export type ModelingPointerPlane = "none" | "horizontal" | "vertical";
 export type ModelingRectangleMode =
   | "flat-xz"
   | "upright-up-fixed"
+  | "upright-x-fixed"
+  | "upright-z-fixed"
   | "upright-left-square";
 export type AxisMagnetTarget = {
   axis: "x" | "y" | "z";
