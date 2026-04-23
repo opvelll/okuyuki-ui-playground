@@ -43,6 +43,8 @@ const MODEL_VERTEX_PIXEL_SIZE = 4;
 const DEFAULT_OVERLAY_NORMAL = new Vector3(0, 0, 1);
 const MODELING_LINE_PREVIEW_DEFAULT_VERTEX_COLOR = "#ffffff";
 const MODELING_LINE_PREVIEW_SNAPPED_VERTEX_COLOR = "#22c55e";
+const MODELING_LINE_PREVIEW_DEFAULT_LINE_COLOR = "#bfdbfe";
+const MODELING_LINE_PREVIEW_AXIS_SNAPPED_LINE_COLOR = "#fde047";
 const MODELING_POINTER_DEPTH_HINT_SCREEN_DISTANCE_PX = 10;
 const MODELING_POINTER_DEPTH_HINT_OFFSET_X_PX = 12;
 const MODELING_POINTER_DEPTH_HINT_OFFSET_Y_PX = -16;
@@ -502,6 +504,17 @@ function ModelingLinePreviewOverlay() {
       modelingLinePreview.currentPosition,
       modelingPointerPosition,
     );
+  const linePreviewAxisSnapped =
+    showCurrentAxisSnapGuides &&
+    modelingPointerSnappedAxisTargets.some(
+      (target, axisIndex) =>
+        modelingPointerSnappedAxes[axisIndex] &&
+        target !== null &&
+        modelingPointerPositionsMatch(
+          target,
+          modelingLinePreview.startPosition,
+        ),
+    );
 
   return (
     <group raycast={() => null}>
@@ -523,7 +536,11 @@ function ModelingLinePreviewOverlay() {
         </mesh>
       ))}
       <Line
-        color="#bfdbfe"
+        color={
+          linePreviewAxisSnapped
+            ? MODELING_LINE_PREVIEW_AXIS_SNAPPED_LINE_COLOR
+            : MODELING_LINE_PREVIEW_DEFAULT_LINE_COLOR
+        }
         dashed
         dashScale={1.4}
         depthTest={false}

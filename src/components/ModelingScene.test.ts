@@ -110,6 +110,27 @@ describe("getSnappedModelingPointerPosition", () => {
     expect(result.snappedVertexTarget).toBeNull();
   });
 
+  it("can snap to axis-only positions that are not vertex snap targets", () => {
+    const result = getModelingPointerSnapResult(
+      [1.01, 2.03, 3.2],
+      [[10, 10, 10]],
+      {
+        axisDistance: 0.05,
+        axisEnabled: true,
+        axisSnapPositions: [[1, 2, 0]],
+        gridEnabled: false,
+        gridStep: 0.05,
+        vertexDistance: 0.05,
+        vertexEnabled: true,
+      },
+    );
+
+    expect(result.position).toEqual([1, 2, 3.2]);
+    expect(result.snappedAxes).toEqual([false, false, true]);
+    expect(result.snappedAxisTargets).toEqual([null, null, [1, 2, 0]]);
+    expect(result.snappedVertexTarget).toBeNull();
+  });
+
   it("scales grid snap step in precision mode and clamps its minimum", () => {
     expect(getEffectiveModelingPointerGridStep(0.05, 0.1, false)).toBe(0.05);
     expect(getEffectiveModelingPointerGridStep(0.05, 0.1, true)).toBe(0.005);

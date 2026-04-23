@@ -3,6 +3,7 @@ import { compareVector3Tuple } from "../../lib/vector3Tuple";
 import type { Vector3Tuple } from "../../types/scene";
 
 export type ModelingPointerSnapConfig = {
+  axisSnapPositions?: Vector3Tuple[];
   axisDistance: number;
   axisEnabled: boolean;
   gridEnabled: boolean;
@@ -149,6 +150,7 @@ export function getModelingPointerSnapResult(
     null,
     null,
   ];
+  const axisSnapPositions = snapConfig.axisSnapPositions ?? vertexPositions;
 
   if (snapConfig.axisEnabled && snapConfig.axisDistance > 0) {
     let closestAxisIndex: 0 | 1 | 2 | null = null;
@@ -156,7 +158,7 @@ export function getModelingPointerSnapResult(
     let closestPosition: Vector3Tuple | null = null;
     let closestVertexPosition: Vector3Tuple | null = null;
 
-    for (const vertexPosition of vertexPositions) {
+    for (const vertexPosition of axisSnapPositions) {
       const origin = new Vector3(...vertexPosition);
       const pointer = new Vector3(...position);
 

@@ -125,6 +125,22 @@ export function ModelingInputController({
       );
     };
 
+    const getLineDragAxisSnapPositions = () => {
+      if (!lineDragStartPosition) {
+        return activeVertexPositions;
+      }
+
+      const lineDragStartSnapPosition = lineDragStartPosition;
+
+      const startAlreadyPresent = activeVertexPositions.some((position) =>
+        compareVector3Tuple(position, lineDragStartSnapPosition),
+      );
+
+      return startAlreadyPresent
+        ? activeVertexPositions
+        : [...activeVertexPositions, lineDragStartSnapPosition];
+    };
+
     const updatePointerPosition = (
       depth = useUiStore.getState().modelingPointer.depth,
       precisionMode = false,
@@ -147,6 +163,12 @@ export function ModelingInputController({
         [nextPosition.x, nextPosition.y, nextPosition.z],
         activeVertexPositions,
         {
+          axisSnapPositions:
+            lineDragStartPosition &&
+            useUiStore.getState().modelingTool === "line" &&
+            clickCandidate?.button === 0
+              ? getLineDragAxisSnapPositions()
+              : undefined,
           axisDistance: modelingPointerAxisSnapDistance,
           axisEnabled: modelingPointerAxisSnapEnabled,
           gridEnabled: modelingPointerGridSnapEnabled,
