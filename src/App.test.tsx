@@ -71,6 +71,8 @@ describe("App", () => {
         hovered: false,
         plane: "none",
         position: [0, 0, 0],
+        snappedAxes: [false, false, false],
+        snappedAxisTargets: [null, null, null],
       },
       prototypeCamera: DEFAULT_PROTOTYPE_CAMERA,
       selectedObjectId: null,
@@ -402,6 +404,18 @@ describe("App", () => {
     await user.click(screen.getByTitle(/modeling pointer/i));
 
     expect(
+      screen.getByLabelText(/Pointer Axis Snap \/ 軸吸着/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(/Pointer Axis Snap Distance \/ 軸吸着距離/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(/Pointer Grid Snap \/ 等間隔スナップ/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(/Pointer Grid Snap Step \/ 等間隔ステップ/i),
+    ).toBeInTheDocument();
+    expect(
       screen.getByLabelText(/Line Snap \/ lineツール吸着/i),
     ).toBeInTheDocument();
     expect(
@@ -446,10 +460,12 @@ describe("App", () => {
     );
 
     expect(screen.getByText(/Line tool: drag and drop/i)).toBeInTheDocument();
-    expect(screen.getAllByText("3D Pointer")).toHaveLength(2);
+    expect(screen.getAllByText("3D Pointer")).toHaveLength(1);
     expect(screen.getByLabelText(/^Axis Distance$/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/^Grid Step$/i)).toBeInTheDocument();
-    expect(screen.getAllByLabelText(/^Snap$/i)).toHaveLength(2);
+    expect(screen.getByLabelText(/^Axis Snap$/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Grid Snap$/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Snap$/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Snap Distance/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Overlay/i)).toBeInTheDocument();
   });
@@ -464,9 +480,11 @@ describe("App", () => {
       screen.getByRole("button", { name: /Switch to Modeling screen/i }),
     );
 
-    expect(screen.getAllByText("3D Pointer")).toHaveLength(2);
+    expect(screen.getAllByText("3D Pointer")).toHaveLength(1);
     expect(screen.getByLabelText(/^Axis Distance$/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/^Grid Step$/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Axis Snap$/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Grid Snap$/i)).toBeInTheDocument();
     expect(screen.queryByLabelText(/Snap Distance/i)).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/Overlay/i)).not.toBeInTheDocument();
 
@@ -474,7 +492,7 @@ describe("App", () => {
       screen.getByRole("button", { name: /Switch to Vertex tool/i }),
     );
 
-    expect(screen.getAllByText("3D Pointer")).toHaveLength(2);
+    expect(screen.getAllByText("3D Pointer")).toHaveLength(1);
     expect(screen.queryByLabelText(/Snap Distance/i)).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/Overlay/i)).not.toBeInTheDocument();
   });

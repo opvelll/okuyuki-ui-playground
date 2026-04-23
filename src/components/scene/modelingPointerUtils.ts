@@ -4,9 +4,26 @@ import type { Vector3Tuple } from "../../types/scene";
 
 export type ModelingPointerSnapConfig = {
   axisDistance: number;
-  enabled: boolean;
+  axisEnabled: boolean;
+  gridEnabled: boolean;
   gridStep: number;
 };
+
+export type ModelingPointerSnapResult = {
+  position: Vector3Tuple;
+  snappedAxes: [boolean, boolean, boolean];
+  snappedAxisTargets: [
+    Vector3Tuple | null,
+    Vector3Tuple | null,
+    Vector3Tuple | null,
+  ];
+};
+
+const AXIS_VECTORS: [Vector3Tuple, Vector3Tuple, Vector3Tuple] = [
+  [1, 0, 0],
+  [0, 1, 0],
+  [0, 0, 1],
+];
 
 function snapToGrid(value: number, step: number) {
   if (step <= 0) {
@@ -16,48 +33,84 @@ function snapToGrid(value: number, step: number) {
   return Number((Math.round(value / step) * step).toFixed(6));
 }
 
-export function getSnappedModelingPointerPosition(
+function normalizeCoordinate(value: number) {
+  return Number(value.toFixed(6));
+}
+
+export function getModelingPointerSnapResult(
   position: Vector3Tuple,
   vertexPositions: Vector3Tuple[],
   snapConfig: ModelingPointerSnapConfig,
-): Vector3Tuple {
-  if (!snapConfig.enabled) {
-    return [...position];
+): ModelingPointerSnapResult {
+  if (!snapConfig.axisEnabled && !snapConfig.gridEnabled) {
+    return {
+      position: [...position],
+      snappedAxes: [false, false, false],
+      snappedAxisTargets: [null, null, null],
+    };
   }
 
   const snappedPosition: Vector3Tuple = [...position];
   const snappedAxes = new Set<number>();
+  const snappedAxisTargets: ModelingPointerSnapResult["snappedAxisTargets"] = [
+    null,
+    null,
+    null,
+  ];
 
-  if (snapConfig.axisDistance > 0) {
-    for (let axisIndex = 0; axisIndex < 3; axisIndex += 1) {
-      let closestCoordinate: number | null = null;
-      let closestDistance = snapConfig.axisDistance;
+  if (snapConfig.axisEnabled && snapConfig.axisDistance > 0) {
+    let closestAxisIndex: 0 | 1 | 2 | null = null;
+    let closestDistance = snapConfig.axisDistance;
+    let closestPosition: Vector3Tuple | null = null;
+    let closestVertexPosition: Vector3Tuple | null = null;
 
-      for (const vertexPosition of vertexPositions) {
-        const axisDistance = Math.abs(
-          vertexPosition[axisIndex] - position[axisIndex],
-        );
+    for (const vertexPosition of vertexPositions) {
+      const origin = new Vector3(...vertexPosition);
+      const pointer = new Vector3(...position);
 
-        if (axisDistance >= closestDistance) {
+      for (const [axisIndex, axisVector] of AXIS_VECTORS.entries()) {
+        const axis = new Vector3(...axisVector);
+        const projectionLength = pointer.clone().sub(origin).dot(axis);
+        const projectedPoint = origin
+          .clone()
+          .add(axis.multiplyScalar(projectionLength));
+        const distance = pointer.distanceTo(projectedPoint);
+
+        if (distance >= closestDistance) {
           continue;
         }
 
-        closestCoordinate = vertexPosition[axisIndex];
-        closestDistance = axisDistance;
+        closestAxisIndex = axisIndex as 0 | 1 | 2;
+        closestDistance = distance;
+        closestPosition = [
+          normalizeCoordinate(projectedPoint.x),
+          normalizeCoordinate(projectedPoint.y),
+          normalizeCoordinate(projectedPoint.z),
+        ];
+        closestVertexPosition = vertexPosition;
       }
+    }
 
-      if (closestCoordinate === null) {
-        continue;
-      }
-
-      snappedPosition[axisIndex] = closestCoordinate;
-      snappedAxes.add(axisIndex);
+    if (closestAxisIndex !== null && closestPosition && closestVertexPosition) {
+      snappedPosition[0] = closestPosition[0];
+      snappedPosition[1] = closestPosition[1];
+      snappedPosition[2] = closestPosition[2];
+      snappedAxes.add(closestAxisIndex);
+      snappedAxisTargets[closestAxisIndex] = closestVertexPosition;
     }
   }
 
-  if (snapConfig.gridStep > 0) {
+  if (snapConfig.gridEnabled && snapConfig.gridStep > 0) {
     for (let axisIndex = 0; axisIndex < 3; axisIndex += 1) {
-      if (snappedAxes.has(axisIndex)) {
+      if (snappedAxes.size > 0 && snappedAxes.has(axisIndex)) {
+        snappedPosition[axisIndex] = snapToGrid(
+          snappedPosition[axisIndex],
+          snapConfig.gridStep,
+        );
+        continue;
+      }
+
+      if (snappedAxes.size > 0) {
         continue;
       }
 
@@ -68,7 +121,22 @@ export function getSnappedModelingPointerPosition(
     }
   }
 
-  return snappedPosition;
+  return {
+    position: snappedPosition,
+    snappedAxes: [0, 1, 2].map((axisIndex) =>
+      snappedAxes.has(axisIndex),
+    ) as ModelingPointerSnapResult["snappedAxes"],
+    snappedAxisTargets,
+  };
+}
+
+export function getSnappedModelingPointerPosition(
+  position: Vector3Tuple,
+  vertexPositions: Vector3Tuple[],
+  snapConfig: ModelingPointerSnapConfig,
+): Vector3Tuple {
+  return getModelingPointerSnapResult(position, vertexPositions, snapConfig)
+    .position;
 }
 
 export function modelingPointerPositionsMatch(

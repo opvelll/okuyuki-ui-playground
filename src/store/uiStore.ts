@@ -42,6 +42,12 @@ export type ModelingPointerState = {
   hovered: boolean;
   plane: ModelingPointerPlane;
   position: [number, number, number];
+  snappedAxes: [boolean, boolean, boolean];
+  snappedAxisTargets: [
+    [number, number, number] | null,
+    [number, number, number] | null,
+    [number, number, number] | null,
+  ];
 };
 
 export type ModelingLinePreviewState = {
@@ -77,8 +83,9 @@ type PersistedUiState = {
   moveOverlayRadiusMultiplier: number;
   movePrecisionStep: number;
   moveVerticalDropGuide: boolean;
-  modelingPointerSnapEnabled: boolean;
+  modelingPointerAxisSnapEnabled: boolean;
   modelingPointerAxisSnapDistance: number;
+  modelingPointerGridSnapEnabled: boolean;
   modelingPointerGridSnapStep: number;
   modelingPointerPanelRadius: number;
   modelingLineSnapDistance: number;
@@ -149,8 +156,9 @@ export type UiState = PersistedUiState & {
   setMoveOverlayRadiusMultiplier: (multiplier: number) => void;
   setMovePrecisionStep: (step: number) => void;
   setMoveVerticalDropGuide: (value: boolean) => void;
-  setModelingPointerSnapEnabled: (value: boolean) => void;
+  setModelingPointerAxisSnapEnabled: (value: boolean) => void;
   setModelingPointerAxisSnapDistance: (value: number) => void;
+  setModelingPointerGridSnapEnabled: (value: boolean) => void;
   setModelingPointerGridSnapStep: (value: number) => void;
   setModelingPointerPanelRadius: (value: number) => void;
   setModelingLineSnapDistance: (value: number) => void;
@@ -191,6 +199,10 @@ export type UiState = PersistedUiState & {
   setModelingPointerHovered: (hovered: boolean) => void;
   setModelingPointerPlane: (plane: ModelingPointerPlane) => void;
   setModelingPointerPosition: (position: [number, number, number]) => void;
+  setModelingPointerSnappedAxes: (axes: [boolean, boolean, boolean]) => void;
+  setModelingPointerSnappedAxisTargets: (
+    targets: ModelingPointerState["snappedAxisTargets"],
+  ) => void;
   setModelingLinePreview: (
     preview: Omit<ModelingLinePreviewState, "active">,
   ) => void;
@@ -256,8 +268,9 @@ export const createDefaultPersistedUiState = (): PersistedUiState => ({
   moveOverlayRadiusMultiplier: 1.15,
   movePrecisionStep: 0.1,
   moveVerticalDropGuide: true,
-  modelingPointerSnapEnabled: false,
+  modelingPointerAxisSnapEnabled: true,
   modelingPointerAxisSnapDistance: 0.1,
+  modelingPointerGridSnapEnabled: false,
   modelingPointerGridSnapStep: 0.05,
   modelingPointerPanelRadius: 0.72,
   modelingLineSnapDistance: 0.45,
@@ -315,8 +328,9 @@ const createInitialUiState = (): Omit<
   | "setMoveOverlayRadiusMultiplier"
   | "setMovePrecisionStep"
   | "setMoveVerticalDropGuide"
-  | "setModelingPointerSnapEnabled"
+  | "setModelingPointerAxisSnapEnabled"
   | "setModelingPointerAxisSnapDistance"
+  | "setModelingPointerGridSnapEnabled"
   | "setModelingPointerGridSnapStep"
   | "setModelingPointerPanelRadius"
   | "setModelingLineSnapDistance"
@@ -357,6 +371,8 @@ const createInitialUiState = (): Omit<
   | "setModelingPointerHovered"
   | "setModelingPointerPlane"
   | "setModelingPointerPosition"
+  | "setModelingPointerSnappedAxes"
+  | "setModelingPointerSnappedAxisTargets"
   | "setModelingLinePreview"
   | "clearModelingLinePreview"
   | "setPrototypeCamera"
@@ -373,6 +389,8 @@ const createInitialUiState = (): Omit<
     hovered: false,
     plane: "none",
     position: [0, 0, 0],
+    snappedAxes: [false, false, false],
+    snappedAxisTargets: [null, null, null],
   },
   prototypeCamera: DEFAULT_PROTOTYPE_CAMERA,
   selectedObjectId: null,
@@ -436,12 +454,14 @@ export const useUiStore = create<UiState>()(
       setMovePrecisionStep: (step) => set({ movePrecisionStep: step }),
       setMoveVerticalDropGuide: (value) =>
         set({ moveVerticalDropGuide: value }),
-      setModelingPointerSnapEnabled: (value) =>
-        set({ modelingPointerSnapEnabled: value }),
+      setModelingPointerAxisSnapEnabled: (value) =>
+        set({ modelingPointerAxisSnapEnabled: value }),
       setModelingPointerAxisSnapDistance: (value) =>
         set({
           modelingPointerAxisSnapDistance: Math.max(0, Math.min(value, 4)),
         }),
+      setModelingPointerGridSnapEnabled: (value) =>
+        set({ modelingPointerGridSnapEnabled: value }),
       setModelingPointerGridSnapStep: (value) =>
         set({
           modelingPointerGridSnapStep: Math.max(0.01, Math.min(value, 4)),
@@ -568,6 +588,20 @@ export const useUiStore = create<UiState>()(
             position,
           },
         })),
+      setModelingPointerSnappedAxes: (snappedAxes) =>
+        set((state) => ({
+          modelingPointer: {
+            ...state.modelingPointer,
+            snappedAxes,
+          },
+        })),
+      setModelingPointerSnappedAxisTargets: (snappedAxisTargets) =>
+        set((state) => ({
+          modelingPointer: {
+            ...state.modelingPointer,
+            snappedAxisTargets,
+          },
+        })),
       setModelingLinePreview: (preview) =>
         set({
           modelingLinePreview: {
@@ -610,8 +644,9 @@ export const useUiStore = create<UiState>()(
         moveOverlayRadiusMultiplier: state.moveOverlayRadiusMultiplier,
         movePrecisionStep: state.movePrecisionStep,
         moveVerticalDropGuide: state.moveVerticalDropGuide,
-        modelingPointerSnapEnabled: state.modelingPointerSnapEnabled,
+        modelingPointerAxisSnapEnabled: state.modelingPointerAxisSnapEnabled,
         modelingPointerAxisSnapDistance: state.modelingPointerAxisSnapDistance,
+        modelingPointerGridSnapEnabled: state.modelingPointerGridSnapEnabled,
         modelingPointerGridSnapStep: state.modelingPointerGridSnapStep,
         modelingPointerPanelRadius: state.modelingPointerPanelRadius,
         modelingLineSnapDistance: state.modelingLineSnapDistance,

@@ -28,6 +28,8 @@ describe("uiStore", () => {
         hovered: false,
         plane: "none",
         position: [0, 0, 0],
+        snappedAxes: [false, false, false],
+        snappedAxisTargets: [null, null, null],
       },
       prototypeCamera: DEFAULT_PROTOTYPE_CAMERA,
       selectedObjectId: null,
@@ -170,8 +172,14 @@ describe("uiStore", () => {
   });
 
   it("clamps the modeling pointer snap controls", () => {
+    useUiStore.getState().setModelingPointerAxisSnapEnabled(false);
+    expect(useUiStore.getState().modelingPointerAxisSnapEnabled).toBe(false);
+
     useUiStore.getState().setModelingPointerAxisSnapDistance(-1);
     expect(useUiStore.getState().modelingPointerAxisSnapDistance).toBe(0);
+
+    useUiStore.getState().setModelingPointerGridSnapEnabled(true);
+    expect(useUiStore.getState().modelingPointerGridSnapEnabled).toBe(true);
 
     useUiStore.getState().setModelingPointerGridSnapStep(0);
     expect(useUiStore.getState().modelingPointerGridSnapStep).toBe(0.01);

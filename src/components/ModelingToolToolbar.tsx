@@ -60,7 +60,7 @@ const overlayDisplayOptions = [
 }>;
 
 const fieldClasses =
-  "h-7 w-full border border-white/10 bg-slate-900/80 px-1.5 text-[0.68rem] text-slate-50 outline-none transition focus:border-sky-200/60 focus:ring-2 focus:ring-sky-300/30";
+  "h-7 border border-white/10 bg-slate-900/80 px-1 text-[0.68rem] text-slate-50 outline-none transition focus:border-sky-200/60 focus:ring-2 focus:ring-sky-300/30";
 
 const propertyPanelClasses =
   "flex shrink-0 items-center gap-1.5 border border-white/12 bg-slate-950/80 px-2 py-1.5 shadow-[0_14px_28px_rgba(3,10,20,0.22)] backdrop-blur";
@@ -90,7 +90,7 @@ function ToolSettingNumberField({
     >
       <span>{label}</span>
       <input
-        className={`${fieldClasses} w-10`}
+        className={`${fieldClasses} w-14`}
         id={id}
         min={min}
         onChange={(event) => {
@@ -305,11 +305,14 @@ export function ModelingToolHeaderProperties() {
   const modelingLineSnapEnabled = useUiStore(
     (state) => state.modelingLineSnapEnabled,
   );
-  const modelingPointerSnapEnabled = useUiStore(
-    (state) => state.modelingPointerSnapEnabled,
+  const modelingPointerAxisSnapEnabled = useUiStore(
+    (state) => state.modelingPointerAxisSnapEnabled,
   );
   const modelingPointerAxisSnapDistance = useUiStore(
     (state) => state.modelingPointerAxisSnapDistance,
+  );
+  const modelingPointerGridSnapEnabled = useUiStore(
+    (state) => state.modelingPointerGridSnapEnabled,
   );
   const modelingPointerGridSnapStep = useUiStore(
     (state) => state.modelingPointerGridSnapStep,
@@ -323,11 +326,14 @@ export function ModelingToolHeaderProperties() {
   const setModelingLineSnapEnabled = useUiStore(
     (state) => state.setModelingLineSnapEnabled,
   );
-  const setModelingPointerSnapEnabled = useUiStore(
-    (state) => state.setModelingPointerSnapEnabled,
+  const setModelingPointerAxisSnapEnabled = useUiStore(
+    (state) => state.setModelingPointerAxisSnapEnabled,
   );
   const setModelingPointerAxisSnapDistance = useUiStore(
     (state) => state.setModelingPointerAxisSnapDistance,
+  );
+  const setModelingPointerGridSnapEnabled = useUiStore(
+    (state) => state.setModelingPointerGridSnapEnabled,
   );
   const setModelingPointerGridSnapStep = useUiStore(
     (state) => state.setModelingPointerGridSnapStep,
@@ -345,81 +351,77 @@ export function ModelingToolHeaderProperties() {
   return (
     <div className="absolute left-1/2 top-3 z-20 flex w-max max-w-[calc(100vw-8rem)] -translate-x-1/2 flex-nowrap items-start justify-center gap-1 overflow-x-auto px-1 pb-1">
       <div className={propertyPanelClasses}>
-        <span className="shrink-0 border border-white/10 bg-slate-950/30 px-2 py-1 text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-slate-300">
-          3D Pointer
-        </span>
-        <div className="flex shrink-0 items-center gap-1.5">
-          <ToolSettingToggle
-            checked={modelingPointerSnapEnabled}
-            label="Snap"
-            onChange={setModelingPointerSnapEnabled}
-            title="Toggle 3D pointer snapping against world-space vertex axes and the fixed world interval."
-          />
-          <ToolSettingNumberField
-            id="pointer-axis-snap-distance"
-            label="Axis Distance"
-            min="0"
-            onChange={setModelingPointerAxisSnapDistance}
-            step="0.01"
-            title="Maximum world-space distance used when snapping each XYZ component to nearby vertex coordinates."
-            value={modelingPointerAxisSnapDistance}
-          />
-          <ToolSettingNumberField
-            id="pointer-grid-snap-step"
-            label="Grid Step"
-            min="0.01"
-            onChange={setModelingPointerGridSnapStep}
-            step="0.01"
-            title="Fixed world interval used on axes that did not snap to another vertex."
-            value={modelingPointerGridSnapStep}
-          />
-        </div>
+        <ToolSettingToggle
+          checked={modelingPointerAxisSnapEnabled}
+          label="Axis Snap"
+          onChange={setModelingPointerAxisSnapEnabled}
+          title="Toggle 3D pointer snapping each XYZ component to nearby vertex coordinates."
+        />
+        <ToolSettingNumberField
+          id="pointer-axis-snap-distance"
+          label="Axis Distance"
+          min="0"
+          onChange={setModelingPointerAxisSnapDistance}
+          step="0.01"
+          title="Maximum world-space distance used when snapping each XYZ component to nearby vertex coordinates."
+          value={modelingPointerAxisSnapDistance}
+        />
+        <ToolSettingToggle
+          checked={modelingPointerGridSnapEnabled}
+          label="Grid Snap"
+          onChange={setModelingPointerGridSnapEnabled}
+          title="Toggle fixed world-interval snapping on axes that did not snap to another vertex."
+        />
+        <ToolSettingNumberField
+          id="pointer-grid-snap-step"
+          label="Grid Step"
+          min="0.01"
+          onChange={setModelingPointerGridSnapStep}
+          step="0.01"
+          title="Fixed world interval used on axes that did not snap to another vertex."
+          value={modelingPointerGridSnapStep}
+        />
       </div>
       {modelingTool === "line" ? (
         <div className={propertyPanelClasses}>
-          <span className="shrink-0 border border-white/10 bg-slate-950/30 px-2 py-1 text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-slate-300">
-            Line
-          </span>
-          <div className="flex shrink-0 items-center gap-1.5">
-            <ToolSettingToggle
-              checked={modelingLineSnapEnabled}
-              label="Snap"
-              onChange={setModelingLineSnapEnabled}
-              title="Toggle snapping start and end to nearby existing vertices."
-            />
-            <ToolSettingNumberField
-              id="line-snap-distance"
-              label="Snap Distance"
-              min="0.05"
-              onChange={setModelingLineSnapDistance}
-              step="0.05"
-              title="Distance threshold used when snapping to an existing vertex."
-              value={modelingLineSnapDistance}
-            />
-            <label
-              className="flex items-center gap-1.5 text-[0.68rem] text-slate-100/88"
-              htmlFor="line-overlay-display"
-              title="Preview panel display during drag. 1 uses camera-facing, 2 uses screen-vertical, 3 uses screen-horizontal."
+          <ToolSettingToggle
+            checked={modelingLineSnapEnabled}
+            label="Snap"
+            onChange={setModelingLineSnapEnabled}
+            title="Toggle snapping start and end to nearby existing vertices."
+          />
+          <ToolSettingNumberField
+            id="line-snap-distance"
+            label="Snap Distance"
+            min="0.05"
+            onChange={setModelingLineSnapDistance}
+            step="0.05"
+            title="Distance threshold used when snapping to an existing vertex."
+            value={modelingLineSnapDistance}
+          />
+          <label
+            className="flex items-center gap-1.5 text-[0.68rem] text-slate-100/88"
+            htmlFor="line-overlay-display"
+            title="Preview panel display during drag. 1 uses camera-facing, 2 uses screen-vertical, 3 uses screen-horizontal."
+          >
+            <span>Overlay</span>
+            <select
+              className={`${fieldClasses} w-14`}
+              id="line-overlay-display"
+              onChange={(event) =>
+                setModelingLineOverlayDisplayMode(
+                  event.target.value as MoveOverlayDisplayMode,
+                )
+              }
+              value={modelingLineOverlayDisplayMode}
             >
-              <span>Overlay</span>
-              <select
-                className={`${fieldClasses} w-16`}
-                id="line-overlay-display"
-                onChange={(event) =>
-                  setModelingLineOverlayDisplayMode(
-                    event.target.value as MoveOverlayDisplayMode,
-                  )
-                }
-                value={modelingLineOverlayDisplayMode}
-              >
-                {overlayDisplayOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
+              {overlayDisplayOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
       ) : null}
     </div>

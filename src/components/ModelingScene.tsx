@@ -36,6 +36,7 @@ const MODELING_LINE_PREVIEW_COLORS = {
   "screen-horizontal": "#facc15",
   "screen-vertical": "#fb923c",
 } as const;
+const AXIS_KEYS = ["x", "y", "z"] as const;
 
 function createLineSegments(points: number[], material: LineBasicMaterial) {
   const geometry = new BufferGeometry();
@@ -69,6 +70,10 @@ function ModelingPointer() {
   const modelingTool = useUiStore((state) => state.modelingTool);
   const plane = useUiStore((state) => state.modelingPointer.plane);
   const position = useUiStore((state) => state.modelingPointer.position);
+  const snappedAxes = useUiStore((state) => state.modelingPointer.snappedAxes);
+  const snappedAxisTargets = useUiStore(
+    (state) => state.modelingPointer.snappedAxisTargets,
+  );
   const panelRadius = useUiStore((state) => state.modelingPointerPanelRadius);
   const verticalAxisFloorY = useUiStore(
     (state) => state.modelingPointerVerticalAxisFloorY,
@@ -204,7 +209,6 @@ function ModelingPointer() {
     () => new CircleGeometry(panelRadius, 48),
     [panelRadius],
   );
-
   useEffect(() => {
     return () => {
       xAxisLine.geometry.dispose();
@@ -240,6 +244,31 @@ function ModelingPointer() {
 
   return (
     <group position={position}>
+      {snappedAxisTargets.map((target, axisIndex) =>
+        snappedAxes[axisIndex] && target ? (
+          <Line
+            color="#fde047"
+            dashScale={1.1}
+            dashed
+            depthTest={false}
+            depthWrite={false}
+            gapSize={0.12}
+            key={`snap-guide-${AXIS_KEYS[axisIndex]}`}
+            lineWidth={1.5}
+            opacity={0.95}
+            points={[
+              new Vector3(
+                target[0] - position[0],
+                target[1] - position[1],
+                target[2] - position[2],
+              ),
+              new Vector3(0, 0, 0),
+            ]}
+            renderOrder={7}
+            transparent
+          />
+        ) : null,
+      )}
       <primitive object={xAxisDashLine} renderOrder={8} />
       <primitive object={yAxisDashLine} renderOrder={8} />
       <primitive object={zAxisDashLine} renderOrder={8} />

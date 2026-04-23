@@ -548,6 +548,40 @@ export function ModelingSettingsSection({
         value={settings.modelingTool}
       />
       <ToggleField
+        checked={settings.modelingPointerAxisSnapEnabled}
+        id="modeling-pointer-axis-snap-enabled"
+        label="Pointer Axis Snap / 軸吸着"
+        onChange={settings.setModelingPointerAxisSnapEnabled}
+      />
+      <NumberField
+        hint="Pointer Axis Snap Distance / 他の頂点の x / y / z 座標へ吸い付く距離。目安 0.05-0.3。"
+        id="modeling-pointer-axis-snap-distance"
+        label="Pointer Axis Snap Distance / 軸吸着距離"
+        max="4"
+        min="0"
+        onChange={handleNumberChange(
+          settings.setModelingPointerAxisSnapDistance,
+        )}
+        step="0.01"
+        value={settings.modelingPointerAxisSnapDistance}
+      />
+      <ToggleField
+        checked={settings.modelingPointerGridSnapEnabled}
+        id="modeling-pointer-grid-snap-enabled"
+        label="Pointer Grid Snap / 等間隔スナップ"
+        onChange={settings.setModelingPointerGridSnapEnabled}
+      />
+      <NumberField
+        hint="Pointer Grid Snap Step / 軸吸着しなかった成分に適用する等間隔ステップ。"
+        id="modeling-pointer-grid-snap-step"
+        label="Pointer Grid Snap Step / 等間隔ステップ"
+        max="4"
+        min="0.01"
+        onChange={handleNumberChange(settings.setModelingPointerGridSnapStep)}
+        step="0.01"
+        value={settings.modelingPointerGridSnapStep}
+      />
+      <ToggleField
         checked={settings.modelingLineSnapEnabled}
         id="modeling-line-snap-enabled"
         label="Line Snap / lineツール吸着"
