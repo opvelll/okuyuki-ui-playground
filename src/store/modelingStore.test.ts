@@ -77,6 +77,35 @@ describe("modelingStore", () => {
     expect(currentModel.faceOrder).toHaveLength(1);
   });
 
+  it("deletes selected vertices and removes dependent geometry that references them", () => {
+    const vertexA = useModelingStore.getState().addVertex([0, 0, 0]);
+    const vertexB = useModelingStore.getState().addVertex([1, 0, 0]);
+    const vertexC = useModelingStore.getState().addVertex([0, 1, 0]);
+
+    useModelingStore.getState().selectVertex(vertexA?.id ?? "", false);
+    useModelingStore.getState().selectVertex(vertexB?.id ?? "", true);
+    useModelingStore.getState().selectVertex(vertexC?.id ?? "", true);
+    useModelingStore.getState().createFaceFromSelectedVertices();
+    useModelingStore.getState().selectVertex(vertexA?.id ?? "", false);
+
+    expect(useModelingStore.getState().deleteSelectedVertices()).toBe(true);
+
+    const state = useModelingStore.getState();
+    const currentModel = state.modelsById[state.currentModelId];
+
+    expect(currentModel.vertexOrder).toEqual([vertexB?.id, vertexC?.id]);
+    expect(currentModel.edgeOrder).toHaveLength(1);
+    expect(currentModel.edgesById[currentModel.edgeOrder[0]].vertexIds).toEqual(
+      [vertexB?.id, vertexC?.id],
+    );
+    expect(currentModel.faceOrder).toHaveLength(0);
+    expect(state.selectedVertexIds).toEqual([]);
+  });
+
+  it("returns false when deleting without a selected vertex", () => {
+    expect(useModelingStore.getState().deleteSelectedVertices()).toBe(false);
+  });
+
   it("selects a nearby vertex from pointer position", () => {
     const vertex = useModelingStore.getState().addVertex([0, 0, 0]);
 

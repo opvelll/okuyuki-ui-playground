@@ -208,7 +208,7 @@ export function SceneStatusHud() {
           ? `Vertex tool: click to place vertices at the 3D pointer, use the wheel for cursor depth, hold Shift for ${modelingPointerDepthPrecisionScale.toFixed(2)}x depth and grid precision, switch cursor planes with 1, 2, 3, and let the pointer snap to nearby vertices when enabled.`
           : modelingTool === "line"
             ? `Line tool: drag and drop to create a vertex, edge, and vertex, use Shift for ${modelingPointerDepthPrecisionScale.toFixed(2)}x depth and grid precision, and share existing vertices when the 3D pointer is snapped onto them.`
-            : `Select tool: click near a vertex to select it, hold Shift for multi-select and ${modelingPointerDepthPrecisionScale.toFixed(2)}x depth and grid precision, press E for an edge, press F for a face, and hold Space for temporary camera control.`
+            : `Select tool: click near a vertex to select it, hold Shift for multi-select and ${modelingPointerDepthPrecisionScale.toFixed(2)}x depth and grid precision, press Delete to remove selected vertices, press E for an edge, press F for a face, and hold Space for temporary camera control.`
       : interactionMode === "move"
         ? physicsEnabled
           ? selectedObjectId

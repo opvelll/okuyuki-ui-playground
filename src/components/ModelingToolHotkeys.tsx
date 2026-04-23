@@ -14,6 +14,9 @@ export function ModelingToolHotkeys() {
   const createFaceFromSelectedVertices = useModelingStore(
     (state) => state.createFaceFromSelectedVertices,
   );
+  const deleteSelectedVertices = useModelingStore(
+    (state) => state.deleteSelectedVertices,
+  );
   const redo = useModelingStore((state) => state.redo);
   const undo = useModelingStore((state) => state.undo);
 
@@ -55,6 +58,12 @@ export function ModelingToolHotkeys() {
         return;
       }
 
+      if (event.code === "Delete" || event.code === "Backspace") {
+        event.preventDefault();
+        deleteSelectedVertices();
+        return;
+      }
+
       if (event.code === "Space" && modelingTool !== "camera") {
         event.preventDefault();
         setModelingCameraOverride(true);
@@ -80,6 +89,7 @@ export function ModelingToolHotkeys() {
   }, [
     connectSelectedVerticesAsEdge,
     createFaceFromSelectedVertices,
+    deleteSelectedVertices,
     modelingTool,
     redo,
     setModelingCameraOverride,

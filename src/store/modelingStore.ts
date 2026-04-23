@@ -52,6 +52,7 @@ type ModelingState = ModelingSnapshot & {
   clearVertexSelection: () => void;
   connectSelectedVerticesAsEdge: () => boolean;
   createFaceFromSelectedVertices: () => boolean;
+  deleteSelectedVertices: () => boolean;
   findNearestVertex: (
     pointerPosition: Vector3Tuple,
     maxDistance?: number,
@@ -482,6 +483,74 @@ export const useModelingStore = create<ModelingState>((set, get) => ({
           [currentModel.id]: nextModel,
         },
         selectedVertexIds: [...state.selectedVertexIds],
+      }),
+    });
+
+    return true;
+  },
+  deleteSelectedVertices: () => {
+    const state = get();
+    if (state.selectedVertexIds.length === 0) {
+      return false;
+    }
+
+    const currentModel = state.modelsById[state.currentModelId];
+    if (!currentModel) {
+      return false;
+    }
+
+    const selectedVertexSet = new Set(state.selectedVertexIds);
+    const hasSelectedVertex = state.selectedVertexIds.some(
+      (vertexId) => currentModel.verticesById[vertexId],
+    );
+
+    if (!hasSelectedVertex) {
+      return false;
+    }
+
+    const nextModel = cloneModel(currentModel);
+
+    nextModel.vertexOrder = nextModel.vertexOrder.filter(
+      (vertexId) => !selectedVertexSet.has(vertexId),
+    );
+    nextModel.verticesById = Object.fromEntries(
+      Object.entries(nextModel.verticesById).filter(
+        ([vertexId]) => !selectedVertexSet.has(vertexId),
+      ),
+    );
+    nextModel.edgeOrder = nextModel.edgeOrder.filter((edgeId) => {
+      const edge = nextModel.edgesById[edgeId];
+      return !edge.vertexIds.some((vertexId) =>
+        selectedVertexSet.has(vertexId),
+      );
+    });
+    nextModel.edgesById = Object.fromEntries(
+      Object.entries(nextModel.edgesById).filter(
+        ([, edge]) =>
+          !edge.vertexIds.some((vertexId) => selectedVertexSet.has(vertexId)),
+      ),
+    );
+    nextModel.faceOrder = nextModel.faceOrder.filter((faceId) => {
+      const face = nextModel.facesById[faceId];
+      return !face.vertexIds.some((vertexId) =>
+        selectedVertexSet.has(vertexId),
+      );
+    });
+    nextModel.facesById = Object.fromEntries(
+      Object.entries(nextModel.facesById).filter(
+        ([, face]) =>
+          !face.vertexIds.some((vertexId) => selectedVertexSet.has(vertexId)),
+      ),
+    );
+
+    set({
+      ...commitSnapshot(state, {
+        currentModelId: state.currentModelId,
+        modelsById: {
+          ...state.modelsById,
+          [currentModel.id]: nextModel,
+        },
+        selectedVertexIds: [],
       }),
     });
 
