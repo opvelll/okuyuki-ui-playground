@@ -38,6 +38,43 @@ const MODELING_LINE_PREVIEW_COLORS = {
 } as const;
 const AXIS_KEYS = ["x", "y", "z"] as const;
 
+function renderModelingAxisSnapGuides(
+  position: [number, number, number],
+  snappedAxes: [boolean, boolean, boolean],
+  snappedAxisTargets: [
+    [number, number, number] | null,
+    [number, number, number] | null,
+    [number, number, number] | null,
+  ],
+  renderOrder: number,
+) {
+  return snappedAxisTargets.map((target, axisIndex) =>
+    snappedAxes[axisIndex] && target ? (
+      <Line
+        color="#fde047"
+        dashScale={1.1}
+        dashed
+        depthTest={false}
+        depthWrite={false}
+        gapSize={0.12}
+        key={`snap-guide-${AXIS_KEYS[axisIndex]}`}
+        lineWidth={1.5}
+        opacity={0.95}
+        points={[
+          new Vector3(
+            target[0] - position[0],
+            target[1] - position[1],
+            target[2] - position[2],
+          ),
+          new Vector3(0, 0, 0),
+        ]}
+        renderOrder={renderOrder}
+        transparent
+      />
+    ) : null,
+  );
+}
+
 function createLineSegments(points: number[], material: LineBasicMaterial) {
   const geometry = new BufferGeometry();
   if (points.length > 0) {
@@ -244,30 +281,11 @@ function ModelingPointer() {
 
   return (
     <group position={position}>
-      {snappedAxisTargets.map((target, axisIndex) =>
-        snappedAxes[axisIndex] && target ? (
-          <Line
-            color="#fde047"
-            dashScale={1.1}
-            dashed
-            depthTest={false}
-            depthWrite={false}
-            gapSize={0.12}
-            key={`snap-guide-${AXIS_KEYS[axisIndex]}`}
-            lineWidth={1.5}
-            opacity={0.95}
-            points={[
-              new Vector3(
-                target[0] - position[0],
-                target[1] - position[1],
-                target[2] - position[2],
-              ),
-              new Vector3(0, 0, 0),
-            ]}
-            renderOrder={7}
-            transparent
-          />
-        ) : null,
+      {renderModelingAxisSnapGuides(
+        position,
+        snappedAxes,
+        snappedAxisTargets,
+        7,
       )}
       <primitive object={xAxisDashLine} renderOrder={8} />
       <primitive object={yAxisDashLine} renderOrder={8} />
@@ -311,6 +329,15 @@ function ModelingLinePreviewOverlay() {
     (state) => state.modelingLineOverlayDisplayMode,
   );
   const modelingLinePreview = useUiStore((state) => state.modelingLinePreview);
+  const modelingPointerPosition = useUiStore(
+    (state) => state.modelingPointer.position,
+  );
+  const modelingPointerSnappedAxes = useUiStore(
+    (state) => state.modelingPointer.snappedAxes,
+  );
+  const modelingPointerSnappedAxisTargets = useUiStore(
+    (state) => state.modelingPointer.snappedAxisTargets,
+  );
   const overlayModes = useMemo(() => {
     switch (modelingLineOverlayDisplayMode) {
       case "mode-2":
@@ -371,6 +398,12 @@ function ModelingLinePreviewOverlay() {
     modelingLinePreview.startPosition,
     modelingLinePreview.currentPosition,
   );
+  const showCurrentAxisSnapGuides =
+    showCurrentPoint &&
+    modelingPointerPositionsMatch(
+      modelingLinePreview.currentPosition,
+      modelingPointerPosition,
+    );
 
   return (
     <group raycast={() => null}>
@@ -407,6 +440,16 @@ function ModelingLinePreviewOverlay() {
         renderOrder={12}
         transparent
       />
+      {showCurrentAxisSnapGuides ? (
+        <group position={modelingLinePreview.currentPosition}>
+          {renderModelingAxisSnapGuides(
+            modelingLinePreview.currentPosition,
+            modelingPointerSnappedAxes,
+            modelingPointerSnappedAxisTargets,
+            11,
+          )}
+        </group>
+      ) : null}
       <points renderOrder={13} position={modelingLinePreview.startPosition}>
         <bufferGeometry>
           <bufferAttribute
