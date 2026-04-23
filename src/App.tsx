@@ -40,11 +40,30 @@ const screenButtons = [
   screen: AppScreen;
 }>;
 
+const screenContent = {
+  modeling: {
+    HeaderProperties: ModelingToolHeaderProperties,
+    Hotkeys: ModelingToolHotkeys,
+    Scene: ModelingScene,
+    fallback: <ModelingSceneFallback />,
+    Toolbar: ModelingToolToolbar,
+  },
+  prototype: {
+    HeaderProperties: null,
+    Hotkeys: InteractionModeHotkeys,
+    Scene: PrototypeScene,
+    fallback: <PrototypeSceneFallback />,
+    Toolbar: InteractionModeToolbar,
+  },
+} as const;
+
 export default function App() {
   const currentScreen = useUiStore((state) => state.currentScreen);
   const settingsOpen = useUiStore((state) => state.settingsOpen);
   const setCurrentScreen = useUiStore((state) => state.setCurrentScreen);
   const setSettingsOpen = useUiStore((state) => state.setSettingsOpen);
+  const { HeaderProperties, Hotkeys, Scene, fallback, Toolbar } =
+    screenContent[currentScreen];
 
   return (
     <main className="flex h-screen min-h-screen flex-col gap-3 overflow-hidden px-3 py-3 md:gap-4 md:px-4 md:py-4">
@@ -99,20 +118,12 @@ export default function App() {
         </nav>
       </header>
       <section className="relative flex min-h-0 flex-1">
-        {currentScreen === "prototype" ? <InteractionModeHotkeys /> : null}
-        {currentScreen === "modeling" ? <ModelingToolHotkeys /> : null}
-        {currentScreen === "prototype" ? (
-          <Suspense fallback={<PrototypeSceneFallback />}>
-            <PrototypeScene />
-          </Suspense>
-        ) : (
-          <Suspense fallback={<ModelingSceneFallback />}>
-            <ModelingScene />
-          </Suspense>
-        )}
-        {currentScreen === "prototype" ? <InteractionModeToolbar /> : null}
-        {currentScreen === "modeling" ? <ModelingToolToolbar /> : null}
-        {currentScreen === "modeling" ? <ModelingToolHeaderProperties /> : null}
+        <Hotkeys />
+        <Suspense fallback={fallback}>
+          <Scene />
+        </Suspense>
+        <Toolbar />
+        {HeaderProperties ? <HeaderProperties /> : null}
         <SettingsWindow />
         <SceneStatusHud />
       </section>

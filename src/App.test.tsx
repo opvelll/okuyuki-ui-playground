@@ -38,6 +38,11 @@ async function loadApp() {
 }
 
 describe("App", () => {
+  async function renderApp(App: Awaited<ReturnType<typeof loadApp>>) {
+    render(<App />);
+    await screen.findByLabelText(/three-scene/i);
+  }
+
   async function expandSettings(user: ReturnType<typeof userEvent.setup>) {
     await user.click(screen.getByRole("button", { name: /Open settings/i }));
   }
@@ -48,8 +53,19 @@ describe("App", () => {
     );
   }
 
+  async function switchToModelingScreen(
+    user: ReturnType<typeof userEvent.setup>,
+  ) {
+    await user.click(
+      screen.getByRole("button", { name: /Switch to Modeling screen/i }),
+    );
+    await screen.findByText(/Lasso tool: drag a screen-space loop/i);
+  }
+
   beforeEach(() => {
     vi.resetModules();
+    vi.doUnmock("./components/ModelingScene");
+    vi.doUnmock("./components/PrototypeScene");
     useUiStore.persist.clearStorage();
     useUiStore.setState({
       ...createDefaultPersistedUiState(),
@@ -88,7 +104,7 @@ describe("App", () => {
   it("renders the app shell and loaded scene controls", async () => {
     const App = await loadApp();
 
-    render(<App />);
+    await renderApp(App);
 
     expect(
       screen.getByRole("heading", {
@@ -165,13 +181,10 @@ describe("App", () => {
     const user = userEvent.setup();
     const App = await loadApp();
 
-    render(<App />);
+    await renderApp(App);
+    await switchToModelingScreen(user);
 
-    await user.click(
-      screen.getByRole("button", { name: /Switch to Modeling screen/i }),
-    );
-
-    expect(screen.getAllByText(/Modeling Screen/i)).not.toHaveLength(0);
+    expect(screen.getByText(/2D Selection/i)).toBeInTheDocument();
     expect(
       screen.getByText(
         /Lasso tool: drag a screen-space loop to select enclosed vertices/i,
@@ -216,7 +229,7 @@ describe("App", () => {
     const user = userEvent.setup();
     const App = await loadApp();
 
-    render(<App />);
+    await renderApp(App);
 
     await expandSettings(user);
     await user.click(screen.getByRole("button", { name: /物理演算/i }));
@@ -235,7 +248,7 @@ describe("App", () => {
     const user = userEvent.setup();
     const App = await loadApp();
 
-    render(<App />);
+    await renderApp(App);
 
     await expandSettings(user);
     expect(screen.getByText("fps")).toBeInTheDocument();
@@ -254,7 +267,7 @@ describe("App", () => {
     const user = userEvent.setup();
     const App = await loadApp();
 
-    render(<App />);
+    await renderApp(App);
 
     await expandSettings(user);
 
@@ -277,14 +290,13 @@ describe("App", () => {
     const user = userEvent.setup();
     const App = await loadApp();
 
-    render(<App />);
+    await renderApp(App);
 
     await expandSettings(user);
     await user.click(
       screen.getByRole("button", { name: /Switch to Rotate UI tool/i }),
     );
 
-    expect(screen.getByText(/Object Rotate/i)).toBeInTheDocument();
     expect(screen.getByText(/Rotate mode:/i)).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: /Rotate UI/i })).toHaveLength(
       2,
@@ -298,18 +310,20 @@ describe("App", () => {
     const user = userEvent.setup();
     const App = await loadApp();
 
-    render(<App />);
+    await renderApp(App);
 
     await user.keyboard("r");
 
-    expect(screen.getByText(/Object Rotate/i)).toBeInTheDocument();
+    expect(screen.getByText(/Rotate mode:/i)).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /Switch to Rotate UI tool/i }),
     ).toHaveAttribute("aria-pressed", "true");
 
     await user.keyboard("m");
 
-    expect(screen.getByText(/Object Move/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Select an object to start screen-depth-drag editing/i),
+    ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /Switch to Move UI tool/i }),
     ).toHaveAttribute("aria-pressed", "true");
@@ -319,7 +333,7 @@ describe("App", () => {
     const user = userEvent.setup();
     const App = await loadApp();
 
-    render(<App />);
+    await renderApp(App);
 
     await expandSettings(user);
     await user.click(screen.getAllByRole("button", { name: /Rotate UI/i })[1]);
@@ -343,7 +357,7 @@ describe("App", () => {
     const user = userEvent.setup();
     const App = await loadApp();
 
-    render(<App />);
+    await renderApp(App);
 
     await expandSettings(user);
     await user.click(screen.getAllByRole("button", { name: /Rotate UI/i })[1]);
@@ -364,7 +378,7 @@ describe("App", () => {
     const user = userEvent.setup();
     const App = await loadApp();
 
-    render(<App />);
+    await renderApp(App);
 
     await expandSettings(user);
     await user.click(screen.getAllByRole("button", { name: /Rotate UI/i })[1]);
@@ -381,7 +395,7 @@ describe("App", () => {
     const user = userEvent.setup();
     const App = await loadApp();
 
-    render(<App />);
+    await renderApp(App);
 
     await expandSettings(user);
     await user.click(screen.getAllByRole("button", { name: /Move UI/i })[1]);
@@ -404,7 +418,7 @@ describe("App", () => {
     const user = userEvent.setup();
     const App = await loadApp();
 
-    render(<App />);
+    await renderApp(App);
 
     await expandSettings(user);
     await user.click(screen.getByTitle(/modeling pointer/i));
@@ -450,11 +464,8 @@ describe("App", () => {
     const user = userEvent.setup();
     const App = await loadApp();
 
-    render(<App />);
-
-    await user.click(
-      screen.getByRole("button", { name: /Switch to Modeling screen/i }),
-    );
+    await renderApp(App);
+    await switchToModelingScreen(user);
     await user.click(
       screen.getByRole("button", { name: /Switch to Camera Move tool/i }),
     );
@@ -484,11 +495,8 @@ describe("App", () => {
     const user = userEvent.setup();
     const App = await loadApp();
 
-    render(<App />);
-
-    await user.click(
-      screen.getByRole("button", { name: /Switch to Modeling screen/i }),
-    );
+    await renderApp(App);
+    await switchToModelingScreen(user);
 
     expect(screen.getAllByText("2D Selection")).toHaveLength(1);
     expect(
@@ -517,11 +525,8 @@ describe("App", () => {
     const user = userEvent.setup();
     const App = await loadApp();
 
-    render(<App />);
-
-    await user.click(
-      screen.getByRole("button", { name: /Switch to Modeling screen/i }),
-    );
+    await renderApp(App);
+    await switchToModelingScreen(user);
     await user.keyboard("[Space>]");
 
     expect(
@@ -542,7 +547,7 @@ describe("App", () => {
     const user = userEvent.setup();
     const App = await loadApp();
 
-    render(<App />);
+    await renderApp(App);
 
     await expandSettings(user);
     await user.click(screen.getAllByRole("button", { name: /Move UI/i })[1]);
@@ -571,7 +576,7 @@ describe("App", () => {
     const user = userEvent.setup();
     const App = await loadApp();
 
-    render(<App />);
+    await renderApp(App);
 
     await expandSettings(user);
     await user.click(screen.getAllByRole("button", { name: /Move UI/i })[1]);
@@ -589,7 +594,7 @@ describe("App", () => {
     const user = userEvent.setup();
     const App = await loadApp();
 
-    render(<App />);
+    await renderApp(App);
 
     await expandSettings(user);
     await user.click(screen.getAllByRole("button", { name: /Move UI/i })[1]);
