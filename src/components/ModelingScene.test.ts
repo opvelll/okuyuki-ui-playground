@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  MODELING_POINTER_PRECISION_GRID_STEP_MIN,
+  getEffectiveModelingPointerGridStep,
   getModelingPointerSnapResult,
   getSnappedModelingPointerPosition,
 } from "./scene/modelingPointerUtils";
@@ -71,5 +73,13 @@ describe("getSnappedModelingPointerPosition", () => {
 
     expect(result.snappedAxes).toEqual([false, false, true]);
     expect(result.snappedAxisTargets).toEqual([null, null, [0.1, 0.3, 5]]);
+  });
+
+  it("scales grid snap step in precision mode and clamps its minimum", () => {
+    expect(getEffectiveModelingPointerGridStep(0.05, 0.1, false)).toBe(0.05);
+    expect(getEffectiveModelingPointerGridStep(0.05, 0.1, true)).toBe(0.005);
+    expect(getEffectiveModelingPointerGridStep(0.005, 0.1, true)).toBe(
+      MODELING_POINTER_PRECISION_GRID_STEP_MIN,
+    );
   });
 });

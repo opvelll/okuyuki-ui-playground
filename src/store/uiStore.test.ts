@@ -191,6 +191,16 @@ describe("uiStore", () => {
     expect(useUiStore.getState().modelingPointerGridSnapStep).toBe(4);
   });
 
+  it("uses and clamps the modeling pointer depth precision scale", () => {
+    expect(useUiStore.getState().modelingPointerDepthPrecisionScale).toBe(0.1);
+
+    useUiStore.getState().setModelingPointerDepthPrecisionScale(0);
+    expect(useUiStore.getState().modelingPointerDepthPrecisionScale).toBe(0.01);
+
+    useUiStore.getState().setModelingPointerDepthPrecisionScale(2);
+    expect(useUiStore.getState().modelingPointerDepthPrecisionScale).toBe(1);
+  });
+
   it("resets line preview when switching modeling tools", () => {
     useUiStore.getState().setModelingLinePreview({
       currentPosition: [1, 1, 1],

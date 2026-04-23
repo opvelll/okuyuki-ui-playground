@@ -19,6 +19,8 @@ export type ModelingPointerSnapResult = {
   ];
 };
 
+export const MODELING_POINTER_PRECISION_GRID_STEP_MIN = 0.001;
+
 const AXIS_VECTORS: [Vector3Tuple, Vector3Tuple, Vector3Tuple] = [
   [1, 0, 0],
   [0, 1, 0],
@@ -35,6 +37,21 @@ function snapToGrid(value: number, step: number) {
 
 function normalizeCoordinate(value: number) {
   return Number(value.toFixed(6));
+}
+
+export function getEffectiveModelingPointerGridStep(
+  gridStep: number,
+  precisionScale: number,
+  precisionMode: boolean,
+) {
+  const effectiveGridStep = precisionMode
+    ? Math.max(
+        MODELING_POINTER_PRECISION_GRID_STEP_MIN,
+        gridStep * precisionScale,
+      )
+    : gridStep;
+
+  return normalizeCoordinate(effectiveGridStep);
 }
 
 export function getModelingPointerSnapResult(

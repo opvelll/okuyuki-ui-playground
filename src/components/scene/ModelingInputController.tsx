@@ -6,6 +6,7 @@ import { isEditableTarget } from "../../lib/isEditableTarget";
 import { useModelingStore } from "../../store/modelingStore";
 import { getEffectiveModelingTool, useUiStore } from "../../store/uiStore";
 import {
+  getEffectiveModelingPointerGridStep,
   getModelingPointerSnapResult,
   getVertexSelectionDistance,
 } from "./modelingPointerUtils";
@@ -46,6 +47,9 @@ export function ModelingInputController({
   );
   const modelingPointerAxisSnapDistance = useUiStore(
     (state) => state.modelingPointerAxisSnapDistance,
+  );
+  const modelingPointerDepthPrecisionScale = useUiStore(
+    (state) => state.modelingPointerDepthPrecisionScale,
   );
   const modelingPointerGridSnapEnabled = useUiStore(
     (state) => state.modelingPointerGridSnapEnabled,
@@ -104,10 +108,17 @@ export function ModelingInputController({
 
     const updatePointerPosition = (
       depth = useUiStore.getState().modelingPointer.depth,
+      precisionMode = false,
     ) => {
       if (!hasPointer) {
         return;
       }
+
+      const effectiveGridStep = getEffectiveModelingPointerGridStep(
+        modelingPointerGridSnapStep,
+        modelingPointerDepthPrecisionScale,
+        precisionMode,
+      );
 
       raycaster.setFromCamera(ndc, camera);
       const nextPosition = raycaster.ray.origin
@@ -120,7 +131,7 @@ export function ModelingInputController({
           axisDistance: modelingPointerAxisSnapDistance,
           axisEnabled: modelingPointerAxisSnapEnabled,
           gridEnabled: modelingPointerGridSnapEnabled,
-          gridStep: modelingPointerGridSnapStep,
+          gridStep: effectiveGridStep,
         },
       );
 
@@ -136,7 +147,7 @@ export function ModelingInputController({
       ndc.y = -(((event.clientY - rect.top) / rect.height) * 2 - 1);
       hasPointer = true;
       setModelingPointerHovered(true);
-      updatePointerPosition();
+      updatePointerPosition(undefined, event.shiftKey);
     };
 
     const handlePointerMove = (event: PointerEvent) => {
@@ -311,11 +322,13 @@ export function ModelingInputController({
       }
 
       const direction = event.deltaY < 0 ? 1 : -1;
+      const depthStep =
+        CURSOR_DEPTH_STEP *
+        (event.shiftKey ? modelingPointerDepthPrecisionScale : 1);
       const nextDepth =
-        useUiStore.getState().modelingPointer.depth +
-        direction * CURSOR_DEPTH_STEP;
+        useUiStore.getState().modelingPointer.depth + direction * depthStep;
       setModelingPointerDepth(nextDepth);
-      updatePointerPosition(nextDepth);
+      updatePointerPosition(nextDepth, event.shiftKey);
     };
 
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -335,6 +348,22 @@ export function ModelingInputController({
         setModelingPointerPlane("vertical");
       } else if (event.key === "Escape") {
         clearVertexSelection();
+      } else if (event.key === "Shift") {
+        updatePointerPosition(undefined, true);
+      }
+    };
+
+    const handleKeyUp = (event: KeyboardEvent) => {
+      if (
+        event.defaultPrevented ||
+        event.isComposing ||
+        isEditableTarget(event.target)
+      ) {
+        return;
+      }
+
+      if (event.key === "Shift") {
+        updatePointerPosition(undefined, false);
       }
     };
 
@@ -349,6 +378,7 @@ export function ModelingInputController({
     element.addEventListener("wheel", handleWheel, { passive: false });
     element.addEventListener("contextmenu", handleContextMenu);
     window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
 
     return () => {
       element.removeEventListener("pointermove", handlePointerMove);
@@ -358,6 +388,7 @@ export function ModelingInputController({
       element.removeEventListener("wheel", handleWheel);
       element.removeEventListener("contextmenu", handleContextMenu);
       window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
       setModelingCameraDragging(false);
       clearModelingLinePreview();
       setModelingPointerHovered(false);
@@ -379,6 +410,7 @@ export function ModelingInputController({
     modelingLineSnapEnabled,
     modelingPointerAxisSnapEnabled,
     modelingPointerAxisSnapDistance,
+    modelingPointerDepthPrecisionScale,
     modelingPointerGridSnapEnabled,
     modelingPointerGridSnapStep,
     modelsById,

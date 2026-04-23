@@ -572,6 +572,18 @@ export function ModelingSettingsSection({
         onChange={settings.setModelingPointerGridSnapEnabled}
       />
       <NumberField
+        hint="Shift Wheel Precision Scale / Shift を押している間の奥行き移動倍率と grid snap step 倍率。既定値 0.1 で通常の 1/10。精密 grid step は下限 0.001 でクランプします。"
+        id="modeling-pointer-depth-precision-scale"
+        label="Shift Wheel Precision Scale / Shiftホイール精密倍率"
+        max="1"
+        min="0.01"
+        onChange={handleNumberChange(
+          settings.setModelingPointerDepthPrecisionScale,
+        )}
+        step="0.01"
+        value={settings.modelingPointerDepthPrecisionScale}
+      />
+      <NumberField
         hint="Pointer Grid Snap Step / 軸吸着しなかった成分に適用する等間隔ステップ。"
         id="modeling-pointer-grid-snap-step"
         label="Pointer Grid Snap Step / 等間隔ステップ"

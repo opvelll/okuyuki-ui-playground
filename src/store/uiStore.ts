@@ -85,6 +85,7 @@ type PersistedUiState = {
   moveVerticalDropGuide: boolean;
   modelingPointerAxisSnapEnabled: boolean;
   modelingPointerAxisSnapDistance: number;
+  modelingPointerDepthPrecisionScale: number;
   modelingPointerGridSnapEnabled: boolean;
   modelingPointerGridSnapStep: number;
   modelingPointerPanelRadius: number;
@@ -158,6 +159,7 @@ export type UiState = PersistedUiState & {
   setMoveVerticalDropGuide: (value: boolean) => void;
   setModelingPointerAxisSnapEnabled: (value: boolean) => void;
   setModelingPointerAxisSnapDistance: (value: number) => void;
+  setModelingPointerDepthPrecisionScale: (value: number) => void;
   setModelingPointerGridSnapEnabled: (value: boolean) => void;
   setModelingPointerGridSnapStep: (value: number) => void;
   setModelingPointerPanelRadius: (value: number) => void;
@@ -270,6 +272,7 @@ export const createDefaultPersistedUiState = (): PersistedUiState => ({
   moveVerticalDropGuide: true,
   modelingPointerAxisSnapEnabled: true,
   modelingPointerAxisSnapDistance: 0.1,
+  modelingPointerDepthPrecisionScale: 0.1,
   modelingPointerGridSnapEnabled: false,
   modelingPointerGridSnapStep: 0.05,
   modelingPointerPanelRadius: 0.72,
@@ -330,6 +333,7 @@ const createInitialUiState = (): Omit<
   | "setMoveVerticalDropGuide"
   | "setModelingPointerAxisSnapEnabled"
   | "setModelingPointerAxisSnapDistance"
+  | "setModelingPointerDepthPrecisionScale"
   | "setModelingPointerGridSnapEnabled"
   | "setModelingPointerGridSnapStep"
   | "setModelingPointerPanelRadius"
@@ -459,6 +463,13 @@ export const useUiStore = create<UiState>()(
       setModelingPointerAxisSnapDistance: (value) =>
         set({
           modelingPointerAxisSnapDistance: Math.max(0, Math.min(value, 4)),
+        }),
+      setModelingPointerDepthPrecisionScale: (value) =>
+        set({
+          modelingPointerDepthPrecisionScale: Math.max(
+            0.01,
+            Math.min(value, 1),
+          ),
         }),
       setModelingPointerGridSnapEnabled: (value) =>
         set({ modelingPointerGridSnapEnabled: value }),
@@ -646,6 +657,8 @@ export const useUiStore = create<UiState>()(
         moveVerticalDropGuide: state.moveVerticalDropGuide,
         modelingPointerAxisSnapEnabled: state.modelingPointerAxisSnapEnabled,
         modelingPointerAxisSnapDistance: state.modelingPointerAxisSnapDistance,
+        modelingPointerDepthPrecisionScale:
+          state.modelingPointerDepthPrecisionScale,
         modelingPointerGridSnapEnabled: state.modelingPointerGridSnapEnabled,
         modelingPointerGridSnapStep: state.modelingPointerGridSnapStep,
         modelingPointerPanelRadius: state.modelingPointerPanelRadius,
