@@ -5,7 +5,7 @@ export type MoveDepthWheelDirection = "normal" | "inverted";
 export type InteractionState = "idle" | "active" | "dragging";
 export type InteractionMode = "move" | "rotate";
 export type AppScreen = "prototype" | "modeling";
-export type ModelingTool = "select" | "vertex" | "line" | "camera";
+export type ModelingTool = "lasso" | "vertex" | "line" | "camera";
 export type EffectiveModelingTool = "pointer" | "camera";
 export type MoveAlwaysSnapMode = "off" | "axis-magnet" | "grid";
 export type MoveAxisMagnetReferenceFrame = "local" | "world";
@@ -63,6 +63,11 @@ export type ModelingLinePreviewState = {
   planeNormal: [number, number, number];
   startSnapped: boolean;
   startPosition: [number, number, number];
+};
+
+export type ModelingLassoSelectionState = {
+  phase: "idle" | "dragging" | "settled";
+  points: Array<[number, number]>;
 };
 
 export type CameraSnapshot = {
@@ -135,6 +140,7 @@ export type UiState = PersistedUiState & {
   interactionState: InteractionState;
   modelingCamera: CameraSnapshot;
   modelingLinePreview: ModelingLinePreviewState;
+  modelingLassoSelection: ModelingLassoSelectionState;
   modelingPointer: ModelingPointerState;
   modelingCameraDragging: boolean;
   modelingCameraOverride: boolean;
@@ -225,6 +231,8 @@ export type UiState = PersistedUiState & {
     preview: Omit<ModelingLinePreviewState, "active">,
   ) => void;
   clearModelingLinePreview: () => void;
+  setModelingLassoSelection: (selection: ModelingLassoSelectionState) => void;
+  clearModelingLassoSelection: () => void;
   setPrototypeCamera: (camera: CameraSnapshot) => void;
 };
 
@@ -264,6 +272,11 @@ const DEFAULT_MODELING_LINE_PREVIEW: ModelingLinePreviewState = {
   startPosition: [0, 0, 0],
 };
 
+const DEFAULT_MODELING_LASSO_SELECTION: ModelingLassoSelectionState = {
+  phase: "idle",
+  points: [],
+};
+
 export const createDefaultPersistedUiState = (): PersistedUiState => ({
   currentScreen: "prototype",
   floorFriction: 1.1,
@@ -299,7 +312,7 @@ export const createDefaultPersistedUiState = (): PersistedUiState => ({
   modelingLineOverlayDisplayMode: "mode-1",
   modelingPointerVerticalAxisFloorY: 0,
   modelingPointerVisibleInCameraTool: false,
-  modelingTool: "select",
+  modelingTool: "lasso",
   objectAngularDamping: 0.9,
   objectFriction: 0.9,
   objectLinearDamping: 0.45,
@@ -401,6 +414,8 @@ const createInitialUiState = (): Omit<
   | "setModelingPointerSnappedVertexTarget"
   | "setModelingLinePreview"
   | "clearModelingLinePreview"
+  | "setModelingLassoSelection"
+  | "clearModelingLassoSelection"
   | "setPrototypeCamera"
 > => ({
   ...createDefaultPersistedUiState(),
@@ -409,6 +424,7 @@ const createInitialUiState = (): Omit<
   modelingCamera: DEFAULT_MODELING_CAMERA,
   modelingCameraDragging: false,
   modelingCameraOverride: false,
+  modelingLassoSelection: DEFAULT_MODELING_LASSO_SELECTION,
   modelingLinePreview: DEFAULT_MODELING_LINE_PREVIEW,
   modelingPointer: {
     depth: 8,
@@ -453,6 +469,7 @@ export const useUiStore = create<UiState>()(
           interactionState: "idle",
           modelingCameraDragging: false,
           modelingCameraOverride: false,
+          modelingLassoSelection: DEFAULT_MODELING_LASSO_SELECTION,
           modelingLinePreview: DEFAULT_MODELING_LINE_PREVIEW,
           selectedObjectId: null,
         }),
@@ -534,6 +551,7 @@ export const useUiStore = create<UiState>()(
         set({
           modelingCameraDragging: false,
           modelingCameraOverride: false,
+          modelingLassoSelection: DEFAULT_MODELING_LASSO_SELECTION,
           modelingLinePreview: DEFAULT_MODELING_LINE_PREVIEW,
           modelingTool: tool,
         }),
@@ -672,10 +690,34 @@ export const useUiStore = create<UiState>()(
         set({
           modelingLinePreview: DEFAULT_MODELING_LINE_PREVIEW,
         }),
+      setModelingLassoSelection: (selection) =>
+        set({
+          modelingLassoSelection: selection,
+        }),
+      clearModelingLassoSelection: () =>
+        set({
+          modelingLassoSelection: DEFAULT_MODELING_LASSO_SELECTION,
+        }),
       setPrototypeCamera: (camera) => set({ prototypeCamera: camera }),
     }),
     {
       name: UI_STORE_PERSIST_KEY,
+      version: 2,
+      migrate: (persistedState) => {
+        if (
+          persistedState &&
+          typeof persistedState === "object" &&
+          "modelingTool" in persistedState &&
+          persistedState.modelingTool === "select"
+        ) {
+          return {
+            ...persistedState,
+            modelingTool: "lasso",
+          };
+        }
+
+        return persistedState;
+      },
       partialize: (state) => ({
         currentScreen: state.currentScreen,
         floorFriction: state.floorFriction,

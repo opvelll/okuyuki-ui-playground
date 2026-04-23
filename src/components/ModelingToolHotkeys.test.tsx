@@ -18,7 +18,11 @@ describe("ModelingToolHotkeys", () => {
       modelingCamera: DEFAULT_MODELING_CAMERA,
       modelingCameraDragging: false,
       modelingCameraOverride: false,
-      modelingTool: "select",
+      modelingLassoSelection: {
+        phase: "idle",
+        points: [],
+      },
+      modelingTool: "lasso",
       prototypeCamera: DEFAULT_PROTOTYPE_CAMERA,
     });
   });

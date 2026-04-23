@@ -171,16 +171,18 @@ describe("App", () => {
 
     expect(screen.getAllByText(/Modeling Screen/i)).not.toHaveLength(0);
     expect(
-      screen.getByText(/Select tool: click near a vertex to select it/i),
+      screen.getByText(
+        /Lasso tool: drag a screen-space loop to select enclosed vertices/i,
+      ),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /Switch to Modeling screen/i }),
     ).toHaveAttribute("aria-pressed", "true");
     expect(
-      screen.getByRole("button", { name: /Switch to 3D Pointer tool/i }),
+      screen.getByRole("button", { name: /Switch to 2D Selection tool/i }),
     ).toHaveAttribute("aria-pressed", "true");
     expect(
-      screen.getByRole("button", { name: /Switch to Select tool/i }),
+      screen.getByRole("button", { name: /Switch to Lasso tool/i }),
     ).toHaveAttribute("aria-pressed", "true");
     expect(
       screen.getByRole("button", { name: /Switch to Line tool/i }),
@@ -482,14 +484,12 @@ describe("App", () => {
       screen.getByRole("button", { name: /Switch to Modeling screen/i }),
     );
 
-    expect(screen.getAllByText("3D Pointer")).toHaveLength(1);
-    expect(screen.getByLabelText(/^Vertex Distance$/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/^Axis Distance$/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/^Grid Step$/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/^Vertex Snap$/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/^Axis Snap$/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/^Grid Snap$/i)).toBeInTheDocument();
-    expect(screen.queryByLabelText(/Snap Distance/i)).not.toBeInTheDocument();
+    expect(screen.getAllByText("2D Selection")).toHaveLength(1);
+    expect(
+      screen.queryByLabelText(/^Vertex Distance$/i),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/^Axis Distance$/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/^Grid Step$/i)).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/Overlay/i)).not.toBeInTheDocument();
 
     await user.click(
@@ -497,6 +497,12 @@ describe("App", () => {
     );
 
     expect(screen.getAllByText("3D Pointer")).toHaveLength(1);
+    expect(screen.getByLabelText(/^Vertex Distance$/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Axis Distance$/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Grid Step$/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Vertex Snap$/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Axis Snap$/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Grid Snap$/i)).toBeInTheDocument();
     expect(screen.queryByLabelText(/Snap Distance/i)).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/Overlay/i)).not.toBeInTheDocument();
   });
@@ -519,10 +525,10 @@ describe("App", () => {
     await user.keyboard("[/Space]");
 
     expect(
-      screen.getByRole("button", { name: /Switch to 3D Pointer tool/i }),
+      screen.getByRole("button", { name: /Switch to 2D Selection tool/i }),
     ).toHaveAttribute("aria-pressed", "true");
     expect(
-      screen.getByRole("button", { name: /Switch to Select tool/i }),
+      screen.getByRole("button", { name: /Switch to Lasso tool/i }),
     ).toHaveAttribute("aria-pressed", "true");
   });
 

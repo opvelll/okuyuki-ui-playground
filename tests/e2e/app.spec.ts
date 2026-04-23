@@ -123,7 +123,9 @@ test("switches to the modeling screen", async ({ page }) => {
     page.getByText("Modeling Screen", { exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByText(/Select tool: click near a vertex to select it/i),
+    page.getByText(
+      /Lasso tool: drag a screen-space loop to select enclosed vertices/i,
+    ),
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: /Switch to Modeling screen/i }),
@@ -132,10 +134,10 @@ test("switches to the modeling screen", async ({ page }) => {
     page.getByRole("button", { name: /Switch to Prototype screen/i }),
   ).toHaveAttribute("aria-pressed", "false");
   await expect(
-    page.getByRole("button", { name: /Switch to 3D Pointer tool/i }),
+    page.getByRole("button", { name: /Switch to 2D Selection tool/i }),
   ).toHaveAttribute("aria-pressed", "true");
   await expect(
-    page.getByRole("button", { name: /Switch to Select tool/i }),
+    page.getByRole("button", { name: /Switch to Lasso tool/i }),
   ).toHaveAttribute("aria-pressed", "true");
   await expect(
     page.getByRole("button", { name: /Switch to Camera Move tool/i }),

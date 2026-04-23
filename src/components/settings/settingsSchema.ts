@@ -89,7 +89,7 @@ export const rigidBodyOptions = [
 ] as const satisfies readonly Option<PhysicsRigidBodyType>[];
 
 export const modelingToolOptions = [
-  { label: "select", value: "select" },
+  { label: "lasso", value: "lasso" },
   { label: "vertex", value: "vertex" },
   { label: "line", value: "line" },
   { label: "camera move", value: "camera" },

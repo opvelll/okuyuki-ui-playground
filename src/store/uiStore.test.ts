@@ -15,6 +15,10 @@ describe("uiStore", () => {
       modelingCamera: DEFAULT_MODELING_CAMERA,
       modelingCameraDragging: false,
       modelingCameraOverride: false,
+      modelingLassoSelection: {
+        phase: "idle",
+        points: [],
+      },
       modelingLinePreview: {
         active: false,
         currentPosition: [0, 0, 0],
@@ -233,5 +237,23 @@ describe("uiStore", () => {
     useUiStore.getState().setModelingTool("camera");
 
     expect(useUiStore.getState().modelingLinePreview.active).toBe(false);
+  });
+
+  it("resets lasso overlay when switching modeling tools", () => {
+    useUiStore.getState().setModelingLassoSelection({
+      phase: "settled",
+      points: [
+        [10, 10],
+        [50, 12],
+        [24, 48],
+      ],
+    });
+
+    useUiStore.getState().setModelingTool("vertex");
+
+    expect(useUiStore.getState().modelingLassoSelection).toEqual({
+      phase: "idle",
+      points: [],
+    });
   });
 });

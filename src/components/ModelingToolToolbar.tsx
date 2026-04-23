@@ -1,6 +1,6 @@
 import {
   Camera,
-  CircleDot,
+  CircleDashed,
   MousePointer2,
   PenLine,
   Plus,
@@ -15,12 +15,24 @@ import {
   useUiStore,
 } from "../store/uiStore";
 
-const pointerSubtools = [
+const selectionSubtools = [
   {
-    description: "pick nearby vertex",
-    label: "Select",
-    tool: "select",
+    description: "drag a screen-space lasso to select vertices",
+    label: "Lasso",
+    tool: "lasso",
   },
+] as const;
+
+const selectionSubtoolIcons: Record<
+  (typeof selectionSubtools)[number]["tool"],
+  () => ReactNode
+> = {
+  lasso: () => (
+    <CircleDashed aria-hidden="true" className="h-3.5 w-3.5" strokeWidth={2} />
+  ),
+};
+
+const pointerSubtools = [
   {
     description: "place new vertex",
     label: "Vertex",
@@ -37,9 +49,6 @@ const pointerSubtoolIcons: Record<
   (typeof pointerSubtools)[number]["tool"],
   () => ReactNode
 > = {
-  select: () => (
-    <CircleDot aria-hidden="true" className="h-3.5 w-3.5" strokeWidth={2} />
-  ),
   vertex: () => (
     <Plus aria-hidden="true" className="h-3.5 w-3.5" strokeWidth={2.3} />
   ),
@@ -165,6 +174,9 @@ export function ModelingToolToolbar() {
   const activeModel = modelsById[currentModelId];
   const canRedo = historyIndex < history.length - 1;
   const canUndo = historyIndex > 0;
+  const selectionToolActive = modelingTool === "lasso";
+  const pointerToolActive =
+    modelingTool === "vertex" || modelingTool === "line";
 
   return (
     <aside className="absolute left-3 top-3 z-20 w-52 border border-white/12 bg-slate-950/80 shadow-[0_14px_28px_rgba(3,10,20,0.22)] backdrop-blur md:left-4 md:top-4">
@@ -212,16 +224,66 @@ export function ModelingToolToolbar() {
         </div>
         <div
           className={`border-b border-white/8 transition ${
-            effectiveTool === "pointer"
+            selectionToolActive
               ? "bg-sky-300/10 text-slate-50"
               : "text-slate-300"
           }`}
         >
           <button
-            aria-label="Switch to 3D Pointer tool"
-            aria-pressed={effectiveTool === "pointer"}
+            aria-label="Switch to 2D Selection tool"
+            aria-pressed={selectionToolActive}
             className="grid w-full grid-cols-[auto_1fr] items-center gap-2 border-b border-white/8 px-3 py-1.5 text-left text-[0.74rem]"
-            onClick={() => setModelingTool("select")}
+            onClick={() => setModelingTool("lasso")}
+            title="selection parent tool"
+            type="button"
+          >
+            <span className="inline-flex h-6 w-6 items-center justify-center text-sky-200">
+              <CircleDashed
+                aria-hidden="true"
+                className="h-3.5 w-3.5"
+                strokeWidth={2}
+              />
+            </span>
+            <span className="min-w-0 font-semibold">2D Selection</span>
+          </button>
+          <div className="grid gap-px bg-white/6 pl-4">
+            {selectionSubtools.map((subtool) => {
+              const active = modelingTool === subtool.tool;
+              const Icon = selectionSubtoolIcons[subtool.tool];
+
+              return (
+                <button
+                  aria-label={`Switch to ${subtool.label} tool`}
+                  aria-pressed={active}
+                  className={`grid grid-cols-[auto_1fr] items-center gap-2 border-l border-white/10 px-3 py-1.5 text-left text-[0.7rem] transition ${
+                    active
+                      ? "bg-sky-200/12 text-slate-50"
+                      : "bg-slate-950/40 text-slate-300 hover:bg-white/[0.04]"
+                  }`}
+                  key={subtool.tool}
+                  onClick={() => setModelingTool(subtool.tool)}
+                  title={subtool.description}
+                  type="button"
+                >
+                  <span className="inline-flex h-5 w-5 items-center justify-center text-sky-200">
+                    <Icon />
+                  </span>
+                  <span className="min-w-0 font-semibold">{subtool.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <div
+          className={`border-b border-white/8 transition ${
+            pointerToolActive ? "bg-sky-300/10 text-slate-50" : "text-slate-300"
+          }`}
+        >
+          <button
+            aria-label="Switch to 3D Pointer tool"
+            aria-pressed={pointerToolActive}
+            className="grid w-full grid-cols-[auto_1fr] items-center gap-2 border-b border-white/8 px-3 py-1.5 text-left text-[0.74rem]"
+            onClick={() => setModelingTool("vertex")}
             title="3D pointer parent tool"
             type="button"
           >
@@ -356,7 +418,7 @@ export function ModelingToolHeaderProperties() {
     modelingTool,
   });
 
-  if (effectiveTool !== "pointer") {
+  if (effectiveTool !== "pointer" || modelingTool === "lasso") {
     return null;
   }
 

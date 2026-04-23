@@ -117,6 +117,29 @@ describe("modelingStore", () => {
     expect(useModelingStore.getState().selectedVertexIds).toEqual([vertex?.id]);
   });
 
+  it("selects multiple explicit vertices in model order", () => {
+    const vertexA = useModelingStore.getState().addVertex([0, 0, 0]);
+    const vertexB = useModelingStore.getState().addVertex([1, 0, 0]);
+    const vertexC = useModelingStore.getState().addVertex([2, 0, 0]);
+
+    useModelingStore
+      .getState()
+      .selectVertices([vertexC?.id ?? "", vertexA?.id ?? ""], false);
+
+    expect(useModelingStore.getState().selectedVertexIds).toEqual([
+      vertexA?.id,
+      vertexC?.id,
+    ]);
+
+    useModelingStore.getState().selectVertices([vertexB?.id ?? ""], true);
+
+    expect(useModelingStore.getState().selectedVertexIds).toEqual([
+      vertexA?.id,
+      vertexC?.id,
+      vertexB?.id,
+    ]);
+  });
+
   it("creates an edge from dragged positions and reuses nearby vertices when snapped", () => {
     const startVertex = useModelingStore.getState().addVertex([0, 0, 0]);
     const endVertex = useModelingStore.getState().addVertex([2, 0, 0]);

@@ -84,6 +84,7 @@ type ModelingState = ModelingSnapshot & {
     appendToSelection?: boolean,
     maxDistance?: number,
   ) => ModelingVertex | null;
+  selectVertices: (vertexIds: string[], appendToSelection?: boolean) => void;
   selectVertex: (vertexId: string, appendToSelection?: boolean) => void;
   undo: () => void;
 };
@@ -855,6 +856,58 @@ export const useModelingStore = create<ModelingState>((set, get) => ({
 
       return {
         selectedVertexIds: [vertexId],
+      };
+    }),
+  selectVertices: (vertexIds, appendToSelection = false) =>
+    set((state) => {
+      const currentModel = state.modelsById[state.currentModelId];
+      if (!currentModel) {
+        return state;
+      }
+
+      const validVertexIds = currentModel.vertexOrder.filter(
+        (vertexId) =>
+          vertexIds.includes(vertexId) && currentModel.verticesById[vertexId],
+      );
+
+      if (validVertexIds.length === 0) {
+        return appendToSelection ? state : { selectedVertexIds: [] };
+      }
+
+      if (appendToSelection) {
+        const nextSelectedVertexIds = [...state.selectedVertexIds];
+
+        for (const vertexId of validVertexIds) {
+          if (!nextSelectedVertexIds.includes(vertexId)) {
+            nextSelectedVertexIds.push(vertexId);
+          }
+        }
+
+        if (
+          nextSelectedVertexIds.length === state.selectedVertexIds.length &&
+          nextSelectedVertexIds.every(
+            (vertexId, index) => vertexId === state.selectedVertexIds[index],
+          )
+        ) {
+          return state;
+        }
+
+        return {
+          selectedVertexIds: nextSelectedVertexIds,
+        };
+      }
+
+      if (
+        validVertexIds.length === state.selectedVertexIds.length &&
+        validVertexIds.every(
+          (vertexId, index) => vertexId === state.selectedVertexIds[index],
+        )
+      ) {
+        return state;
+      }
+
+      return {
+        selectedVertexIds: validVertexIds,
       };
     }),
   undo: () =>

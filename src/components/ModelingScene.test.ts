@@ -7,6 +7,10 @@ import {
   getModelingPointerSnapResult,
   getSnappedModelingPointerPosition,
 } from "./scene/modelingPointerUtils";
+import {
+  appendLassoPoint,
+  isPointInsideLasso,
+} from "./scene/modelingSelectionUtils";
 
 describe("getSnappedModelingPointerPosition", () => {
   it("returns the original position when pointer snap is disabled", () => {
@@ -244,5 +248,48 @@ describe("getSnappedModelingPointerPosition", () => {
         },
       ),
     ).toBeNull();
+  });
+});
+
+describe("modelingSelectionUtils", () => {
+  it("detects points inside a lasso polygon", () => {
+    const polygon: Array<[number, number]> = [
+      [10, 10],
+      [80, 16],
+      [72, 90],
+      [18, 76],
+    ];
+
+    expect(isPointInsideLasso([40, 40], polygon)).toBe(true);
+    expect(isPointInsideLasso([4, 4], polygon)).toBe(false);
+  });
+
+  it("skips lasso points that are too close to the previous sample", () => {
+    expect(
+      appendLassoPoint(
+        [
+          [10, 10],
+          [30, 12],
+        ],
+        [33, 14],
+      ),
+    ).toEqual([
+      [10, 10],
+      [30, 12],
+    ]);
+
+    expect(
+      appendLassoPoint(
+        [
+          [10, 10],
+          [30, 12],
+        ],
+        [48, 22],
+      ),
+    ).toEqual([
+      [10, 10],
+      [30, 12],
+      [48, 22],
+    ]);
   });
 });

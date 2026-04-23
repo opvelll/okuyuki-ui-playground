@@ -135,6 +135,7 @@ export function SceneStatusHud() {
           [
             "pointer",
             modelingPointer.hovered &&
+            modelingTool !== "lasso" &&
             (effectiveModelingTool === "pointer" ||
               modelingPointerVisibleInCameraTool)
               ? "visible"
@@ -204,11 +205,13 @@ export function SceneStatusHud() {
     currentScreen === "modeling"
       ? effectiveModelingTool === "camera"
         ? "Camera tool: left drag rotates, wheel dollies, right drag slides, and releasing Space after starting a drag keeps camera control until the drag ends."
-        : modelingTool === "vertex"
-          ? `Vertex tool: click to place vertices at the 3D pointer, use the wheel for cursor depth, hold Shift for ${modelingPointerDepthPrecisionScale.toFixed(2)}x depth and grid precision, switch cursor planes with 1, 2, 3, and let the pointer snap to nearby vertices or edges when enabled.`
-          : modelingTool === "line"
-            ? `Line tool: drag and drop to create a vertex, edge, and vertex, use Shift for ${modelingPointerDepthPrecisionScale.toFixed(2)}x depth and grid precision, and reuse or split existing geometry when the 3D pointer is snapped onto vertices or edges.`
-            : `Select tool: click near a vertex to select it, hold Shift for multi-select and ${modelingPointerDepthPrecisionScale.toFixed(2)}x depth and grid precision, press Delete to remove selected vertices, press E for an edge, press F for a face, and hold Space for temporary camera control.`
+        : modelingTool === "lasso"
+          ? "Lasso tool: drag a screen-space loop to select enclosed vertices, hold Shift to add to the current selection, press Delete to remove selected vertices, press E for an edge, press F for a face, and hold Space for temporary camera control."
+          : modelingTool === "vertex"
+            ? `Vertex tool: click to place vertices at the 3D pointer, use the wheel for cursor depth, hold Shift for ${modelingPointerDepthPrecisionScale.toFixed(2)}x depth and grid precision, switch cursor planes with 1, 2, 3, and let the pointer snap to nearby vertices or edges when enabled.`
+            : modelingTool === "line"
+              ? `Line tool: drag and drop to create a vertex, edge, and vertex, use Shift for ${modelingPointerDepthPrecisionScale.toFixed(2)}x depth and grid precision, and reuse or split existing geometry when the 3D pointer is snapped onto vertices or edges.`
+              : ""
       : interactionMode === "move"
         ? physicsEnabled
           ? selectedObjectId

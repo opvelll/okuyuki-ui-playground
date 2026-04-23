@@ -9,8 +9,12 @@ import { getEffectiveModelingTool, useUiStore } from "../../store/uiStore";
 import {
   getEffectiveModelingPointerGridStep,
   getModelingPointerSnapResult,
-  getVertexSelectionDistance,
 } from "./modelingPointerUtils";
+import {
+  appendLassoPoint,
+  isPointInsideLasso,
+  projectVertexToScreenPoint,
+} from "./modelingSelectionUtils";
 
 const CAMERA_DOLLY_MIN_DISTANCE = 2.4;
 const CAMERA_DOLLY_STEP = 0.55;
@@ -31,9 +35,7 @@ export function ModelingInputController({
   const createEdgeFromPositions = useModelingStore(
     (state) => state.createEdgeFromPositions,
   );
-  const selectNearestVertex = useModelingStore(
-    (state) => state.selectNearestVertex,
-  );
+  const selectVertices = useModelingStore((state) => state.selectVertices);
   const modelingPointerAxisSnapEnabled = useUiStore(
     (state) => state.modelingPointerAxisSnapEnabled,
   );
@@ -94,6 +96,12 @@ export function ModelingInputController({
   const clearModelingLinePreview = useUiStore(
     (state) => state.clearModelingLinePreview,
   );
+  const setModelingLassoSelection = useUiStore(
+    (state) => state.setModelingLassoSelection,
+  );
+  const clearModelingLassoSelection = useUiStore(
+    (state) => state.clearModelingLassoSelection,
+  );
 
   useEffect(() => {
     const element = gl.domElement;
@@ -136,6 +144,7 @@ export function ModelingInputController({
     } | null = null;
     let lineDragStartVertexId: string | null = null;
     let lineDragStartSnapped = false;
+    let lassoPoints: Array<[number, number]> = [];
 
     const findVertexIdByPosition = (
       position: [number, number, number] | null,
@@ -224,6 +233,14 @@ export function ModelingInputController({
       updatePointerPosition(undefined, event.shiftKey);
     };
 
+    const getCanvasPoint = (event: PointerEvent) => {
+      const rect = element.getBoundingClientRect();
+      return [event.clientX - rect.left, event.clientY - rect.top] as [
+        number,
+        number,
+      ];
+    };
+
     const handlePointerMove = (event: PointerEvent) => {
       if (
         clickCandidate &&
@@ -241,7 +258,13 @@ export function ModelingInputController({
       updatePointerFromEvent(event);
 
       const { modelingPointer, modelingTool } = useUiStore.getState();
-      if (
+      if (clickCandidate?.moved && modelingTool === "lasso") {
+        lassoPoints = appendLassoPoint(lassoPoints, getCanvasPoint(event));
+        setModelingLassoSelection({
+          phase: "dragging",
+          points: lassoPoints,
+        });
+      } else if (
         clickCandidate?.moved &&
         modelingTool === "line" &&
         lineDragStartPosition
@@ -268,6 +291,8 @@ export function ModelingInputController({
       lineDragStartEdgeTarget = null;
       lineDragStartVertexId = null;
       lineDragStartSnapped = false;
+      lassoPoints = [];
+      clearModelingLassoSelection();
       clearModelingLinePreview();
       setModelingPointerHovered(false);
       setModelingPointerSnappedAxes([false, false, false]);
@@ -288,7 +313,13 @@ export function ModelingInputController({
         };
 
         const { modelingPointer, modelingTool } = useUiStore.getState();
-        if (modelingTool === "line") {
+        if (modelingTool === "lasso") {
+          lassoPoints = [getCanvasPoint(event)];
+          setModelingLassoSelection({
+            phase: "dragging",
+            points: lassoPoints,
+          });
+        } else if (modelingTool === "line") {
           lineDragStartPosition = [...modelingPointer.position];
           lineDragStartEdgeTarget = modelingPointer.snappedEdgeTarget;
           lineDragStartVertexId = findVertexIdByPosition(
@@ -324,7 +355,36 @@ export function ModelingInputController({
       ) {
         const { modelingPointer, modelingTool } = useUiStore.getState();
 
-        if (modelingTool === "line") {
+        if (modelingTool === "lasso") {
+          if (clickCandidate.moved) {
+            const finalizedLassoPoints = appendLassoPoint(
+              lassoPoints,
+              getCanvasPoint(event),
+            );
+            const rect = element.getBoundingClientRect();
+            const selectedVertexIds = activeVertices.flatMap((vertex) => {
+              const projectedVertex = projectVertexToScreenPoint(
+                vertex.position,
+                camera,
+                {
+                  height: rect.height,
+                  width: rect.width,
+                },
+              );
+
+              return projectedVertex &&
+                isPointInsideLasso(projectedVertex.point, finalizedLassoPoints)
+                ? [vertex.id]
+                : [];
+            });
+
+            setModelingLassoSelection({
+              phase: "settled",
+              points: finalizedLassoPoints,
+            });
+            selectVertices(selectedVertexIds, event.shiftKey);
+          }
+        } else if (modelingTool === "line") {
           if (clickCandidate.moved && lineDragStartPosition) {
             const lineDragEndVertexId = findVertexIdByPosition(
               modelingPointer.snappedVertexTarget,
@@ -348,15 +408,6 @@ export function ModelingInputController({
           addVertex([...modelingPointer.position], {
             edgeTarget: modelingPointer.snappedEdgeTarget,
           });
-        } else if (!clickCandidate.moved && modelingTool === "select") {
-          selectNearestVertex(
-            modelingPointer.position,
-            event.shiftKey,
-            getVertexSelectionDistance(
-              camera.position,
-              modelingPointer.position,
-            ),
-          );
         }
       }
 
@@ -365,6 +416,7 @@ export function ModelingInputController({
       lineDragStartEdgeTarget = null;
       lineDragStartVertexId = null;
       lineDragStartSnapped = false;
+      lassoPoints = [];
       clearModelingLinePreview();
     };
 
@@ -395,6 +447,10 @@ export function ModelingInputController({
         return;
       }
 
+      if (useUiStore.getState().modelingTool === "lasso") {
+        return;
+      }
+
       const direction = event.deltaY < 0 ? 1 : -1;
       const depthStep =
         CURSOR_DEPTH_STEP *
@@ -421,6 +477,7 @@ export function ModelingInputController({
       } else if (event.key === "3") {
         setModelingPointerPlane("vertical");
       } else if (event.key === "Escape") {
+        clearModelingLassoSelection();
         clearVertexSelection();
       } else if (event.key === "Shift") {
         updatePointerPosition(undefined, true);
@@ -465,6 +522,7 @@ export function ModelingInputController({
       window.removeEventListener("keyup", handleKeyUp);
       setModelingCameraDragging(false);
       clearModelingLinePreview();
+      clearModelingLassoSelection();
       setModelingPointerHovered(false);
       setModelingPointerSnappedAxes([false, false, false]);
       setModelingPointerSnappedAxisTargets([null, null, null]);
@@ -491,8 +549,9 @@ export function ModelingInputController({
     modelingPointerVertexSnapDistance,
     modelingPointerVertexSnapEnabled,
     modelsById,
-    selectNearestVertex,
+    selectVertices,
     setModelingCameraDragging,
+    setModelingLassoSelection,
     setModelingLinePreview,
     setModelingPointerDepth,
     setModelingPointerHovered,
@@ -502,6 +561,7 @@ export function ModelingInputController({
     setModelingPointerSnappedAxisTargets,
     setModelingPointerSnappedEdgeTarget,
     setModelingPointerSnappedVertexTarget,
+    clearModelingLassoSelection,
   ]);
 
   return null;

@@ -291,6 +291,7 @@ function ModelingPointer() {
 
   if (
     !hovered ||
+    modelingTool === "lasso" ||
     (effectiveTool === "camera" && !modelingPointerVisibleInCameraTool)
   ) {
     return null;
@@ -384,6 +385,7 @@ function ModelingPointerDepthHintController({
   useFrame(() => {
     const shouldHide =
       !hovered ||
+      modelingTool === "lasso" ||
       vertexPositions.length === 0 ||
       (effectiveTool === "camera" && !modelingPointerVisibleInCameraTool);
     if (shouldHide) {
@@ -422,6 +424,43 @@ function ModelingPointerDepthHintController({
   });
 
   return null;
+}
+
+function ModelingLassoOverlay() {
+  const modelingLassoSelection = useUiStore(
+    (state) => state.modelingLassoSelection,
+  );
+
+  if (modelingLassoSelection.phase === "idle") {
+    return null;
+  }
+
+  const pathPoints = modelingLassoSelection.points
+    .map(([x, y]) => `${x},${y}`)
+    .join(" ");
+
+  if (!pathPoints) {
+    return null;
+  }
+
+  const fillOpacity = modelingLassoSelection.phase === "dragging" ? 0.08 : 0.14;
+
+  return (
+    <svg
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-0 z-20 h-full w-full"
+    >
+      <polygon
+        fill={`rgba(125, 211, 252, ${fillOpacity})`}
+        points={pathPoints}
+        stroke="#e0f2fe"
+        strokeDasharray="7 5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.5"
+      />
+    </svg>
+  );
 }
 
 function ModelingLinePreviewOverlay() {
@@ -801,6 +840,12 @@ export function ModelingScene() {
   const modelingCameraOverride = useUiStore(
     (state) => state.modelingCameraOverride,
   );
+  const clearModelingLassoSelection = useUiStore(
+    (state) => state.clearModelingLassoSelection,
+  );
+  const modelingLassoSelectionPhase = useUiStore(
+    (state) => state.modelingLassoSelection.phase,
+  );
   const modelingTool = useUiStore((state) => state.modelingTool);
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
   const [depthHint, setDepthHint] = useState<ModelingPointerDepthHint | null>(
@@ -811,6 +856,20 @@ export function ModelingScene() {
     modelingCameraOverride,
     modelingTool,
   });
+
+  useEffect(() => {
+    if (modelingLassoSelectionPhase !== "settled") {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      clearModelingLassoSelection();
+    }, 260);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [clearModelingLassoSelection, modelingLassoSelectionPhase]);
   const sceneShellBackground = useMemo(() => {
     const base = new Color("#b5bec8");
     const upper = base.clone().lerp(new Color("#c7d0da"), 0.18);
@@ -882,6 +941,7 @@ export function ModelingScene() {
           target={[0, 1.1, 0]}
         />
       </Canvas>
+      <ModelingLassoOverlay />
       {depthHint ? (
         <div
           className="pointer-events-none absolute left-0 top-0 z-10 flex items-center gap-2 text-[11px] font-medium tracking-[0.08em] text-slate-50/72"
