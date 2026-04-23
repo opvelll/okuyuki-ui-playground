@@ -1,4 +1,4 @@
-import { Vector3 } from "three";
+import { type Camera, Vector3 } from "three";
 import { compareVector3Tuple } from "../../lib/vector3Tuple";
 import type { Vector3Tuple } from "../../types/scene";
 
@@ -22,6 +22,15 @@ export type ModelingPointerSnapResult = {
   snappedVertexTarget: Vector3Tuple | null;
 };
 
+export type ModelingPointerDepthHint = {
+  farCount: number;
+  nearCount: number;
+  pointerScreenPosition: {
+    x: number;
+    y: number;
+  };
+};
+
 export const MODELING_POINTER_PRECISION_GRID_STEP_MIN = 0.001;
 
 const AXIS_VECTORS: [Vector3Tuple, Vector3Tuple, Vector3Tuple] = [
@@ -40,6 +49,28 @@ function snapToGrid(value: number, step: number) {
 
 function normalizeCoordinate(value: number) {
   return Number(value.toFixed(6));
+}
+
+function projectWorldPointToScreen(
+  point: Vector3Tuple,
+  camera: Camera,
+  viewportSize: { height: number; width: number },
+) {
+  const projectedPoint = new Vector3(...point).project(camera);
+  if (
+    !Number.isFinite(projectedPoint.x) ||
+    !Number.isFinite(projectedPoint.y) ||
+    !Number.isFinite(projectedPoint.z) ||
+    projectedPoint.z < -1 ||
+    projectedPoint.z > 1
+  ) {
+    return null;
+  }
+
+  return {
+    x: ((projectedPoint.x + 1) * viewportSize.width) / 2,
+    y: ((1 - projectedPoint.y) * viewportSize.height) / 2,
+  };
 }
 
 export function getEffectiveModelingPointerGridStep(
@@ -206,6 +237,77 @@ export function modelingPointerPositionsMatch(
   b: Vector3Tuple,
 ) {
   return compareVector3Tuple(a, b);
+}
+
+export function getModelingPointerDepthHint(
+  pointerPosition: Vector3Tuple,
+  vertexPositions: Vector3Tuple[],
+  camera: Camera,
+  viewportSize: { height: number; width: number },
+  options: {
+    depthDistance: number;
+    screenDistancePx: number;
+  },
+): ModelingPointerDepthHint | null {
+  if (options.depthDistance <= 0 || options.screenDistancePx <= 0) {
+    return null;
+  }
+
+  const pointerScreenPosition = projectWorldPointToScreen(
+    pointerPosition,
+    camera,
+    viewportSize,
+  );
+  if (!pointerScreenPosition) {
+    return null;
+  }
+
+  const pointerVector = new Vector3(...pointerPosition);
+  const cameraForward = new Vector3();
+  camera.getWorldDirection(cameraForward);
+  let nearCount = 0;
+  let farCount = 0;
+
+  for (const vertexPosition of vertexPositions) {
+    const vertexScreenPosition = projectWorldPointToScreen(
+      vertexPosition,
+      camera,
+      viewportSize,
+    );
+    if (!vertexScreenPosition) {
+      continue;
+    }
+
+    const screenDistance = Math.hypot(
+      vertexScreenPosition.x - pointerScreenPosition.x,
+      vertexScreenPosition.y - pointerScreenPosition.y,
+    );
+    if (screenDistance > options.screenDistancePx) {
+      continue;
+    }
+
+    const depthOffset = new Vector3(...vertexPosition)
+      .sub(pointerVector)
+      .dot(cameraForward);
+    if (depthOffset <= -options.depthDistance) {
+      nearCount += 1;
+      continue;
+    }
+
+    if (depthOffset >= options.depthDistance) {
+      farCount += 1;
+    }
+  }
+
+  if (nearCount === 0 && farCount === 0) {
+    return null;
+  }
+
+  return {
+    farCount,
+    nearCount,
+    pointerScreenPosition,
+  };
 }
 
 export function getVertexSelectionDistance(

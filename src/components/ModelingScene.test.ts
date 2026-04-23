@@ -1,7 +1,9 @@
+import { PerspectiveCamera } from "three";
 import { describe, expect, it } from "vitest";
 import {
   MODELING_POINTER_PRECISION_GRID_STEP_MIN,
   getEffectiveModelingPointerGridStep,
+  getModelingPointerDepthHint,
   getModelingPointerSnapResult,
   getSnappedModelingPointerPosition,
 } from "./scene/modelingPointerUtils";
@@ -114,5 +116,61 @@ describe("getSnappedModelingPointerPosition", () => {
     expect(getEffectiveModelingPointerGridStep(0.005, 0.1, true)).toBe(
       MODELING_POINTER_PRECISION_GRID_STEP_MIN,
     );
+  });
+
+  it("counts near and far vertices when they overlap the pointer in screen space", () => {
+    const camera = new PerspectiveCamera(42, 1, 0.1, 100);
+    camera.position.set(0, 0, 10);
+    camera.lookAt(0, 0, 0);
+    camera.updateMatrixWorld();
+
+    const result = getModelingPointerDepthHint(
+      [0, 0, 0],
+      [
+        [0.02, 0.01, 1],
+        [-0.01, -0.02, 1.4],
+        [0.01, 0.01, -1.1],
+        [1.4, 0, 0],
+        [0, 0, 0.2],
+      ],
+      camera,
+      { height: 600, width: 600 },
+      {
+        depthDistance: 0.5,
+        screenDistancePx: 12,
+      },
+    );
+
+    expect(result).toEqual({
+      farCount: 1,
+      nearCount: 2,
+      pointerScreenPosition: {
+        x: 300,
+        y: 300,
+      },
+    });
+  });
+
+  it("returns null when only the screen position overlaps but depth stays inside snap distance", () => {
+    const camera = new PerspectiveCamera(42, 1, 0.1, 100);
+    camera.position.set(0, 0, 10);
+    camera.lookAt(0, 0, 0);
+    camera.updateMatrixWorld();
+
+    expect(
+      getModelingPointerDepthHint(
+        [0, 0, 0],
+        [
+          [0.01, 0.01, 0.2],
+          [-0.01, -0.01, -0.2],
+        ],
+        camera,
+        { height: 600, width: 600 },
+        {
+          depthDistance: 0.5,
+          screenDistancePx: 12,
+        },
+      ),
+    ).toBeNull();
   });
 });

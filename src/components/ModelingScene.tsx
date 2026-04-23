@@ -1,6 +1,14 @@
 import { Grid, Line, OrbitControls } from "@react-three/drei";
-import { Canvas, useThree } from "@react-three/fiber";
-import { type RefObject, useEffect, useMemo, useRef } from "react";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import {
+  type Dispatch,
+  type RefObject,
+  type SetStateAction,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   BufferGeometry,
   CircleGeometry,
@@ -21,7 +29,11 @@ import type { MoveOverlayOrientationMode } from "../store/uiStore";
 import { getEffectiveModelingTool, useUiStore } from "../store/uiStore";
 import { ModelingInputController } from "./scene/ModelingInputController";
 import { calculateDragPlaneOverlayGeometry } from "./scene/dragPlaneOverlay";
-import { modelingPointerPositionsMatch } from "./scene/modelingPointerUtils";
+import {
+  type ModelingPointerDepthHint,
+  getModelingPointerDepthHint,
+  modelingPointerPositionsMatch,
+} from "./scene/modelingPointerUtils";
 
 const POINTER_AXIS_LENGTH = 1.25;
 const POINTER_AXIS_DASH_EXTENT = 120;
@@ -31,6 +43,9 @@ const MODEL_VERTEX_PIXEL_SIZE = 4;
 const DEFAULT_OVERLAY_NORMAL = new Vector3(0, 0, 1);
 const MODELING_LINE_PREVIEW_DEFAULT_VERTEX_COLOR = "#ffffff";
 const MODELING_LINE_PREVIEW_SNAPPED_VERTEX_COLOR = "#22c55e";
+const MODELING_POINTER_DEPTH_HINT_SCREEN_DISTANCE_PX = 10;
+const MODELING_POINTER_DEPTH_HINT_OFFSET_X_PX = 12;
+const MODELING_POINTER_DEPTH_HINT_OFFSET_Y_PX = -16;
 const MODELING_LINE_PREVIEW_COLORS = {
   "camera-facing": "#fdba74",
   "screen-horizontal": "#facc15",
@@ -322,6 +337,89 @@ function ModelingPointer() {
       ) : null}
     </group>
   );
+}
+
+function ModelingPointerDepthHintController({
+  setDepthHint,
+}: {
+  setDepthHint: Dispatch<SetStateAction<ModelingPointerDepthHint | null>>;
+}) {
+  const currentModelId = useModelingStore((state) => state.currentModelId);
+  const modelsById = useModelingStore((state) => state.modelsById);
+  const hovered = useUiStore((state) => state.modelingPointer.hovered);
+  const modelingCameraDragging = useUiStore(
+    (state) => state.modelingCameraDragging,
+  );
+  const modelingCameraOverride = useUiStore(
+    (state) => state.modelingCameraOverride,
+  );
+  const modelingPointerVisibleInCameraTool = useUiStore(
+    (state) => state.modelingPointerVisibleInCameraTool,
+  );
+  const modelingTool = useUiStore((state) => state.modelingTool);
+  const pointerPosition = useUiStore((state) => state.modelingPointer.position);
+  const vertexSnapDistance = useUiStore(
+    (state) => state.modelingPointerVertexSnapDistance,
+  );
+  const { camera, size } = useThree();
+  const activeModel = modelsById[currentModelId];
+  const vertexPositions = useMemo(
+    () =>
+      activeModel
+        ? activeModel.vertexOrder.map(
+            (vertexId) => activeModel.verticesById[vertexId].position,
+          )
+        : [],
+    [activeModel],
+  );
+  const lastSignatureRef = useRef<string | null>(null);
+  const effectiveTool = getEffectiveModelingTool({
+    modelingCameraDragging,
+    modelingCameraOverride,
+    modelingTool,
+  });
+
+  useFrame(() => {
+    const shouldHide =
+      !hovered ||
+      vertexPositions.length === 0 ||
+      (effectiveTool === "camera" && !modelingPointerVisibleInCameraTool);
+    if (shouldHide) {
+      if (lastSignatureRef.current !== null) {
+        lastSignatureRef.current = null;
+        setDepthHint(null);
+      }
+      return;
+    }
+
+    const nextHint = getModelingPointerDepthHint(
+      pointerPosition,
+      vertexPositions,
+      camera,
+      size,
+      {
+        depthDistance: vertexSnapDistance,
+        screenDistancePx: MODELING_POINTER_DEPTH_HINT_SCREEN_DISTANCE_PX,
+      },
+    );
+    const nextSignature = nextHint
+      ? [
+          nextHint.pointerScreenPosition.x.toFixed(1),
+          nextHint.pointerScreenPosition.y.toFixed(1),
+          nextHint.nearCount,
+          nextHint.farCount,
+        ].join(":")
+      : null;
+
+    if (nextSignature === lastSignatureRef.current) {
+      return;
+    }
+
+    lastSignatureRef.current = nextSignature;
+    setDepthHint(nextHint);
+  });
+
+  return null;
 }
 
 function ModelingLinePreviewOverlay() {
@@ -688,6 +786,9 @@ export function ModelingScene() {
   );
   const modelingTool = useUiStore((state) => state.modelingTool);
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
+  const [depthHint, setDepthHint] = useState<ModelingPointerDepthHint | null>(
+    null,
+  );
   const effectiveTool = getEffectiveModelingTool({
     modelingCameraDragging,
     modelingCameraOverride,
@@ -707,7 +808,7 @@ export function ModelingScene() {
 
   return (
     <div
-      className="h-full min-h-0 w-full overflow-hidden border border-white/12 shadow-[0_18px_40px_rgba(3,10,20,0.22)]"
+      className="relative h-full min-h-0 w-full overflow-hidden border border-white/12 shadow-[0_18px_40px_rgba(3,10,20,0.22)]"
       style={{ background: sceneShellBackground }}
     >
       <Canvas
@@ -745,6 +846,7 @@ export function ModelingScene() {
         />
         <ModelingMesh />
         <ModelingPointer />
+        <ModelingPointerDepthHintController setDepthHint={setDepthHint} />
         <ModelingLinePreviewOverlay />
         <ModelingInputController controlsRef={controlsRef} />
         <ModelingCameraController controlsRef={controlsRef} />
@@ -763,6 +865,24 @@ export function ModelingScene() {
           target={[0, 1.1, 0]}
         />
       </Canvas>
+      {depthHint ? (
+        <div
+          className="pointer-events-none absolute left-0 top-0 z-10 flex items-center gap-2 text-[11px] font-medium tracking-[0.08em] text-slate-50/72"
+          style={{
+            transform: `translate(${depthHint.pointerScreenPosition.x + MODELING_POINTER_DEPTH_HINT_OFFSET_X_PX}px, ${
+              depthHint.pointerScreenPosition.y +
+              MODELING_POINTER_DEPTH_HINT_OFFSET_Y_PX
+            }px)`,
+          }}
+        >
+          {depthHint.nearCount > 0 ? (
+            <span>{`near ${depthHint.nearCount}`}</span>
+          ) : null}
+          {depthHint.farCount > 0 ? (
+            <span>{`far ${depthHint.farCount}`}</span>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }
