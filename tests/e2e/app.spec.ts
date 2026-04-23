@@ -60,6 +60,10 @@ test("shows the 3d prototype screen", async ({ page }) => {
 
   await expect(page.getByLabel("Scene Background")).toBeVisible();
   await expect(page.getByLabel("Fog Color")).toBeVisible();
+  await expect(page.getByLabel(/Selection Outline \/ 選択枠線/i)).toBeVisible();
+  await expect(
+    page.getByLabel(/Selection Outline Thickness \/ 選択枠線の太さ/i),
+  ).toBeVisible();
   await expect(page.getByLabel("Floor Color")).toBeVisible();
   await expect(page.getByLabel("Grid Major")).toBeVisible();
   await expect(page.getByLabel("Grid Minor")).toBeVisible();
@@ -96,7 +100,6 @@ test("switches tool mode and opens rotate settings", async ({ page }) => {
 
   await page.getByRole("button", { name: /Switch to Rotate UI tool/i }).click();
 
-  await expect(page.getByText(/Object Rotate/i)).toBeVisible();
   await expect(page.getByText(/Rotate mode:/i)).toBeVisible();
 
   await expandSettings(page);
@@ -105,10 +108,14 @@ test("switches tool mode and opens rotate settings", async ({ page }) => {
     .nth(1)
     .click();
 
+  await expect(page.getByLabel("Gizmo Sphere Color")).toBeVisible();
+  await expect(page.getByLabel("Gizmo Ring Color")).toBeVisible();
   await expect(page.getByLabel("UI Strength")).toBeVisible();
   await expect(page.getByLabel("Arcball Sensitivity")).toBeVisible();
   await expect(page.getByLabel("UI Radius Px")).toBeVisible();
   await expect(page.getByLabel("Wheel Rotate Step")).toBeVisible();
+  await expect(page.getByLabel("Angle Snap Step")).toBeVisible();
+  await expect(page.getByLabel("Drag Release Behavior")).toBeVisible();
   await expect(page.getByLabel("Twist Axis")).toBeVisible();
 });
 
@@ -119,9 +126,7 @@ test("switches to the modeling screen", async ({ page }) => {
     .getByRole("button", { name: /Switch to Modeling screen/i })
     .click();
 
-  await expect(
-    page.getByText("Modeling Screen", { exact: true }),
-  ).toBeVisible();
+  await expect(page.getByText("2D Selection", { exact: true })).toBeVisible();
   await expect(
     page.getByText(
       /Lasso tool: drag a screen-space loop to select enclosed vertices/i,
@@ -139,6 +144,9 @@ test("switches to the modeling screen", async ({ page }) => {
   await expect(
     page.getByRole("button", { name: /Switch to Lasso tool/i }),
   ).toHaveAttribute("aria-pressed", "true");
+  await expect(
+    page.getByRole("button", { name: /Switch to Line tool/i }),
+  ).toHaveAttribute("aria-pressed", "false");
   await expect(
     page.getByRole("button", { name: /Switch to Camera Move tool/i }),
   ).toHaveAttribute("aria-pressed", "false");

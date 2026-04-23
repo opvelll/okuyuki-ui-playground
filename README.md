@@ -97,7 +97,25 @@ pnpm run dev
 - `pnpm run format`: Biome format
 - `pnpm run lint`: Biome check
 - `pnpm run test`: Vitest
-- `pnpm run e2e`: Playwright
+- `pnpm run e2e`: build 後に `vite preview` を自動起動して Playwright を実行
+- `pnpm run e2e:ui`: `e2e` を Playwright UI モードで実行
+- `pnpm run e2e:dev`: すでに起動中の `pnpm run dev` (`http://127.0.0.1:5173`) に対して Playwright を実行
+- `pnpm run e2e:dev:ui`: 起動中の `pnpm run dev` に対して Playwright UI モードを実行
+
+## E2E 開発フロー
+
+`pnpm run dev` を立ち上げたまま別ターミナルで次を実行できます。
+
+```bash
+pnpm run e2e:dev
+pnpm run e2e:dev:ui
+```
+
+デフォルトでは `http://127.0.0.1:5173` を見に行きます。別ポートで確認したい場合は `PLAYWRIGHT_BASE_URL` を上書きしてください。
+
+```bash
+PLAYWRIGHT_SKIP_WEBSERVER=1 PLAYWRIGHT_BASE_URL=http://127.0.0.1:4174 pnpm exec playwright test --ui
+```
 
 ## GitHub Pages
 
