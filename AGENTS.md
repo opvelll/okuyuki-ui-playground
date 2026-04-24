@@ -3,12 +3,11 @@
 
 ## Daily Steps
 
-1. 変更前に `git status --short` で作業ツリーを確認する。
-2. 実装後に `pnpm run format` を実行する。
-3. 次に `pnpm run lint` と `pnpm run test` を実行する。
-4. リリース前または画面変更時は `pnpm run e2e` を実行する。
-5. 画面変更時は`playwright-interactive` skillで画面を確認する。
-6. 最終確認として `pnpm run build` を通す。
+1. 実装後に `pnpm run format` を実行する。
+2. 次に `pnpm run lint` と `pnpm run test` を実行する。
+3. リリース前または画面変更時は `pnpm run e2e` を実行する。
+4. 画面変更時は`playwright-interactive` skillで画面を確認する。
+5. 最終確認として `pnpm run build` を通す。
 
 色の変更等の場合は、最小限のステップでよい。
 
