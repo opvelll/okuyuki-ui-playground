@@ -51,8 +51,6 @@ const HUD_VALUE_WIDTH_CLASSES: Partial<Record<string, string>> = {
   fps: "w-[3ch]",
   history: "w-[5ch]",
   magnet: "w-[14ch]",
-  mesh: "w-[10ch]",
-  model: "w-[8ch]",
   overlay: "w-[12ch]",
   plane: "w-[6ch]",
   pointer: "w-[6ch]",
@@ -61,7 +59,6 @@ const HUD_VALUE_WIDTH_CLASSES: Partial<Record<string, string>> = {
   rect: "w-[8ch]",
   release: "w-[10ch]",
   screen: "w-[8ch]",
-  select: "w-[10ch]",
   selected: "w-[10ch]",
   snap: "w-[18ch]",
   state: "w-[6ch]",
@@ -76,15 +73,8 @@ export function SceneStatusHud() {
   const currentScreen = useUiStore((state) => state.currentScreen);
   const interactionMode = useUiStore((state) => state.interactionMode);
   const interactionState = useUiStore((state) => state.interactionState);
-  const modelingCurrentModelId = useModelingStore(
-    (state) => state.currentModelId,
-  );
   const modelingHistory = useModelingStore((state) => state.history);
   const modelingHistoryIndex = useModelingStore((state) => state.historyIndex);
-  const modelingModelsById = useModelingStore((state) => state.modelsById);
-  const modelingSelectedVertexIds = useModelingStore(
-    (state) => state.selectedVertexIds,
-  );
   const modelingCameraDragging = useUiStore(
     (state) => state.modelingCameraDragging,
   );
@@ -148,12 +138,10 @@ export function SceneStatusHud() {
     modelingCameraOverride,
     modelingTool,
   });
-  const activeModel = modelingModelsById[modelingCurrentModelId];
   const hudItems =
     currentScreen === "modeling"
       ? [
           ["screen", currentScreen],
-          ["model", activeModel?.name ?? "none"],
           [
             "tool",
             `${effectiveModelingTool === "camera" ? "camera" : modelingTool}${
@@ -162,13 +150,6 @@ export function SceneStatusHud() {
                 : ""
             }`,
           ],
-          [
-            "mesh",
-            `${activeModel?.vertexOrder.length ?? 0}v / ${
-              activeModel?.edgeOrder.length ?? 0
-            }e / ${activeModel?.faceOrder.length ?? 0}f`,
-          ],
-          ["select", `${modelingSelectedVertexIds.length} vertices`],
           ["depth", modelingPointer.depth.toFixed(2)],
           ["plane", modelingPointer.plane],
           ...(modelingTool === "rectangle"

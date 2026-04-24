@@ -2,6 +2,7 @@ import { Settings2 } from "lucide-react";
 import { Suspense, lazy } from "react";
 import { InteractionModeHotkeys } from "./components/InteractionModeHotkeys";
 import { InteractionModeToolbar } from "./components/InteractionModeToolbar";
+import { ModelingInspectorWindow } from "./components/ModelingInspectorWindow";
 import { ModelingSceneFallback } from "./components/ModelingSceneFallback";
 import { ModelingToolHotkeys } from "./components/ModelingToolHotkeys";
 import {
@@ -124,6 +125,7 @@ export default function App() {
         </Suspense>
         <Toolbar />
         {HeaderProperties ? <HeaderProperties /> : null}
+        {currentScreen === "modeling" ? <ModelingInspectorWindow /> : null}
         <SettingsWindow />
         <SceneStatusHud />
       </section>

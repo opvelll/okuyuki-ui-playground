@@ -924,6 +924,8 @@ function ModelingLinePreviewOverlay() {
 function ModelingMesh() {
   const currentModelId = useModelingStore((state) => state.currentModelId);
   const modelsById = useModelingStore((state) => state.modelsById);
+  const selectRoot = useModelingStore((state) => state.selectRoot);
+  const selectedRoot = useModelingStore((state) => state.selectedRoot);
   const selectedVertexIds = useModelingStore(
     (state) => state.selectedVertexIds,
   );
@@ -1039,7 +1041,48 @@ function ModelingMesh() {
   }
 
   return (
-    <group>
+    <group
+      position={activeModel.rootPosition}
+      rotation={activeModel.rootRotation}
+    >
+      {selectedRoot ? (
+        <points renderOrder={8}>
+          <bufferGeometry>
+            <bufferAttribute
+              args={[new Float32Array([0, 0, 0]), 3]}
+              attach="attributes-position"
+              count={1}
+            />
+          </bufferGeometry>
+          <pointsMaterial
+            color="#ffffff"
+            depthTest={false}
+            size={8}
+            sizeAttenuation={false}
+          />
+        </points>
+      ) : null}
+      <points
+        onPointerDown={(event) => {
+          event.stopPropagation();
+          selectRoot();
+        }}
+        renderOrder={9}
+      >
+        <bufferGeometry>
+          <bufferAttribute
+            args={[new Float32Array([0, 0, 0]), 3]}
+            attach="attributes-position"
+            count={1}
+          />
+        </bufferGeometry>
+        <pointsMaterial
+          color="#ef4444"
+          depthTest={false}
+          size={5}
+          sizeAttenuation={false}
+        />
+      </points>
       {activeModel.faceOrder.length > 0 ? (
         <mesh geometry={faceGeometry} renderOrder={3}>
           <meshStandardMaterial

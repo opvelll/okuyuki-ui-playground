@@ -247,14 +247,9 @@ export function ModelingToolToolbar() {
   const modelingCameraOverride = useUiStore(
     (state) => state.modelingCameraOverride,
   );
-  const currentModelId = useModelingStore((state) => state.currentModelId);
   const history = useModelingStore((state) => state.history);
   const historyIndex = useModelingStore((state) => state.historyIndex);
-  const modelsById = useModelingStore((state) => state.modelsById);
   const redo = useModelingStore((state) => state.redo);
-  const selectedVertexIds = useModelingStore(
-    (state) => state.selectedVertexIds,
-  );
   const undo = useModelingStore((state) => state.undo);
   const setModelingTool = useUiStore((state) => state.setModelingTool);
   const effectiveTool = getEffectiveModelingTool({
@@ -262,7 +257,6 @@ export function ModelingToolToolbar() {
     modelingCameraOverride,
     modelingTool,
   });
-  const activeModel = modelsById[currentModelId];
   const canRedo = historyIndex < history.length - 1;
   const canUndo = historyIndex > 0;
   const selectionToolActive = modelingTool === "lasso";
@@ -302,20 +296,6 @@ export function ModelingToolToolbar() {
             <Redo2 aria-hidden="true" className="h-3.5 w-3.5" strokeWidth={2} />
             <span>Forward</span>
           </button>
-        </div>
-        <div className="border-b border-white/8 px-3 py-2">
-          <p className="text-[0.54rem] font-bold uppercase tracking-[0.22em] text-slate-400">
-            Active Model
-          </p>
-          <p className="mt-0.5 text-[0.76rem] font-semibold text-slate-50">
-            {activeModel?.name ?? "none"}
-          </p>
-          <p className="mt-0.5 text-[0.58rem] uppercase tracking-[0.16em] text-slate-400">
-            {activeModel?.vertexOrder.length ?? 0} verts /{" "}
-            {activeModel?.edgeOrder.length ?? 0} edges /{" "}
-            {activeModel?.faceOrder.length ?? 0} faces /{" "}
-            {selectedVertexIds.length} selected
-          </p>
         </div>
         <div
           className={`border-b border-white/8 transition ${

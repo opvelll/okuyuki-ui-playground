@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { createJSONStorage, persist } from "zustand/middleware";
 import {
   getBoxVerticesFromDiagonal,
   getRectangleVerticesFromDiagonal,
@@ -7,28 +8,30 @@ import { compareVector3Tuple } from "../lib/vector3Tuple";
 import type { Vector3Tuple } from "../types/scene";
 import type { ModelingRectangleMode } from "./uiStore";
 
-type ModelingVertex = {
+export type ModelingVertex = {
   id: string;
   position: Vector3Tuple;
 };
 
-type ModelingEdge = {
+export type ModelingEdge = {
   id: string;
   vertexIds: [string, string];
 };
 
-type ModelingFace = {
+export type ModelingFace = {
   id: string;
   vertexIds: [string, string, string];
 };
 
-type ModelingModel = {
+export type ModelingModel = {
   edgeOrder: string[];
   edgesById: Record<string, ModelingEdge>;
   faceOrder: string[];
   facesById: Record<string, ModelingFace>;
   id: string;
   name: string;
+  rootPosition: Vector3Tuple;
+  rootRotation: Vector3Tuple;
   vertexOrder: string[];
   verticesById: Record<string, ModelingVertex>;
 };
@@ -36,6 +39,7 @@ type ModelingModel = {
 type ModelingSnapshot = {
   currentModelId: string;
   modelsById: Record<string, ModelingModel>;
+  selectedRoot: boolean;
   selectedVertexIds: string[];
 };
 
@@ -131,7 +135,9 @@ type ModelingState = ModelingSnapshot & {
   cancelVertexMoveDrag: () => void;
   commitVertexMoveDrag: () => boolean;
   redo: () => void;
+  renameCurrentModel: (name: string) => void;
   resetModeling: () => void;
+  selectRoot: () => void;
   selectNearestVertex: (
     pointerPosition: Vector3Tuple,
     appendToSelection?: boolean,
@@ -140,6 +146,10 @@ type ModelingState = ModelingSnapshot & {
   selectVertices: (vertexIds: string[], appendToSelection?: boolean) => void;
   selectVertex: (vertexId: string, appendToSelection?: boolean) => void;
   undo: () => void;
+  updateCurrentModelRootPosition: (position: Vector3Tuple) => void;
+  updateCurrentModelRootRotation: (rotation: Vector3Tuple) => void;
+  updateSelectedVerticesCenter: (position: Vector3Tuple) => void;
+  updateVertexPosition: (vertexId: string, position: Vector3Tuple) => void;
   updateVertexMoveDrag: (targetPosition: Vector3Tuple) => boolean;
 };
 
@@ -167,6 +177,8 @@ function createEmptyModel(index: number): ModelingModel {
     facesById: {},
     id: `model-${index}`,
     name: createModelName(index),
+    rootPosition: [0, 0, 0],
+    rootRotation: [0, 0, 0],
     vertexOrder: [],
     verticesById: {},
   };
@@ -196,6 +208,8 @@ function cloneModel(model: ModelingModel): ModelingModel {
     ),
     id: model.id,
     name: model.name,
+    rootPosition: [...(model.rootPosition ?? [0, 0, 0])] as Vector3Tuple,
+    rootRotation: [...(model.rootRotation ?? [0, 0, 0])] as Vector3Tuple,
     vertexOrder: [...model.vertexOrder],
     verticesById: Object.fromEntries(
       Object.entries(model.verticesById).map(([vertexId, vertex]) => [
@@ -209,15 +223,24 @@ function cloneModel(model: ModelingModel): ModelingModel {
   };
 }
 
+function normalizeModel(model: ModelingModel): ModelingModel {
+  return {
+    ...model,
+    rootPosition: [...(model.rootPosition ?? [0, 0, 0])] as Vector3Tuple,
+    rootRotation: [...(model.rootRotation ?? [0, 0, 0])] as Vector3Tuple,
+  };
+}
+
 function cloneSnapshot(snapshot: ModelingSnapshot): ModelingSnapshot {
   return {
     currentModelId: snapshot.currentModelId,
     modelsById: Object.fromEntries(
       Object.entries(snapshot.modelsById).map(([modelId, model]) => [
         modelId,
-        cloneModel(model),
+        normalizeModel(cloneModel(model)),
       ]),
     ),
+    selectedRoot: snapshot.selectedRoot ?? false,
     selectedVertexIds: [...snapshot.selectedVertexIds],
   };
 }
@@ -229,6 +252,7 @@ function createInitialSnapshot(): ModelingSnapshot {
     modelsById: {
       [initialModel.id]: initialModel,
     },
+    selectedRoot: true,
     selectedVertexIds: [],
   };
 }
@@ -546,6 +570,7 @@ function commitSnapshot(
   | "history"
   | "historyIndex"
   | "modelsById"
+  | "selectedRoot"
   | "selectedVertexIds"
 > {
   const clonedSnapshot = cloneSnapshot(nextSnapshot);
@@ -561,878 +586,1135 @@ function commitSnapshot(
   };
 }
 
-export const useModelingStore = create<ModelingState>((set, get) => ({
-  ...createInitialState(),
-  beginVertexMoveDrag: (anchorVertexId, vertexIds) => {
-    const state = get();
-    const currentModel = state.modelsById[state.currentModelId];
-
-    if (!currentModel?.verticesById[anchorVertexId]) {
-      return false;
-    }
-
-    const normalizedVertexIds = (
-      vertexIds?.length ? vertexIds : state.selectedVertexIds
-    ).filter((vertexId, index, list) => {
-      return (
-        currentModel.verticesById[vertexId] !== undefined &&
-        list.indexOf(vertexId) === index
-      );
-    });
-
-    if (
-      normalizedVertexIds.length === 0 ||
-      !normalizedVertexIds.includes(anchorVertexId)
-    ) {
-      return false;
-    }
-
-    set({
-      activeVertexMoveDrag: {
-        anchorVertexId,
-        snapshot: cloneSnapshot({
-          currentModelId: state.currentModelId,
-          modelsById: state.modelsById,
-          selectedVertexIds: state.selectedVertexIds,
-        }),
-        vertexIds: normalizedVertexIds,
-      },
-      selectedVertexIds: [...normalizedVertexIds],
-    });
-
-    return true;
-  },
-  cancelVertexMoveDrag: () =>
-    set((state) => {
-      if (!state.activeVertexMoveDrag) {
-        return state;
-      }
-
-      return {
-        activeVertexMoveDrag: null,
-        ...cloneSnapshot(state.activeVertexMoveDrag.snapshot),
-      };
-    }),
-  createEdgeFromPositions: (
-    startPosition,
-    endPosition,
-    options = DEFAULT_SELECTION_DISTANCE,
-  ) => {
-    const state = get();
-    const currentModel = state.modelsById[state.currentModelId];
-
-    if (!currentModel) {
-      return false;
-    }
-
-    const normalizedOptions =
-      typeof options === "number" ? { snapDistance: options } : options;
-    const snapDistance =
-      normalizedOptions.snapDistance ?? DEFAULT_SELECTION_DISTANCE;
-
-    const snappedStartVertex =
-      findVertexById(currentModel, normalizedOptions.startVertexId) ??
-      findNearestVertexInModel(currentModel, startPosition, snapDistance);
-    const snappedEndVertex =
-      findVertexById(currentModel, normalizedOptions.endVertexId) ??
-      findNearestVertexInModel(currentModel, endPosition, snapDistance);
-
-    if (
-      snappedStartVertex &&
-      snappedEndVertex &&
-      snappedStartVertex.id === snappedEndVertex.id
-    ) {
-      set({
-        selectedVertexIds: [snappedStartVertex.id],
-      });
-      return false;
-    }
-
-    const nextModel = cloneModel(currentModel);
-    const selectedVertexIds: string[] = [];
-
-    const startVertexId = ensureVertexInModel(
-      nextModel,
-      selectedVertexIds,
-      startPosition,
-      {
-        edgeTarget: normalizedOptions.startEdgeTarget,
-        snappedVertex: snappedStartVertex,
-      },
-    );
-    const endVertexId = ensureVertexInModel(
-      nextModel,
-      selectedVertexIds,
-      endPosition,
-      {
-        edgeTarget: normalizedOptions.endEdgeTarget,
-        snappedVertex: snappedEndVertex,
-      },
-    );
-    const edgeVertexIds = [startVertexId, endVertexId] as [string, string];
-
-    if (!ensureEdgeInModel(nextModel, edgeVertexIds)) {
-      return false;
-    }
-
-    set({
-      ...commitSnapshot(state, {
-        currentModelId: state.currentModelId,
-        modelsById: {
-          ...state.modelsById,
-          [currentModel.id]: nextModel,
-        },
-        selectedVertexIds,
-      }),
-    });
-
-    return true;
-  },
-  createRectangleFromDiagonal: (startPosition, endPosition, options) => {
-    const state = get();
-    const currentModel = state.modelsById[state.currentModelId];
-
-    if (!currentModel) {
-      return false;
-    }
-
-    const rectangleGeometry = getRectangleVerticesFromDiagonal(
-      startPosition,
-      endPosition,
-      options.mode,
-    );
-
-    if (!rectangleGeometry) {
-      return false;
-    }
-
-    const nextModel = cloneModel(currentModel);
-    const selectedVertexIds: string[] = [];
-    const snappedStartVertex = findVertexById(
-      currentModel,
-      options.startVertexId,
-    );
-    const snappedEndVertex = findVertexById(currentModel, options.endVertexId);
-    const endPositionMatchesSnap =
-      snappedEndVertex &&
-      compareVector3Tuple(
-        snappedEndVertex.position,
-        rectangleGeometry.corners[2],
-      );
-    const startVertexId = ensureVertexInModel(
-      nextModel,
-      selectedVertexIds,
-      rectangleGeometry.corners[0],
-      {
-        edgeTarget: options.startEdgeTarget,
-        snappedVertex: snappedStartVertex,
-      },
-    );
-    const corner1VertexId = ensureVertexInModel(
-      nextModel,
-      selectedVertexIds,
-      rectangleGeometry.corners[1],
-    );
-    const endVertexId = ensureVertexInModel(
-      nextModel,
-      selectedVertexIds,
-      rectangleGeometry.corners[2],
-      {
-        edgeTarget: endPositionMatchesSnap ? options.endEdgeTarget : null,
-        snappedVertex: endPositionMatchesSnap ? snappedEndVertex : null,
-      },
-    );
-    const corner3VertexId = ensureVertexInModel(
-      nextModel,
-      selectedVertexIds,
-      rectangleGeometry.corners[3],
-    );
-
-    if (
-      new Set([startVertexId, corner1VertexId, endVertexId, corner3VertexId])
-        .size !== 4
-    ) {
-      return false;
-    }
-
-    let changed = false;
-    const edgeVertexIdsList: [string, string][] = [
-      [startVertexId, corner1VertexId],
-      [corner1VertexId, endVertexId],
-      [endVertexId, corner3VertexId],
-      [corner3VertexId, startVertexId],
-      [startVertexId, endVertexId],
-    ];
-
-    for (const edgeVertexIds of edgeVertexIdsList) {
-      changed = ensureEdgeInModel(nextModel, edgeVertexIds) || changed;
-    }
-
-    changed =
-      ensureFaceInModel(nextModel, [
-        startVertexId,
-        corner1VertexId,
-        endVertexId,
-      ]) || changed;
-    changed =
-      ensureFaceInModel(nextModel, [
-        startVertexId,
-        endVertexId,
-        corner3VertexId,
-      ]) || changed;
-
-    if (!changed) {
-      return false;
-    }
-
-    set({
-      ...commitSnapshot(state, {
-        currentModelId: state.currentModelId,
-        modelsById: {
-          ...state.modelsById,
-          [currentModel.id]: nextModel,
-        },
-        selectedVertexIds: [
-          startVertexId,
-          corner1VertexId,
-          endVertexId,
-          corner3VertexId,
-        ],
-      }),
-    });
-
-    return true;
-  },
-  addVertex: (position, options) => {
-    const state = get();
-    const currentModel = state.modelsById[state.currentModelId];
-
-    if (!currentModel) {
-      return null;
-    }
-
-    const nextModel = cloneModel(currentModel);
-    const splitVertex = splitEdgeAtPosition(nextModel, options?.edgeTarget);
-    if (splitVertex) {
-      set({
-        ...commitSnapshot(state, {
-          currentModelId: state.currentModelId,
-          modelsById: {
-            ...state.modelsById,
-            [currentModel.id]: nextModel,
-          },
-          selectedVertexIds: [splitVertex.id],
-        }),
-      });
-
-      return splitVertex;
-    }
-
-    const nextVertexId = createNextId("vertex", nextModel.vertexOrder);
-    const nextVertex: ModelingVertex = {
-      id: nextVertexId,
-      position: [...position],
-    };
-    nextModel.vertexOrder.push(nextVertexId);
-    nextModel.verticesById[nextVertexId] = nextVertex;
-
-    set({
-      ...commitSnapshot(state, {
-        currentModelId: state.currentModelId,
-        modelsById: {
-          ...state.modelsById,
-          [currentModel.id]: nextModel,
-        },
-        selectedVertexIds: [nextVertexId],
-      }),
-    });
-
-    return nextVertex;
-  },
-  clearVertexSelection: () =>
-    set((state) =>
-      state.selectedVertexIds.length === 0
-        ? state
-        : {
-            selectedVertexIds: [],
-          },
-    ),
-  connectSelectedVerticesAsEdge: () => {
-    const state = get();
-    if (state.selectedVertexIds.length !== 2) {
-      return false;
-    }
-
-    const currentModel = state.modelsById[state.currentModelId];
-    if (!currentModel) {
-      return false;
-    }
-
-    const edgeVertexIds = [
-      state.selectedVertexIds[0],
-      state.selectedVertexIds[1],
-    ] as [string, string];
-
-    if (
-      edgeVertexIds[0] === edgeVertexIds[1] ||
-      hasEdge(currentModel, edgeVertexIds)
-    ) {
-      return false;
-    }
-
-    const nextModel = cloneModel(currentModel);
-    const nextEdgeId = createNextId("edge", nextModel.edgeOrder);
-    nextModel.edgeOrder.push(nextEdgeId);
-    nextModel.edgesById[nextEdgeId] = {
-      id: nextEdgeId,
-      vertexIds: edgeVertexIds,
-    };
-
-    set({
-      ...commitSnapshot(state, {
-        currentModelId: state.currentModelId,
-        modelsById: {
-          ...state.modelsById,
-          [currentModel.id]: nextModel,
-        },
-        selectedVertexIds: [...state.selectedVertexIds],
-      }),
-    });
-
-    return true;
-  },
-  createFaceFromSelectedVertices: () => {
-    const state = get();
-    if (state.selectedVertexIds.length !== 3) {
-      return false;
-    }
-
-    const currentModel = state.modelsById[state.currentModelId];
-    if (!currentModel) {
-      return false;
-    }
-
-    const faceVertexIds = [
-      state.selectedVertexIds[0],
-      state.selectedVertexIds[1],
-      state.selectedVertexIds[2],
-    ] as [string, string, string];
-    const uniqueVertexCount = new Set(faceVertexIds).size;
-
-    if (uniqueVertexCount !== 3 || hasFace(currentModel, faceVertexIds)) {
-      return false;
-    }
-
-    const nextModel = cloneModel(currentModel);
-    const requiredEdges = [
-      [faceVertexIds[0], faceVertexIds[1]],
-      [faceVertexIds[1], faceVertexIds[2]],
-      [faceVertexIds[2], faceVertexIds[0]],
-    ] as [string, string][];
-
-    for (const edgeVertexIds of requiredEdges) {
-      if (hasEdge(nextModel, edgeVertexIds)) {
-        continue;
-      }
-
-      const nextEdgeId = createNextId("edge", nextModel.edgeOrder);
-      nextModel.edgeOrder.push(nextEdgeId);
-      nextModel.edgesById[nextEdgeId] = {
-        id: nextEdgeId,
-        vertexIds: edgeVertexIds,
-      };
-    }
-
-    const nextFaceId = `face-${nextModel.faceOrder.length + 1}`;
-    nextModel.faceOrder.push(nextFaceId);
-    nextModel.facesById[nextFaceId] = {
-      id: nextFaceId,
-      vertexIds: faceVertexIds,
-    };
-
-    set({
-      ...commitSnapshot(state, {
-        currentModelId: state.currentModelId,
-        modelsById: {
-          ...state.modelsById,
-          [currentModel.id]: nextModel,
-        },
-        selectedVertexIds: [...state.selectedVertexIds],
-      }),
-    });
-
-    return true;
-  },
-  createBoxFromDiagonal: (startPosition, endPosition, options = {}) => {
-    const state = get();
-    const currentModel = state.modelsById[state.currentModelId];
-
-    if (!currentModel) {
-      return false;
-    }
-
-    const boxGeometry = getBoxVerticesFromDiagonal(startPosition, endPosition);
-
-    if (!boxGeometry) {
-      return false;
-    }
-
-    const nextModel = cloneModel(currentModel);
-    const selectedVertexIds: string[] = [];
-    const snappedStartVertex = findVertexById(
-      currentModel,
-      options.startVertexId,
-    );
-    const snappedEndVertex = findVertexById(currentModel, options.endVertexId);
-    const startCorner = boxGeometry.corners.find((corner) =>
-      compareVector3Tuple(corner, startPosition),
-    );
-    const endCorner = boxGeometry.corners.find((corner) =>
-      compareVector3Tuple(corner, endPosition),
-    );
-    const cornerVertexIds = boxGeometry.corners.map((corner) =>
-      ensureVertexInModel(
-        nextModel,
-        selectedVertexIds,
-        corner,
-        (() => {
-          const isStartCorner =
-            startCorner !== undefined &&
-            compareVector3Tuple(corner, startCorner);
-          const isEndCorner =
-            endCorner !== undefined && compareVector3Tuple(corner, endCorner);
-
-          return {
-            edgeTarget: isStartCorner
-              ? options.startEdgeTarget
-              : isEndCorner
-                ? options.endEdgeTarget
-                : null,
-            snappedVertex: isStartCorner
-              ? snappedStartVertex
-              : isEndCorner
-                ? snappedEndVertex
-                : null,
-          };
-        })(),
-      ),
-    );
-
-    if (new Set(cornerVertexIds).size !== boxGeometry.corners.length) {
-      return false;
-    }
-
-    let changed = false;
-    const cornerIndexToVertexId = cornerVertexIds;
-    const edgeVertexIdsList: [string, string][] = [
-      [cornerIndexToVertexId[0], cornerIndexToVertexId[1]],
-      [cornerIndexToVertexId[1], cornerIndexToVertexId[2]],
-      [cornerIndexToVertexId[2], cornerIndexToVertexId[3]],
-      [cornerIndexToVertexId[3], cornerIndexToVertexId[0]],
-      [cornerIndexToVertexId[4], cornerIndexToVertexId[5]],
-      [cornerIndexToVertexId[5], cornerIndexToVertexId[6]],
-      [cornerIndexToVertexId[6], cornerIndexToVertexId[7]],
-      [cornerIndexToVertexId[7], cornerIndexToVertexId[4]],
-      [cornerIndexToVertexId[0], cornerIndexToVertexId[4]],
-      [cornerIndexToVertexId[1], cornerIndexToVertexId[5]],
-      [cornerIndexToVertexId[2], cornerIndexToVertexId[6]],
-      [cornerIndexToVertexId[3], cornerIndexToVertexId[7]],
-    ];
-
-    for (const edgeVertexIds of edgeVertexIdsList) {
-      changed = ensureEdgeInModel(nextModel, edgeVertexIds) || changed;
-    }
-
-    const faceVertexIdsList: [string, string, string][] = [
-      [
-        cornerIndexToVertexId[0],
-        cornerIndexToVertexId[1],
-        cornerIndexToVertexId[2],
-      ],
-      [
-        cornerIndexToVertexId[0],
-        cornerIndexToVertexId[2],
-        cornerIndexToVertexId[3],
-      ],
-      [
-        cornerIndexToVertexId[4],
-        cornerIndexToVertexId[6],
-        cornerIndexToVertexId[5],
-      ],
-      [
-        cornerIndexToVertexId[4],
-        cornerIndexToVertexId[7],
-        cornerIndexToVertexId[6],
-      ],
-      [
-        cornerIndexToVertexId[0],
-        cornerIndexToVertexId[5],
-        cornerIndexToVertexId[1],
-      ],
-      [
-        cornerIndexToVertexId[0],
-        cornerIndexToVertexId[4],
-        cornerIndexToVertexId[5],
-      ],
-      [
-        cornerIndexToVertexId[3],
-        cornerIndexToVertexId[2],
-        cornerIndexToVertexId[6],
-      ],
-      [
-        cornerIndexToVertexId[3],
-        cornerIndexToVertexId[6],
-        cornerIndexToVertexId[7],
-      ],
-      [
-        cornerIndexToVertexId[0],
-        cornerIndexToVertexId[3],
-        cornerIndexToVertexId[7],
-      ],
-      [
-        cornerIndexToVertexId[0],
-        cornerIndexToVertexId[7],
-        cornerIndexToVertexId[4],
-      ],
-      [
-        cornerIndexToVertexId[1],
-        cornerIndexToVertexId[5],
-        cornerIndexToVertexId[6],
-      ],
-      [
-        cornerIndexToVertexId[1],
-        cornerIndexToVertexId[6],
-        cornerIndexToVertexId[2],
-      ],
-    ];
-
-    for (const faceVertexIds of faceVertexIdsList) {
-      changed = ensureFaceInModel(nextModel, faceVertexIds) || changed;
-    }
-
-    if (!changed) {
-      return false;
-    }
-
-    set({
-      ...commitSnapshot(state, {
-        currentModelId: state.currentModelId,
-        modelsById: {
-          ...state.modelsById,
-          [currentModel.id]: nextModel,
-        },
-        selectedVertexIds,
-      }),
-    });
-
-    return true;
-  },
-  deleteSelectedVertices: () => {
-    const state = get();
-    if (state.selectedVertexIds.length === 0) {
-      return false;
-    }
-
-    const currentModel = state.modelsById[state.currentModelId];
-    if (!currentModel) {
-      return false;
-    }
-
-    const selectedVertexSet = new Set(state.selectedVertexIds);
-    const hasSelectedVertex = state.selectedVertexIds.some(
-      (vertexId) => currentModel.verticesById[vertexId],
-    );
-
-    if (!hasSelectedVertex) {
-      return false;
-    }
-
-    const nextModel = cloneModel(currentModel);
-
-    nextModel.vertexOrder = nextModel.vertexOrder.filter(
-      (vertexId) => !selectedVertexSet.has(vertexId),
-    );
-    nextModel.verticesById = Object.fromEntries(
-      Object.entries(nextModel.verticesById).filter(
-        ([vertexId]) => !selectedVertexSet.has(vertexId),
-      ),
-    );
-    nextModel.edgeOrder = nextModel.edgeOrder.filter((edgeId) => {
-      const edge = nextModel.edgesById[edgeId];
-      return !edge.vertexIds.some((vertexId) =>
-        selectedVertexSet.has(vertexId),
-      );
-    });
-    nextModel.edgesById = Object.fromEntries(
-      Object.entries(nextModel.edgesById).filter(
-        ([, edge]) =>
-          !edge.vertexIds.some((vertexId) => selectedVertexSet.has(vertexId)),
-      ),
-    );
-    nextModel.faceOrder = nextModel.faceOrder.filter((faceId) => {
-      const face = nextModel.facesById[faceId];
-      return !face.vertexIds.some((vertexId) =>
-        selectedVertexSet.has(vertexId),
-      );
-    });
-    nextModel.facesById = Object.fromEntries(
-      Object.entries(nextModel.facesById).filter(
-        ([, face]) =>
-          !face.vertexIds.some((vertexId) => selectedVertexSet.has(vertexId)),
-      ),
-    );
-
-    set({
-      ...commitSnapshot(state, {
-        currentModelId: state.currentModelId,
-        modelsById: {
-          ...state.modelsById,
-          [currentModel.id]: nextModel,
-        },
-        selectedVertexIds: [],
-      }),
-    });
-
-    return true;
-  },
-  findNearestVertex: (
-    pointerPosition,
-    maxDistance = DEFAULT_SELECTION_DISTANCE,
-  ) => {
-    const state = get();
-    const currentModel = state.modelsById[state.currentModelId];
-
-    if (!currentModel) {
-      return null;
-    }
-
-    return findNearestVertexInModel(currentModel, pointerPosition, maxDistance);
-  },
-  commitVertexMoveDrag: () => {
-    const state = get();
-    if (!state.activeVertexMoveDrag) {
-      return false;
-    }
-
-    const currentModel = state.modelsById[state.currentModelId];
-    const baselineModel =
-      state.activeVertexMoveDrag.snapshot.modelsById[state.currentModelId];
-
-    if (!currentModel || !baselineModel) {
-      set({ activeVertexMoveDrag: null });
-      return false;
-    }
-
-    const changed = state.activeVertexMoveDrag.vertexIds.some((vertexId) => {
-      const currentVertex = currentModel.verticesById[vertexId];
-      const baselineVertex = baselineModel.verticesById[vertexId];
-
-      return (
-        currentVertex &&
-        baselineVertex &&
-        !compareVector3Tuple(currentVertex.position, baselineVertex.position)
-      );
-    });
-
-    if (!changed) {
-      set({ activeVertexMoveDrag: null });
-      return false;
-    }
-
-    set({
-      activeVertexMoveDrag: null,
-      ...commitSnapshot(state, {
-        currentModelId: state.currentModelId,
-        modelsById: state.modelsById,
-        selectedVertexIds: state.selectedVertexIds,
-      }),
-    });
-
-    return true;
-  },
-  redo: () =>
-    set((state) => {
-      if (state.historyIndex >= state.history.length - 1) {
-        return state;
-      }
-
-      const nextSnapshot = cloneSnapshot(state.history[state.historyIndex + 1]);
-      return {
-        activeVertexMoveDrag: null,
-        ...nextSnapshot,
-        history: state.history,
-        historyIndex: state.historyIndex + 1,
-      };
-    }),
-  resetModeling: () => set(createInitialState()),
-  selectNearestVertex: (
-    pointerPosition,
-    appendToSelection = false,
-    maxDistance = DEFAULT_SELECTION_DISTANCE,
-  ) => {
-    const state = get();
-    const currentModel = state.modelsById[state.currentModelId];
-
-    if (!currentModel) {
-      return null;
-    }
-
-    const nearestVertex = findNearestVertexInModel(
-      currentModel,
-      pointerPosition,
-      maxDistance,
-    );
-
-    if (!nearestVertex) {
-      if (!appendToSelection && state.selectedVertexIds.length > 0) {
-        set({ selectedVertexIds: [] });
-      }
-      return null;
-    }
-
-    state.selectVertex(nearestVertex.id, appendToSelection);
-    return nearestVertex;
-  },
-  selectVertex: (vertexId, appendToSelection = false) =>
-    set((state) => {
-      const currentModel = state.modelsById[state.currentModelId];
-      if (!currentModel?.verticesById[vertexId]) {
-        return state;
-      }
-
-      if (appendToSelection) {
-        if (state.selectedVertexIds.includes(vertexId)) {
-          return state;
+type PersistedModelingState = Pick<
+  ModelingState,
+  | "autoNameIndex"
+  | "currentModelId"
+  | "modelsById"
+  | "selectedRoot"
+  | "selectedVertexIds"
+>;
+
+export const useModelingStore = create<ModelingState>()(
+  persist(
+    (set, get) => ({
+      ...createInitialState(),
+      beginVertexMoveDrag: (anchorVertexId, vertexIds) => {
+        const state = get();
+        const currentModel = state.modelsById[state.currentModelId];
+
+        if (!currentModel?.verticesById[anchorVertexId]) {
+          return false;
         }
 
-        return {
-          selectedVertexIds: [...state.selectedVertexIds, vertexId],
-        };
-      }
-
-      if (
-        state.selectedVertexIds.length === 1 &&
-        state.selectedVertexIds[0] === vertexId
-      ) {
-        return state;
-      }
-
-      return {
-        selectedVertexIds: [vertexId],
-      };
-    }),
-  selectVertices: (vertexIds, appendToSelection = false) =>
-    set((state) => {
-      const currentModel = state.modelsById[state.currentModelId];
-      if (!currentModel) {
-        return state;
-      }
-
-      const validVertexIds = currentModel.vertexOrder.filter(
-        (vertexId) =>
-          vertexIds.includes(vertexId) && currentModel.verticesById[vertexId],
-      );
-
-      if (validVertexIds.length === 0) {
-        return appendToSelection ? state : { selectedVertexIds: [] };
-      }
-
-      if (appendToSelection) {
-        const nextSelectedVertexIds = [...state.selectedVertexIds];
-
-        for (const vertexId of validVertexIds) {
-          if (!nextSelectedVertexIds.includes(vertexId)) {
-            nextSelectedVertexIds.push(vertexId);
-          }
-        }
+        const normalizedVertexIds = (
+          vertexIds?.length ? vertexIds : state.selectedVertexIds
+        ).filter((vertexId, index, list) => {
+          return (
+            currentModel.verticesById[vertexId] !== undefined &&
+            list.indexOf(vertexId) === index
+          );
+        });
 
         if (
-          nextSelectedVertexIds.length === state.selectedVertexIds.length &&
-          nextSelectedVertexIds.every(
-            (vertexId, index) => vertexId === state.selectedVertexIds[index],
-          )
+          normalizedVertexIds.length === 0 ||
+          !normalizedVertexIds.includes(anchorVertexId)
         ) {
-          return state;
+          return false;
         }
 
-        return {
-          selectedVertexIds: nextSelectedVertexIds,
-        };
-      }
+        set({
+          activeVertexMoveDrag: {
+            anchorVertexId,
+            snapshot: cloneSnapshot({
+              currentModelId: state.currentModelId,
+              modelsById: state.modelsById,
+              selectedRoot: state.selectedRoot,
+              selectedVertexIds: state.selectedVertexIds,
+            }),
+            vertexIds: normalizedVertexIds,
+          },
+          selectedVertexIds: [...normalizedVertexIds],
+          selectedRoot: false,
+        });
 
-      if (
-        validVertexIds.length === state.selectedVertexIds.length &&
-        validVertexIds.every(
-          (vertexId, index) => vertexId === state.selectedVertexIds[index],
-        )
-      ) {
-        return state;
-      }
-
-      return {
-        selectedVertexIds: validVertexIds,
-      };
-    }),
-  undo: () =>
-    set((state) => {
-      if (state.historyIndex <= 0) {
-        return state;
-      }
-
-      const nextSnapshot = cloneSnapshot(state.history[state.historyIndex - 1]);
-      return {
-        activeVertexMoveDrag: null,
-        ...nextSnapshot,
-        history: state.history,
-        historyIndex: state.historyIndex - 1,
-      };
-    }),
-  updateVertexMoveDrag: (targetPosition) => {
-    const state = get();
-    const drag = state.activeVertexMoveDrag;
-
-    if (!drag) {
-      return false;
-    }
-
-    const baselineModel =
-      drag.snapshot.modelsById[drag.snapshot.currentModelId];
-    const currentModel = state.modelsById[state.currentModelId];
-    const anchorVertex = baselineModel?.verticesById[drag.anchorVertexId];
-
-    if (!baselineModel || !currentModel || !anchorVertex) {
-      return false;
-    }
-
-    const delta: Vector3Tuple = [
-      targetPosition[0] - anchorVertex.position[0],
-      targetPosition[1] - anchorVertex.position[1],
-      targetPosition[2] - anchorVertex.position[2],
-    ];
-    const nextModel = cloneModel(baselineModel);
-
-    for (const vertexId of drag.vertexIds) {
-      const baselineVertex = baselineModel.verticesById[vertexId];
-      const nextVertex = nextModel.verticesById[vertexId];
-
-      if (!baselineVertex || !nextVertex) {
-        continue;
-      }
-
-      nextVertex.position = [
-        baselineVertex.position[0] + delta[0],
-        baselineVertex.position[1] + delta[1],
-        baselineVertex.position[2] + delta[2],
-      ];
-    }
-
-    set({
-      modelsById: {
-        ...state.modelsById,
-        [baselineModel.id]: nextModel,
+        return true;
       },
-    });
+      cancelVertexMoveDrag: () =>
+        set((state) => {
+          if (!state.activeVertexMoveDrag) {
+            return state;
+          }
 
-    return true;
-  },
-}));
+          return {
+            activeVertexMoveDrag: null,
+            ...cloneSnapshot(state.activeVertexMoveDrag.snapshot),
+          };
+        }),
+      createEdgeFromPositions: (
+        startPosition,
+        endPosition,
+        options = DEFAULT_SELECTION_DISTANCE,
+      ) => {
+        const state = get();
+        const currentModel = state.modelsById[state.currentModelId];
+
+        if (!currentModel) {
+          return false;
+        }
+
+        const normalizedOptions =
+          typeof options === "number" ? { snapDistance: options } : options;
+        const snapDistance =
+          normalizedOptions.snapDistance ?? DEFAULT_SELECTION_DISTANCE;
+
+        const snappedStartVertex =
+          findVertexById(currentModel, normalizedOptions.startVertexId) ??
+          findNearestVertexInModel(currentModel, startPosition, snapDistance);
+        const snappedEndVertex =
+          findVertexById(currentModel, normalizedOptions.endVertexId) ??
+          findNearestVertexInModel(currentModel, endPosition, snapDistance);
+
+        if (
+          snappedStartVertex &&
+          snappedEndVertex &&
+          snappedStartVertex.id === snappedEndVertex.id
+        ) {
+          set({
+            selectedRoot: false,
+            selectedVertexIds: [snappedStartVertex.id],
+          });
+          return false;
+        }
+
+        const nextModel = cloneModel(currentModel);
+        const selectedVertexIds: string[] = [];
+
+        const startVertexId = ensureVertexInModel(
+          nextModel,
+          selectedVertexIds,
+          startPosition,
+          {
+            edgeTarget: normalizedOptions.startEdgeTarget,
+            snappedVertex: snappedStartVertex,
+          },
+        );
+        const endVertexId = ensureVertexInModel(
+          nextModel,
+          selectedVertexIds,
+          endPosition,
+          {
+            edgeTarget: normalizedOptions.endEdgeTarget,
+            snappedVertex: snappedEndVertex,
+          },
+        );
+        const edgeVertexIds = [startVertexId, endVertexId] as [string, string];
+
+        if (!ensureEdgeInModel(nextModel, edgeVertexIds)) {
+          return false;
+        }
+
+        set({
+          ...commitSnapshot(state, {
+            currentModelId: state.currentModelId,
+            modelsById: {
+              ...state.modelsById,
+              [currentModel.id]: nextModel,
+            },
+            selectedRoot: false,
+            selectedVertexIds,
+          }),
+        });
+
+        return true;
+      },
+      createRectangleFromDiagonal: (startPosition, endPosition, options) => {
+        const state = get();
+        const currentModel = state.modelsById[state.currentModelId];
+
+        if (!currentModel) {
+          return false;
+        }
+
+        const rectangleGeometry = getRectangleVerticesFromDiagonal(
+          startPosition,
+          endPosition,
+          options.mode,
+        );
+
+        if (!rectangleGeometry) {
+          return false;
+        }
+
+        const nextModel = cloneModel(currentModel);
+        const selectedVertexIds: string[] = [];
+        const snappedStartVertex = findVertexById(
+          currentModel,
+          options.startVertexId,
+        );
+        const snappedEndVertex = findVertexById(
+          currentModel,
+          options.endVertexId,
+        );
+        const endPositionMatchesSnap =
+          snappedEndVertex &&
+          compareVector3Tuple(
+            snappedEndVertex.position,
+            rectangleGeometry.corners[2],
+          );
+        const startVertexId = ensureVertexInModel(
+          nextModel,
+          selectedVertexIds,
+          rectangleGeometry.corners[0],
+          {
+            edgeTarget: options.startEdgeTarget,
+            snappedVertex: snappedStartVertex,
+          },
+        );
+        const corner1VertexId = ensureVertexInModel(
+          nextModel,
+          selectedVertexIds,
+          rectangleGeometry.corners[1],
+        );
+        const endVertexId = ensureVertexInModel(
+          nextModel,
+          selectedVertexIds,
+          rectangleGeometry.corners[2],
+          {
+            edgeTarget: endPositionMatchesSnap ? options.endEdgeTarget : null,
+            snappedVertex: endPositionMatchesSnap ? snappedEndVertex : null,
+          },
+        );
+        const corner3VertexId = ensureVertexInModel(
+          nextModel,
+          selectedVertexIds,
+          rectangleGeometry.corners[3],
+        );
+
+        if (
+          new Set([
+            startVertexId,
+            corner1VertexId,
+            endVertexId,
+            corner3VertexId,
+          ]).size !== 4
+        ) {
+          return false;
+        }
+
+        let changed = false;
+        const edgeVertexIdsList: [string, string][] = [
+          [startVertexId, corner1VertexId],
+          [corner1VertexId, endVertexId],
+          [endVertexId, corner3VertexId],
+          [corner3VertexId, startVertexId],
+          [startVertexId, endVertexId],
+        ];
+
+        for (const edgeVertexIds of edgeVertexIdsList) {
+          changed = ensureEdgeInModel(nextModel, edgeVertexIds) || changed;
+        }
+
+        changed =
+          ensureFaceInModel(nextModel, [
+            startVertexId,
+            corner1VertexId,
+            endVertexId,
+          ]) || changed;
+        changed =
+          ensureFaceInModel(nextModel, [
+            startVertexId,
+            endVertexId,
+            corner3VertexId,
+          ]) || changed;
+
+        if (!changed) {
+          return false;
+        }
+
+        set({
+          ...commitSnapshot(state, {
+            currentModelId: state.currentModelId,
+            modelsById: {
+              ...state.modelsById,
+              [currentModel.id]: nextModel,
+            },
+            selectedRoot: false,
+            selectedVertexIds: [
+              startVertexId,
+              corner1VertexId,
+              endVertexId,
+              corner3VertexId,
+            ],
+          }),
+        });
+
+        return true;
+      },
+      addVertex: (position, options) => {
+        const state = get();
+        const currentModel = state.modelsById[state.currentModelId];
+
+        if (!currentModel) {
+          return null;
+        }
+
+        const nextModel = cloneModel(currentModel);
+        const splitVertex = splitEdgeAtPosition(nextModel, options?.edgeTarget);
+        if (splitVertex) {
+          set({
+            ...commitSnapshot(state, {
+              currentModelId: state.currentModelId,
+              modelsById: {
+                ...state.modelsById,
+                [currentModel.id]: nextModel,
+              },
+              selectedRoot: false,
+              selectedVertexIds: [splitVertex.id],
+            }),
+          });
+
+          return splitVertex;
+        }
+
+        const nextVertexId = createNextId("vertex", nextModel.vertexOrder);
+        const nextVertex: ModelingVertex = {
+          id: nextVertexId,
+          position: [...position],
+        };
+        nextModel.vertexOrder.push(nextVertexId);
+        nextModel.verticesById[nextVertexId] = nextVertex;
+
+        set({
+          ...commitSnapshot(state, {
+            currentModelId: state.currentModelId,
+            modelsById: {
+              ...state.modelsById,
+              [currentModel.id]: nextModel,
+            },
+            selectedRoot: false,
+            selectedVertexIds: [nextVertexId],
+          }),
+        });
+
+        return nextVertex;
+      },
+      clearVertexSelection: () =>
+        set((state) =>
+          state.selectedVertexIds.length === 0 && !state.selectedRoot
+            ? state
+            : {
+                selectedRoot: false,
+                selectedVertexIds: [],
+              },
+        ),
+      connectSelectedVerticesAsEdge: () => {
+        const state = get();
+        if (state.selectedVertexIds.length !== 2) {
+          return false;
+        }
+
+        const currentModel = state.modelsById[state.currentModelId];
+        if (!currentModel) {
+          return false;
+        }
+
+        const edgeVertexIds = [
+          state.selectedVertexIds[0],
+          state.selectedVertexIds[1],
+        ] as [string, string];
+
+        if (
+          edgeVertexIds[0] === edgeVertexIds[1] ||
+          hasEdge(currentModel, edgeVertexIds)
+        ) {
+          return false;
+        }
+
+        const nextModel = cloneModel(currentModel);
+        const nextEdgeId = createNextId("edge", nextModel.edgeOrder);
+        nextModel.edgeOrder.push(nextEdgeId);
+        nextModel.edgesById[nextEdgeId] = {
+          id: nextEdgeId,
+          vertexIds: edgeVertexIds,
+        };
+
+        set({
+          ...commitSnapshot(state, {
+            currentModelId: state.currentModelId,
+            modelsById: {
+              ...state.modelsById,
+              [currentModel.id]: nextModel,
+            },
+            selectedRoot: false,
+            selectedVertexIds: [...state.selectedVertexIds],
+          }),
+        });
+
+        return true;
+      },
+      createFaceFromSelectedVertices: () => {
+        const state = get();
+        if (state.selectedVertexIds.length !== 3) {
+          return false;
+        }
+
+        const currentModel = state.modelsById[state.currentModelId];
+        if (!currentModel) {
+          return false;
+        }
+
+        const faceVertexIds = [
+          state.selectedVertexIds[0],
+          state.selectedVertexIds[1],
+          state.selectedVertexIds[2],
+        ] as [string, string, string];
+        const uniqueVertexCount = new Set(faceVertexIds).size;
+
+        if (uniqueVertexCount !== 3 || hasFace(currentModel, faceVertexIds)) {
+          return false;
+        }
+
+        const nextModel = cloneModel(currentModel);
+        const requiredEdges = [
+          [faceVertexIds[0], faceVertexIds[1]],
+          [faceVertexIds[1], faceVertexIds[2]],
+          [faceVertexIds[2], faceVertexIds[0]],
+        ] as [string, string][];
+
+        for (const edgeVertexIds of requiredEdges) {
+          if (hasEdge(nextModel, edgeVertexIds)) {
+            continue;
+          }
+
+          const nextEdgeId = createNextId("edge", nextModel.edgeOrder);
+          nextModel.edgeOrder.push(nextEdgeId);
+          nextModel.edgesById[nextEdgeId] = {
+            id: nextEdgeId,
+            vertexIds: edgeVertexIds,
+          };
+        }
+
+        const nextFaceId = `face-${nextModel.faceOrder.length + 1}`;
+        nextModel.faceOrder.push(nextFaceId);
+        nextModel.facesById[nextFaceId] = {
+          id: nextFaceId,
+          vertexIds: faceVertexIds,
+        };
+
+        set({
+          ...commitSnapshot(state, {
+            currentModelId: state.currentModelId,
+            modelsById: {
+              ...state.modelsById,
+              [currentModel.id]: nextModel,
+            },
+            selectedRoot: false,
+            selectedVertexIds: [...state.selectedVertexIds],
+          }),
+        });
+
+        return true;
+      },
+      createBoxFromDiagonal: (startPosition, endPosition, options = {}) => {
+        const state = get();
+        const currentModel = state.modelsById[state.currentModelId];
+
+        if (!currentModel) {
+          return false;
+        }
+
+        const boxGeometry = getBoxVerticesFromDiagonal(
+          startPosition,
+          endPosition,
+        );
+
+        if (!boxGeometry) {
+          return false;
+        }
+
+        const nextModel = cloneModel(currentModel);
+        const selectedVertexIds: string[] = [];
+        const snappedStartVertex = findVertexById(
+          currentModel,
+          options.startVertexId,
+        );
+        const snappedEndVertex = findVertexById(
+          currentModel,
+          options.endVertexId,
+        );
+        const startCorner = boxGeometry.corners.find((corner) =>
+          compareVector3Tuple(corner, startPosition),
+        );
+        const endCorner = boxGeometry.corners.find((corner) =>
+          compareVector3Tuple(corner, endPosition),
+        );
+        const cornerVertexIds = boxGeometry.corners.map((corner) =>
+          ensureVertexInModel(
+            nextModel,
+            selectedVertexIds,
+            corner,
+            (() => {
+              const isStartCorner =
+                startCorner !== undefined &&
+                compareVector3Tuple(corner, startCorner);
+              const isEndCorner =
+                endCorner !== undefined &&
+                compareVector3Tuple(corner, endCorner);
+
+              return {
+                edgeTarget: isStartCorner
+                  ? options.startEdgeTarget
+                  : isEndCorner
+                    ? options.endEdgeTarget
+                    : null,
+                snappedVertex: isStartCorner
+                  ? snappedStartVertex
+                  : isEndCorner
+                    ? snappedEndVertex
+                    : null,
+              };
+            })(),
+          ),
+        );
+
+        if (new Set(cornerVertexIds).size !== boxGeometry.corners.length) {
+          return false;
+        }
+
+        let changed = false;
+        const cornerIndexToVertexId = cornerVertexIds;
+        const edgeVertexIdsList: [string, string][] = [
+          [cornerIndexToVertexId[0], cornerIndexToVertexId[1]],
+          [cornerIndexToVertexId[1], cornerIndexToVertexId[2]],
+          [cornerIndexToVertexId[2], cornerIndexToVertexId[3]],
+          [cornerIndexToVertexId[3], cornerIndexToVertexId[0]],
+          [cornerIndexToVertexId[4], cornerIndexToVertexId[5]],
+          [cornerIndexToVertexId[5], cornerIndexToVertexId[6]],
+          [cornerIndexToVertexId[6], cornerIndexToVertexId[7]],
+          [cornerIndexToVertexId[7], cornerIndexToVertexId[4]],
+          [cornerIndexToVertexId[0], cornerIndexToVertexId[4]],
+          [cornerIndexToVertexId[1], cornerIndexToVertexId[5]],
+          [cornerIndexToVertexId[2], cornerIndexToVertexId[6]],
+          [cornerIndexToVertexId[3], cornerIndexToVertexId[7]],
+        ];
+
+        for (const edgeVertexIds of edgeVertexIdsList) {
+          changed = ensureEdgeInModel(nextModel, edgeVertexIds) || changed;
+        }
+
+        const faceVertexIdsList: [string, string, string][] = [
+          [
+            cornerIndexToVertexId[0],
+            cornerIndexToVertexId[1],
+            cornerIndexToVertexId[2],
+          ],
+          [
+            cornerIndexToVertexId[0],
+            cornerIndexToVertexId[2],
+            cornerIndexToVertexId[3],
+          ],
+          [
+            cornerIndexToVertexId[4],
+            cornerIndexToVertexId[6],
+            cornerIndexToVertexId[5],
+          ],
+          [
+            cornerIndexToVertexId[4],
+            cornerIndexToVertexId[7],
+            cornerIndexToVertexId[6],
+          ],
+          [
+            cornerIndexToVertexId[0],
+            cornerIndexToVertexId[5],
+            cornerIndexToVertexId[1],
+          ],
+          [
+            cornerIndexToVertexId[0],
+            cornerIndexToVertexId[4],
+            cornerIndexToVertexId[5],
+          ],
+          [
+            cornerIndexToVertexId[3],
+            cornerIndexToVertexId[2],
+            cornerIndexToVertexId[6],
+          ],
+          [
+            cornerIndexToVertexId[3],
+            cornerIndexToVertexId[6],
+            cornerIndexToVertexId[7],
+          ],
+          [
+            cornerIndexToVertexId[0],
+            cornerIndexToVertexId[3],
+            cornerIndexToVertexId[7],
+          ],
+          [
+            cornerIndexToVertexId[0],
+            cornerIndexToVertexId[7],
+            cornerIndexToVertexId[4],
+          ],
+          [
+            cornerIndexToVertexId[1],
+            cornerIndexToVertexId[5],
+            cornerIndexToVertexId[6],
+          ],
+          [
+            cornerIndexToVertexId[1],
+            cornerIndexToVertexId[6],
+            cornerIndexToVertexId[2],
+          ],
+        ];
+
+        for (const faceVertexIds of faceVertexIdsList) {
+          changed = ensureFaceInModel(nextModel, faceVertexIds) || changed;
+        }
+
+        if (!changed) {
+          return false;
+        }
+
+        set({
+          ...commitSnapshot(state, {
+            currentModelId: state.currentModelId,
+            modelsById: {
+              ...state.modelsById,
+              [currentModel.id]: nextModel,
+            },
+            selectedRoot: false,
+            selectedVertexIds,
+          }),
+        });
+
+        return true;
+      },
+      deleteSelectedVertices: () => {
+        const state = get();
+        if (state.selectedVertexIds.length === 0) {
+          return false;
+        }
+
+        const currentModel = state.modelsById[state.currentModelId];
+        if (!currentModel) {
+          return false;
+        }
+
+        const selectedVertexSet = new Set(state.selectedVertexIds);
+        const hasSelectedVertex = state.selectedVertexIds.some(
+          (vertexId) => currentModel.verticesById[vertexId],
+        );
+
+        if (!hasSelectedVertex) {
+          return false;
+        }
+
+        const nextModel = cloneModel(currentModel);
+
+        nextModel.vertexOrder = nextModel.vertexOrder.filter(
+          (vertexId) => !selectedVertexSet.has(vertexId),
+        );
+        nextModel.verticesById = Object.fromEntries(
+          Object.entries(nextModel.verticesById).filter(
+            ([vertexId]) => !selectedVertexSet.has(vertexId),
+          ),
+        );
+        nextModel.edgeOrder = nextModel.edgeOrder.filter((edgeId) => {
+          const edge = nextModel.edgesById[edgeId];
+          return !edge.vertexIds.some((vertexId) =>
+            selectedVertexSet.has(vertexId),
+          );
+        });
+        nextModel.edgesById = Object.fromEntries(
+          Object.entries(nextModel.edgesById).filter(
+            ([, edge]) =>
+              !edge.vertexIds.some((vertexId) =>
+                selectedVertexSet.has(vertexId),
+              ),
+          ),
+        );
+        nextModel.faceOrder = nextModel.faceOrder.filter((faceId) => {
+          const face = nextModel.facesById[faceId];
+          return !face.vertexIds.some((vertexId) =>
+            selectedVertexSet.has(vertexId),
+          );
+        });
+        nextModel.facesById = Object.fromEntries(
+          Object.entries(nextModel.facesById).filter(
+            ([, face]) =>
+              !face.vertexIds.some((vertexId) =>
+                selectedVertexSet.has(vertexId),
+              ),
+          ),
+        );
+
+        set({
+          ...commitSnapshot(state, {
+            currentModelId: state.currentModelId,
+            modelsById: {
+              ...state.modelsById,
+              [currentModel.id]: nextModel,
+            },
+            selectedRoot: false,
+            selectedVertexIds: [],
+          }),
+        });
+
+        return true;
+      },
+      findNearestVertex: (
+        pointerPosition,
+        maxDistance = DEFAULT_SELECTION_DISTANCE,
+      ) => {
+        const state = get();
+        const currentModel = state.modelsById[state.currentModelId];
+
+        if (!currentModel) {
+          return null;
+        }
+
+        return findNearestVertexInModel(
+          currentModel,
+          pointerPosition,
+          maxDistance,
+        );
+      },
+      commitVertexMoveDrag: () => {
+        const state = get();
+        if (!state.activeVertexMoveDrag) {
+          return false;
+        }
+
+        const currentModel = state.modelsById[state.currentModelId];
+        const baselineModel =
+          state.activeVertexMoveDrag.snapshot.modelsById[state.currentModelId];
+
+        if (!currentModel || !baselineModel) {
+          set({ activeVertexMoveDrag: null });
+          return false;
+        }
+
+        const changed = state.activeVertexMoveDrag.vertexIds.some(
+          (vertexId) => {
+            const currentVertex = currentModel.verticesById[vertexId];
+            const baselineVertex = baselineModel.verticesById[vertexId];
+
+            return (
+              currentVertex &&
+              baselineVertex &&
+              !compareVector3Tuple(
+                currentVertex.position,
+                baselineVertex.position,
+              )
+            );
+          },
+        );
+
+        if (!changed) {
+          set({ activeVertexMoveDrag: null });
+          return false;
+        }
+
+        set({
+          activeVertexMoveDrag: null,
+          ...commitSnapshot(state, {
+            currentModelId: state.currentModelId,
+            modelsById: state.modelsById,
+            selectedRoot: false,
+            selectedVertexIds: state.selectedVertexIds,
+          }),
+        });
+
+        return true;
+      },
+      redo: () =>
+        set((state) => {
+          if (state.historyIndex >= state.history.length - 1) {
+            return state;
+          }
+
+          const nextSnapshot = cloneSnapshot(
+            state.history[state.historyIndex + 1],
+          );
+          return {
+            activeVertexMoveDrag: null,
+            ...nextSnapshot,
+            history: state.history,
+            historyIndex: state.historyIndex + 1,
+          };
+        }),
+      renameCurrentModel: (name) =>
+        set((state) => {
+          const currentModel = state.modelsById[state.currentModelId];
+          const trimmedName = name.trim();
+
+          if (!currentModel || trimmedName.length === 0) {
+            return state;
+          }
+
+          const nextModel = cloneModel(currentModel);
+          if (nextModel.name === trimmedName) {
+            return state;
+          }
+
+          nextModel.name = trimmedName;
+          return {
+            modelsById: {
+              ...state.modelsById,
+              [currentModel.id]: nextModel,
+            },
+          };
+        }),
+      resetModeling: () => set(createInitialState()),
+      selectRoot: () =>
+        set((state) =>
+          state.selectedRoot && state.selectedVertexIds.length === 0
+            ? state
+            : {
+                selectedRoot: true,
+                selectedVertexIds: [],
+              },
+        ),
+      selectNearestVertex: (
+        pointerPosition,
+        appendToSelection = false,
+        maxDistance = DEFAULT_SELECTION_DISTANCE,
+      ) => {
+        const state = get();
+        const currentModel = state.modelsById[state.currentModelId];
+
+        if (!currentModel) {
+          return null;
+        }
+
+        const nearestVertex = findNearestVertexInModel(
+          currentModel,
+          pointerPosition,
+          maxDistance,
+        );
+
+        if (!nearestVertex) {
+          if (
+            !appendToSelection &&
+            (state.selectedVertexIds.length > 0 || state.selectedRoot)
+          ) {
+            set({ selectedRoot: false, selectedVertexIds: [] });
+          }
+          return null;
+        }
+
+        state.selectVertex(nearestVertex.id, appendToSelection);
+        return nearestVertex;
+      },
+      selectVertex: (vertexId, appendToSelection = false) =>
+        set((state) => {
+          const currentModel = state.modelsById[state.currentModelId];
+          if (!currentModel?.verticesById[vertexId]) {
+            return state;
+          }
+
+          if (appendToSelection) {
+            if (state.selectedVertexIds.includes(vertexId)) {
+              return state;
+            }
+
+            return {
+              selectedRoot: false,
+              selectedVertexIds: [...state.selectedVertexIds, vertexId],
+            };
+          }
+
+          if (
+            state.selectedVertexIds.length === 1 &&
+            state.selectedVertexIds[0] === vertexId
+          ) {
+            return state;
+          }
+
+          return {
+            selectedRoot: false,
+            selectedVertexIds: [vertexId],
+          };
+        }),
+      selectVertices: (vertexIds, appendToSelection = false) =>
+        set((state) => {
+          const currentModel = state.modelsById[state.currentModelId];
+          if (!currentModel) {
+            return state;
+          }
+
+          const validVertexIds = currentModel.vertexOrder.filter(
+            (vertexId) =>
+              vertexIds.includes(vertexId) &&
+              currentModel.verticesById[vertexId],
+          );
+
+          if (validVertexIds.length === 0) {
+            return appendToSelection
+              ? state
+              : { selectedRoot: false, selectedVertexIds: [] };
+          }
+
+          if (appendToSelection) {
+            const nextSelectedVertexIds = [...state.selectedVertexIds];
+
+            for (const vertexId of validVertexIds) {
+              if (!nextSelectedVertexIds.includes(vertexId)) {
+                nextSelectedVertexIds.push(vertexId);
+              }
+            }
+
+            if (
+              nextSelectedVertexIds.length === state.selectedVertexIds.length &&
+              nextSelectedVertexIds.every(
+                (vertexId, index) =>
+                  vertexId === state.selectedVertexIds[index],
+              )
+            ) {
+              return state;
+            }
+
+            return {
+              selectedRoot: false,
+              selectedVertexIds: nextSelectedVertexIds,
+            };
+          }
+
+          if (
+            validVertexIds.length === state.selectedVertexIds.length &&
+            validVertexIds.every(
+              (vertexId, index) => vertexId === state.selectedVertexIds[index],
+            )
+          ) {
+            return state;
+          }
+
+          return {
+            selectedRoot: false,
+            selectedVertexIds: validVertexIds,
+          };
+        }),
+      undo: () =>
+        set((state) => {
+          if (state.historyIndex <= 0) {
+            return state;
+          }
+
+          const nextSnapshot = cloneSnapshot(
+            state.history[state.historyIndex - 1],
+          );
+          return {
+            activeVertexMoveDrag: null,
+            ...nextSnapshot,
+            history: state.history,
+            historyIndex: state.historyIndex - 1,
+          };
+        }),
+      updateCurrentModelRootPosition: (position) =>
+        set((state) => {
+          const currentModel = state.modelsById[state.currentModelId];
+          if (
+            !currentModel ||
+            compareVector3Tuple(currentModel.rootPosition, position)
+          ) {
+            return state;
+          }
+
+          const nextModel = cloneModel(currentModel);
+          nextModel.rootPosition = [...position];
+
+          return commitSnapshot(state, {
+            currentModelId: state.currentModelId,
+            modelsById: {
+              ...state.modelsById,
+              [currentModel.id]: nextModel,
+            },
+            selectedRoot: true,
+            selectedVertexIds: [],
+          });
+        }),
+      updateCurrentModelRootRotation: (rotation) =>
+        set((state) => {
+          const currentModel = state.modelsById[state.currentModelId];
+          if (
+            !currentModel ||
+            compareVector3Tuple(currentModel.rootRotation, rotation)
+          ) {
+            return state;
+          }
+
+          const nextModel = cloneModel(currentModel);
+          nextModel.rootRotation = [...rotation];
+
+          return commitSnapshot(state, {
+            currentModelId: state.currentModelId,
+            modelsById: {
+              ...state.modelsById,
+              [currentModel.id]: nextModel,
+            },
+            selectedRoot: true,
+            selectedVertexIds: [],
+          });
+        }),
+      updateSelectedVerticesCenter: (position) =>
+        set((state) => {
+          const currentModel = state.modelsById[state.currentModelId];
+          if (!currentModel) {
+            return state;
+          }
+
+          const selectedVertices = state.selectedVertexIds
+            .map((vertexId) => currentModel.verticesById[vertexId])
+            .filter((vertex) => vertex !== undefined);
+
+          if (selectedVertices.length === 0) {
+            return state;
+          }
+
+          const currentCenter = selectedVertices.reduce<Vector3Tuple>(
+            (center, vertex) => [
+              center[0] + vertex.position[0] / selectedVertices.length,
+              center[1] + vertex.position[1] / selectedVertices.length,
+              center[2] + vertex.position[2] / selectedVertices.length,
+            ],
+            [0, 0, 0],
+          );
+
+          if (compareVector3Tuple(currentCenter, position)) {
+            return state;
+          }
+
+          const delta: Vector3Tuple = [
+            position[0] - currentCenter[0],
+            position[1] - currentCenter[1],
+            position[2] - currentCenter[2],
+          ];
+          const nextModel = cloneModel(currentModel);
+
+          for (const vertex of selectedVertices) {
+            nextModel.verticesById[vertex.id].position = [
+              vertex.position[0] + delta[0],
+              vertex.position[1] + delta[1],
+              vertex.position[2] + delta[2],
+            ];
+          }
+
+          return commitSnapshot(state, {
+            currentModelId: state.currentModelId,
+            modelsById: {
+              ...state.modelsById,
+              [currentModel.id]: nextModel,
+            },
+            selectedRoot: false,
+            selectedVertexIds: [...state.selectedVertexIds],
+          });
+        }),
+      updateVertexPosition: (vertexId, position) =>
+        set((state) => {
+          const currentModel = state.modelsById[state.currentModelId];
+          const currentVertex = currentModel?.verticesById[vertexId];
+
+          if (!currentModel || !currentVertex) {
+            return state;
+          }
+
+          if (compareVector3Tuple(currentVertex.position, position)) {
+            return state;
+          }
+
+          const nextModel = cloneModel(currentModel);
+          nextModel.verticesById[vertexId].position = [...position];
+
+          return commitSnapshot(state, {
+            currentModelId: state.currentModelId,
+            modelsById: {
+              ...state.modelsById,
+              [currentModel.id]: nextModel,
+            },
+            selectedRoot: false,
+            selectedVertexIds: [vertexId],
+          });
+        }),
+      updateVertexMoveDrag: (targetPosition) => {
+        const state = get();
+        const drag = state.activeVertexMoveDrag;
+
+        if (!drag) {
+          return false;
+        }
+
+        const baselineModel =
+          drag.snapshot.modelsById[drag.snapshot.currentModelId];
+        const currentModel = state.modelsById[state.currentModelId];
+        const anchorVertex = baselineModel?.verticesById[drag.anchorVertexId];
+
+        if (!baselineModel || !currentModel || !anchorVertex) {
+          return false;
+        }
+
+        const delta: Vector3Tuple = [
+          targetPosition[0] - anchorVertex.position[0],
+          targetPosition[1] - anchorVertex.position[1],
+          targetPosition[2] - anchorVertex.position[2],
+        ];
+        const nextModel = cloneModel(baselineModel);
+
+        for (const vertexId of drag.vertexIds) {
+          const baselineVertex = baselineModel.verticesById[vertexId];
+          const nextVertex = nextModel.verticesById[vertexId];
+
+          if (!baselineVertex || !nextVertex) {
+            continue;
+          }
+
+          nextVertex.position = [
+            baselineVertex.position[0] + delta[0],
+            baselineVertex.position[1] + delta[1],
+            baselineVertex.position[2] + delta[2],
+          ];
+        }
+
+        set({
+          modelsById: {
+            ...state.modelsById,
+            [baselineModel.id]: nextModel,
+          },
+          selectedRoot: false,
+        });
+
+        return true;
+      },
+    }),
+    {
+      merge: (persistedState, currentState) => {
+        const persisted = persistedState as Partial<PersistedModelingState>;
+        const snapshot = cloneSnapshot({
+          currentModelId:
+            persisted.currentModelId ?? currentState.currentModelId,
+          modelsById: persisted.modelsById ?? currentState.modelsById,
+          selectedRoot: persisted.selectedRoot ?? currentState.selectedRoot,
+          selectedVertexIds:
+            persisted.selectedVertexIds ?? currentState.selectedVertexIds,
+        });
+
+        return {
+          ...currentState,
+          ...snapshot,
+          activeVertexMoveDrag: null,
+          autoNameIndex: persisted.autoNameIndex ?? currentState.autoNameIndex,
+          history: [cloneSnapshot(snapshot)],
+          historyIndex: 0,
+        };
+      },
+      name: "naname-ui-modeling-store",
+      partialize: (state): PersistedModelingState => ({
+        autoNameIndex: state.autoNameIndex,
+        currentModelId: state.currentModelId,
+        modelsById: state.modelsById,
+        selectedRoot: state.selectedRoot,
+        selectedVertexIds: state.selectedVertexIds,
+      }),
+      storage: createJSONStorage(() => localStorage),
+      version: 1,
+    },
+  ),
+);

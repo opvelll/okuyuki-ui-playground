@@ -11,7 +11,39 @@ describe("modelingStore", () => {
     const currentModel = state.modelsById[state.currentModelId];
 
     expect(currentModel.name).toBe("Model 001");
+    expect(currentModel.rootPosition).toEqual([0, 0, 0]);
+    expect(currentModel.rootRotation).toEqual([0, 0, 0]);
+    expect(state.selectedRoot).toBe(true);
     expect(currentModel.vertexOrder).toHaveLength(0);
+  });
+
+  it("stores root transforms separately from vertex coordinates", () => {
+    const vertex = useModelingStore.getState().addVertex([1, 2, 3]);
+
+    useModelingStore.getState().selectRoot();
+    useModelingStore.getState().updateCurrentModelRootPosition([4, 5, 6]);
+
+    const state = useModelingStore.getState();
+    const currentModel = state.modelsById[state.currentModelId];
+
+    expect(currentModel.rootPosition).toEqual([4, 5, 6]);
+    expect(currentModel.verticesById[vertex?.id ?? "missing"].position).toEqual(
+      [1, 2, 3],
+    );
+    expect(state.selectedRoot).toBe(true);
+    expect(state.selectedVertexIds).toEqual([]);
+  });
+
+  it("persists modeling data locally", () => {
+    useModelingStore.getState().addVertex([1, 2, 3]);
+
+    const persistedValue = globalThis.localStorage.getItem(
+      "naname-ui-modeling-store",
+    );
+
+    expect(persistedValue).not.toBeNull();
+    expect(persistedValue).toContain("Model 001");
+    expect(persistedValue).toContain("vertex-1");
   });
 
   it("adds a vertex and selects it", () => {
@@ -98,6 +130,27 @@ describe("modelingStore", () => {
     expect(currentModel.verticesById[vertexB?.id ?? ""].position).toEqual([
       1, 0, 0,
     ]);
+  });
+
+  it("moves selected vertices by editing their shared center", () => {
+    const vertexA = useModelingStore.getState().addVertex([0, 0, 0]);
+    const vertexB = useModelingStore.getState().addVertex([2, 2, 2]);
+
+    useModelingStore
+      .getState()
+      .selectVertices([vertexA?.id ?? "", vertexB?.id ?? ""], false);
+    useModelingStore.getState().updateSelectedVerticesCenter([3, 4, 5]);
+
+    const state = useModelingStore.getState();
+    const currentModel = state.modelsById[state.currentModelId];
+
+    expect(currentModel.verticesById[vertexA?.id ?? ""].position).toEqual([
+      2, 3, 4,
+    ]);
+    expect(currentModel.verticesById[vertexB?.id ?? ""].position).toEqual([
+      4, 5, 6,
+    ]);
+    expect(state.selectedVertexIds).toEqual([vertexA?.id, vertexB?.id]);
   });
 
   it("creates triangle faces and the required edges from three selected vertices", () => {
