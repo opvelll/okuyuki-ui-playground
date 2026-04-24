@@ -490,6 +490,15 @@ describe("App", () => {
     expect(screen.getByLabelText(/^Grid Snap$/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/^Angle Step$/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Overlay/i)).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", { name: /Switch to Move tool/i }),
+    );
+
+    expect(screen.getByText(/Move tool: hover a vertex/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Switch to Move tool/i }),
+    ).toHaveAttribute("aria-pressed", "true");
   });
 
   it("shows only the 3D pointer global properties for pointer tools without extra controls", async () => {
@@ -508,7 +517,7 @@ describe("App", () => {
     expect(screen.queryByLabelText(/Overlay/i)).not.toBeInTheDocument();
 
     await user.click(
-      screen.getByRole("button", { name: /Switch to Vertex tool/i }),
+      screen.getByRole("button", { name: /Switch to Move tool/i }),
     );
 
     expect(screen.getAllByText("3D Pointer")).toHaveLength(1);

@@ -40,6 +40,11 @@ type ModelingSnapshot = {
 };
 
 type ModelingState = ModelingSnapshot & {
+  activeVertexMoveDrag: {
+    anchorVertexId: string;
+    snapshot: ModelingSnapshot;
+    vertexIds: string[];
+  } | null;
   autoNameIndex: number;
   createEdgeFromPositions: (
     startPosition: Vector3Tuple,
@@ -119,6 +124,12 @@ type ModelingState = ModelingSnapshot & {
     pointerPosition: Vector3Tuple,
     maxDistance?: number,
   ) => ModelingVertex | null;
+  beginVertexMoveDrag: (
+    anchorVertexId: string,
+    vertexIds?: string[],
+  ) => boolean;
+  cancelVertexMoveDrag: () => void;
+  commitVertexMoveDrag: () => boolean;
   redo: () => void;
   resetModeling: () => void;
   selectNearestVertex: (
@@ -129,6 +140,7 @@ type ModelingState = ModelingSnapshot & {
   selectVertices: (vertexIds: string[], appendToSelection?: boolean) => void;
   selectVertex: (vertexId: string, appendToSelection?: boolean) => void;
   undo: () => void;
+  updateVertexMoveDrag: (targetPosition: Vector3Tuple) => boolean;
 };
 
 const DEFAULT_MODEL_NAME_PREFIX = "Model";
@@ -224,6 +236,7 @@ function createInitialSnapshot(): ModelingSnapshot {
 function createInitialState() {
   const snapshot = createInitialSnapshot();
   return {
+    activeVertexMoveDrag: null,
     ...cloneSnapshot(snapshot),
     autoNameIndex: 1,
     history: [cloneSnapshot(snapshot)],
@@ -550,6 +563,56 @@ function commitSnapshot(
 
 export const useModelingStore = create<ModelingState>((set, get) => ({
   ...createInitialState(),
+  beginVertexMoveDrag: (anchorVertexId, vertexIds) => {
+    const state = get();
+    const currentModel = state.modelsById[state.currentModelId];
+
+    if (!currentModel?.verticesById[anchorVertexId]) {
+      return false;
+    }
+
+    const normalizedVertexIds = (
+      vertexIds?.length ? vertexIds : state.selectedVertexIds
+    ).filter((vertexId, index, list) => {
+      return (
+        currentModel.verticesById[vertexId] !== undefined &&
+        list.indexOf(vertexId) === index
+      );
+    });
+
+    if (
+      normalizedVertexIds.length === 0 ||
+      !normalizedVertexIds.includes(anchorVertexId)
+    ) {
+      return false;
+    }
+
+    set({
+      activeVertexMoveDrag: {
+        anchorVertexId,
+        snapshot: cloneSnapshot({
+          currentModelId: state.currentModelId,
+          modelsById: state.modelsById,
+          selectedVertexIds: state.selectedVertexIds,
+        }),
+        vertexIds: normalizedVertexIds,
+      },
+      selectedVertexIds: [...normalizedVertexIds],
+    });
+
+    return true;
+  },
+  cancelVertexMoveDrag: () =>
+    set((state) => {
+      if (!state.activeVertexMoveDrag) {
+        return state;
+      }
+
+      return {
+        activeVertexMoveDrag: null,
+        ...cloneSnapshot(state.activeVertexMoveDrag.snapshot),
+      };
+    }),
   createEdgeFromPositions: (
     startPosition,
     endPosition,
@@ -1145,6 +1208,48 @@ export const useModelingStore = create<ModelingState>((set, get) => ({
 
     return findNearestVertexInModel(currentModel, pointerPosition, maxDistance);
   },
+  commitVertexMoveDrag: () => {
+    const state = get();
+    if (!state.activeVertexMoveDrag) {
+      return false;
+    }
+
+    const currentModel = state.modelsById[state.currentModelId];
+    const baselineModel =
+      state.activeVertexMoveDrag.snapshot.modelsById[state.currentModelId];
+
+    if (!currentModel || !baselineModel) {
+      set({ activeVertexMoveDrag: null });
+      return false;
+    }
+
+    const changed = state.activeVertexMoveDrag.vertexIds.some((vertexId) => {
+      const currentVertex = currentModel.verticesById[vertexId];
+      const baselineVertex = baselineModel.verticesById[vertexId];
+
+      return (
+        currentVertex &&
+        baselineVertex &&
+        !compareVector3Tuple(currentVertex.position, baselineVertex.position)
+      );
+    });
+
+    if (!changed) {
+      set({ activeVertexMoveDrag: null });
+      return false;
+    }
+
+    set({
+      activeVertexMoveDrag: null,
+      ...commitSnapshot(state, {
+        currentModelId: state.currentModelId,
+        modelsById: state.modelsById,
+        selectedVertexIds: state.selectedVertexIds,
+      }),
+    });
+
+    return true;
+  },
   redo: () =>
     set((state) => {
       if (state.historyIndex >= state.history.length - 1) {
@@ -1153,6 +1258,7 @@ export const useModelingStore = create<ModelingState>((set, get) => ({
 
       const nextSnapshot = cloneSnapshot(state.history[state.historyIndex + 1]);
       return {
+        activeVertexMoveDrag: null,
         ...nextSnapshot,
         history: state.history,
         historyIndex: state.historyIndex + 1,
@@ -1275,9 +1381,58 @@ export const useModelingStore = create<ModelingState>((set, get) => ({
 
       const nextSnapshot = cloneSnapshot(state.history[state.historyIndex - 1]);
       return {
+        activeVertexMoveDrag: null,
         ...nextSnapshot,
         history: state.history,
         historyIndex: state.historyIndex - 1,
       };
     }),
+  updateVertexMoveDrag: (targetPosition) => {
+    const state = get();
+    const drag = state.activeVertexMoveDrag;
+
+    if (!drag) {
+      return false;
+    }
+
+    const baselineModel =
+      drag.snapshot.modelsById[drag.snapshot.currentModelId];
+    const currentModel = state.modelsById[state.currentModelId];
+    const anchorVertex = baselineModel?.verticesById[drag.anchorVertexId];
+
+    if (!baselineModel || !currentModel || !anchorVertex) {
+      return false;
+    }
+
+    const delta: Vector3Tuple = [
+      targetPosition[0] - anchorVertex.position[0],
+      targetPosition[1] - anchorVertex.position[1],
+      targetPosition[2] - anchorVertex.position[2],
+    ];
+    const nextModel = cloneModel(baselineModel);
+
+    for (const vertexId of drag.vertexIds) {
+      const baselineVertex = baselineModel.verticesById[vertexId];
+      const nextVertex = nextModel.verticesById[vertexId];
+
+      if (!baselineVertex || !nextVertex) {
+        continue;
+      }
+
+      nextVertex.position = [
+        baselineVertex.position[0] + delta[0],
+        baselineVertex.position[1] + delta[1],
+        baselineVertex.position[2] + delta[2],
+      ];
+    }
+
+    set({
+      modelsById: {
+        ...state.modelsById,
+        [baselineModel.id]: nextModel,
+      },
+    });
+
+    return true;
+  },
 }));

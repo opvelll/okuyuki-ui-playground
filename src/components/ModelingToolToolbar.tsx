@@ -3,6 +3,7 @@ import {
   Camera,
   CircleDashed,
   MousePointer2,
+  Move,
   PenLine,
   Plus,
   Redo2,
@@ -37,6 +38,11 @@ const selectionSubtoolIcons: Record<
 
 const pointerSubtools = [
   {
+    description: "hover and drag selected vertices",
+    label: "Move",
+    tool: "move",
+  },
+  {
     description: "place new vertex",
     label: "Vertex",
     tool: "vertex",
@@ -62,6 +68,9 @@ const pointerSubtoolIcons: Record<
   (typeof pointerSubtools)[number]["tool"],
   () => ReactNode
 > = {
+  move: () => (
+    <Move aria-hidden="true" className="h-3.5 w-3.5" strokeWidth={2} />
+  ),
   vertex: () => (
     <Plus aria-hidden="true" className="h-3.5 w-3.5" strokeWidth={2.3} />
   ),
@@ -258,6 +267,7 @@ export function ModelingToolToolbar() {
   const canUndo = historyIndex > 0;
   const selectionToolActive = modelingTool === "lasso";
   const pointerToolActive =
+    modelingTool === "move" ||
     modelingTool === "vertex" ||
     modelingTool === "line" ||
     modelingTool === "rectangle" ||

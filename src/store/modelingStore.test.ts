@@ -58,6 +58,48 @@ describe("modelingStore", () => {
     expect(currentModel.edgeOrder).toHaveLength(1);
   });
 
+  it("moves selected vertices together and commits a single undo step", () => {
+    const vertexA = useModelingStore.getState().addVertex([0, 0, 0]);
+    const vertexB = useModelingStore.getState().addVertex([1, 0, 0]);
+
+    useModelingStore.getState().selectVertex(vertexA?.id ?? "", false);
+    useModelingStore.getState().selectVertex(vertexB?.id ?? "", true);
+
+    expect(
+      useModelingStore
+        .getState()
+        .beginVertexMoveDrag(vertexA?.id ?? "", [
+          vertexA?.id ?? "",
+          vertexB?.id ?? "",
+        ]),
+    ).toBe(true);
+    expect(useModelingStore.getState().updateVertexMoveDrag([2, 3, 4])).toBe(
+      true,
+    );
+    expect(useModelingStore.getState().commitVertexMoveDrag()).toBe(true);
+
+    let state = useModelingStore.getState();
+    let currentModel = state.modelsById[state.currentModelId];
+    expect(currentModel.verticesById[vertexA?.id ?? ""].position).toEqual([
+      2, 3, 4,
+    ]);
+    expect(currentModel.verticesById[vertexB?.id ?? ""].position).toEqual([
+      3, 3, 4,
+    ]);
+    expect(state.historyIndex).toBe(3);
+
+    useModelingStore.getState().undo();
+
+    state = useModelingStore.getState();
+    currentModel = state.modelsById[state.currentModelId];
+    expect(currentModel.verticesById[vertexA?.id ?? ""].position).toEqual([
+      0, 0, 0,
+    ]);
+    expect(currentModel.verticesById[vertexB?.id ?? ""].position).toEqual([
+      1, 0, 0,
+    ]);
+  });
+
   it("creates triangle faces and the required edges from three selected vertices", () => {
     const vertexA = useModelingStore.getState().addVertex([0, 0, 0]);
     const vertexB = useModelingStore.getState().addVertex([1, 0, 0]);

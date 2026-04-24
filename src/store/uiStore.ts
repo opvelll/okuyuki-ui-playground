@@ -7,6 +7,7 @@ export type InteractionMode = "move" | "rotate";
 export type AppScreen = "prototype" | "modeling";
 export type ModelingTool =
   | "lasso"
+  | "move"
   | "vertex"
   | "line"
   | "rectangle"

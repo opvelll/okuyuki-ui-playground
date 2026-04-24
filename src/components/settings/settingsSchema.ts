@@ -91,6 +91,7 @@ export const rigidBodyOptions = [
 
 export const modelingToolOptions = [
   { label: "lasso", value: "lasso" },
+  { label: "move", value: "move" },
   { label: "vertex", value: "vertex" },
   { label: "line", value: "line" },
   { label: "rectangle", value: "rectangle" },

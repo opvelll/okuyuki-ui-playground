@@ -23,18 +23,26 @@ import {
 const CAMERA_DOLLY_MIN_DISTANCE = 2.4;
 const CAMERA_DOLLY_STEP = 0.55;
 const CURSOR_DEPTH_STEP = 0.45;
+const MOVE_TOOL_VERTEX_HIT_RADIUS_PX = 10;
 
 export function ModelingInputController({
   controlsRef,
 }: {
   controlsRef: RefObject<OrbitControlsImpl | null>;
 }) {
-  const currentModelId = useModelingStore((state) => state.currentModelId);
-  const modelsById = useModelingStore((state) => state.modelsById);
   const { camera, gl } = useThree();
   const addVertex = useModelingStore((state) => state.addVertex);
+  const beginVertexMoveDrag = useModelingStore(
+    (state) => state.beginVertexMoveDrag,
+  );
+  const cancelVertexMoveDrag = useModelingStore(
+    (state) => state.cancelVertexMoveDrag,
+  );
   const clearVertexSelection = useModelingStore(
     (state) => state.clearVertexSelection,
+  );
+  const commitVertexMoveDrag = useModelingStore(
+    (state) => state.commitVertexMoveDrag,
   );
   const createEdgeFromPositions = useModelingStore(
     (state) => state.createEdgeFromPositions,
@@ -46,6 +54,9 @@ export function ModelingInputController({
     (state) => state.createBoxFromDiagonal,
   );
   const selectVertices = useModelingStore((state) => state.selectVertices);
+  const updateVertexMoveDrag = useModelingStore(
+    (state) => state.updateVertexMoveDrag,
+  );
   const modelingPointerAxisSnapEnabled = useUiStore(
     (state) => state.modelingPointerAxisSnapEnabled,
   );
@@ -123,27 +134,6 @@ export function ModelingInputController({
     const element = gl.domElement;
     const raycaster = new Raycaster();
     const ndc = new Vector2(0, 0);
-    const activeModel = modelsById[currentModelId];
-    const activeVertices = activeModel
-      ? activeModel.vertexOrder.map(
-          (vertexId) => activeModel.verticesById[vertexId],
-        )
-      : [];
-    const activeVertexPositions = activeVertices.map(
-      (vertex) => vertex.position,
-    );
-    const activeEdgeTargets = activeModel
-      ? activeModel.edgeOrder.map((edgeId) => {
-          const edge = activeModel.edgesById[edgeId];
-
-          return {
-            edgeId,
-            end: activeModel.verticesById[edge.vertexIds[1]].position,
-            start: activeModel.verticesById[edge.vertexIds[0]].position,
-            vertexIds: [...edge.vertexIds] as [string, string],
-          };
-        })
-      : [];
     let hasPointer = false;
     let cameraDragButton: number | null = null;
     let clickCandidate: {
@@ -161,6 +151,40 @@ export function ModelingInputController({
     let lineDragStartVertexId: string | null = null;
     let lineDragStartSnapped = false;
     let lassoPoints: Array<[number, number]> = [];
+    let moveDragActive = false;
+
+    const getActiveModel = () => {
+      const modelingState = useModelingStore.getState();
+      return modelingState.modelsById[modelingState.currentModelId];
+    };
+
+    const getActiveVertices = () => {
+      const activeModel = getActiveModel();
+      return activeModel
+        ? activeModel.vertexOrder.map(
+            (vertexId) => activeModel.verticesById[vertexId],
+          )
+        : [];
+    };
+
+    const getActiveVertexPositions = () =>
+      getActiveVertices().map((vertex) => vertex.position);
+
+    const getActiveEdgeTargets = () => {
+      const activeModel = getActiveModel();
+      return activeModel
+        ? activeModel.edgeOrder.map((edgeId) => {
+            const edge = activeModel.edgesById[edgeId];
+
+            return {
+              edgeId,
+              end: activeModel.verticesById[edge.vertexIds[1]].position,
+              start: activeModel.verticesById[edge.vertexIds[0]].position,
+              vertexIds: [...edge.vertexIds] as [string, string],
+            };
+          })
+        : [];
+    };
 
     const getRectangleDragPreview = (
       currentPosition: [number, number, number],
@@ -184,13 +208,14 @@ export function ModelingInputController({
       }
 
       return (
-        activeVertices.find((vertex) =>
+        getActiveVertices().find((vertex) =>
           compareVector3Tuple(vertex.position, position),
         )?.id ?? null
       );
     };
 
     const getLineDragAxisSnapPositions = () => {
+      const activeVertexPositions = getActiveVertexPositions();
       if (!lineDragStartPosition) {
         return activeVertexPositions;
       }
@@ -204,6 +229,58 @@ export function ModelingInputController({
       return startAlreadyPresent
         ? activeVertexPositions
         : [...activeVertexPositions, lineDragStartSnapPosition];
+    };
+
+    const findHoveredVertexAtScreenPoint = (
+      event: PointerEvent | WheelEvent,
+    ) => {
+      const rect = element.getBoundingClientRect();
+      let nearestMatch: {
+        id: string;
+        position: [number, number, number];
+        projectedZ: number;
+        screenDistance: number;
+      } | null = null;
+
+      for (const vertex of getActiveVertices()) {
+        const projectedVertex = projectVertexToScreenPoint(
+          vertex.position,
+          camera,
+          {
+            height: rect.height,
+            width: rect.width,
+          },
+        );
+
+        if (!projectedVertex) {
+          continue;
+        }
+
+        const screenDistance = Math.hypot(
+          projectedVertex.point[0] - (event.clientX - rect.left),
+          projectedVertex.point[1] - (event.clientY - rect.top),
+        );
+
+        if (screenDistance > MOVE_TOOL_VERTEX_HIT_RADIUS_PX) {
+          continue;
+        }
+
+        if (
+          nearestMatch === null ||
+          screenDistance < nearestMatch.screenDistance ||
+          (Math.abs(screenDistance - nearestMatch.screenDistance) < 0.001 &&
+            projectedVertex.projectedZ < nearestMatch.projectedZ)
+        ) {
+          nearestMatch = {
+            id: vertex.id,
+            position: [...vertex.position],
+            projectedZ: projectedVertex.projectedZ,
+            screenDistance,
+          };
+        }
+      }
+
+      return nearestMatch;
     };
 
     const updatePointerPosition = ({
@@ -241,13 +318,45 @@ export function ModelingInputController({
               number,
               number,
             ]);
+      const modelingTool = useUiStore.getState().modelingTool;
+      const hoveredMoveVertex =
+        modelingTool === "move" && !moveDragActive
+          ? findHoveredVertexAtScreenPoint({
+              clientX:
+                ((ndc.x + 1) / 2) * element.getBoundingClientRect().width +
+                element.getBoundingClientRect().left,
+              clientY:
+                ((1 - ndc.y) / 2) * element.getBoundingClientRect().height +
+                element.getBoundingClientRect().top,
+            } as PointerEvent)
+          : null;
+
+      if (hoveredMoveVertex) {
+        const hoveredPosition = new Vector3(...hoveredMoveVertex.position);
+        const nextDepth = hoveredPosition
+          .sub(raycaster.ray.origin)
+          .dot(raycaster.ray.direction);
+
+        if (Number.isFinite(nextDepth)) {
+          setModelingPointerDepth(nextDepth);
+        }
+
+        setModelingPointerPosition(hoveredMoveVertex.position);
+        setModelingPointerSnappedAxes([false, false, false]);
+        setModelingPointerSnappedAxisTargets([null, null, null]);
+        setModelingPointerSnappedEdgeTarget(null);
+        setModelingPointerSnappedVertexTarget(hoveredMoveVertex.position);
+        return;
+      }
+
+      const activeVertexPositions = getActiveVertexPositions();
       const snapResult = getModelingPointerSnapResult(
         pointerPosition,
         activeVertexPositions,
         {
           axisSnapPositions:
             lineDragStartPosition &&
-            useUiStore.getState().modelingTool === "line" &&
+            modelingTool === "line" &&
             clickCandidate?.button === 0
               ? getLineDragAxisSnapPositions()
               : undefined,
@@ -255,7 +364,7 @@ export function ModelingInputController({
           axisEnabled: modelingPointerAxisSnapEnabled,
           edgeDistance: modelingPointerEdgeSnapDistance,
           edgeEnabled: modelingPointerEdgeSnapEnabled,
-          edgeSnapTargets: activeEdgeTargets,
+          edgeSnapTargets: getActiveEdgeTargets(),
           gridEnabled: modelingPointerGridSnapEnabled,
           gridStep: effectiveGridStep,
           vertexDistance: modelingPointerVertexSnapDistance,
@@ -314,6 +423,9 @@ export function ModelingInputController({
           phase: "dragging",
           points: lassoPoints,
         });
+      } else if (clickCandidate?.moved && modelingTool === "move") {
+        moveDragActive = true;
+        updateVertexMoveDrag([...modelingPointer.position]);
       } else if (clickCandidate?.moved && lineDragStartPosition) {
         if (modelingTool === "line") {
           const planeNormal = new Vector3();
@@ -394,8 +506,10 @@ export function ModelingInputController({
       lineDragStartVertexId = null;
       lineDragStartSnapped = false;
       lassoPoints = [];
+      moveDragActive = false;
       clearModelingLassoSelection();
       clearModelingLinePreview();
+      cancelVertexMoveDrag();
       setModelingPointerHovered(false);
       setModelingPointerSnappedAxes([false, false, false]);
       setModelingPointerSnappedAxisTargets([null, null, null]);
@@ -404,6 +518,7 @@ export function ModelingInputController({
     };
 
     const handlePointerDown = (event: PointerEvent) => {
+      updatePointerFromEvent(event);
       const effectiveTool = getEffectiveModelingTool(useUiStore.getState());
 
       if (event.button === 0 && effectiveTool !== "camera") {
@@ -421,6 +536,31 @@ export function ModelingInputController({
             phase: "dragging",
             points: lassoPoints,
           });
+        } else if (
+          modelingTool === "move" &&
+          modelingPointer.snappedVertexTarget !== null
+        ) {
+          const hoveredVertexId = findVertexIdByPosition(
+            modelingPointer.snappedVertexTarget,
+          );
+
+          if (hoveredVertexId) {
+            const currentSelectedVertexIds =
+              useModelingStore.getState().selectedVertexIds;
+            const nextSelectedVertexIds = currentSelectedVertexIds.includes(
+              hoveredVertexId,
+            )
+              ? [...currentSelectedVertexIds]
+              : [...currentSelectedVertexIds, hoveredVertexId];
+
+            if (!currentSelectedVertexIds.includes(hoveredVertexId)) {
+              useModelingStore.getState().selectVertex(hoveredVertexId, true);
+            }
+
+            beginVertexMoveDrag(hoveredVertexId, nextSelectedVertexIds);
+          }
+        } else if (modelingTool === "move") {
+          clearVertexSelection();
         } else if (
           modelingTool === "line" ||
           modelingTool === "rectangle" ||
@@ -444,8 +584,6 @@ export function ModelingInputController({
         cameraDragButton = event.button;
         setModelingCameraDragging(true);
       }
-
-      updatePointerFromEvent(event);
     };
 
     const handlePointerUp = (event: PointerEvent) => {
@@ -468,7 +606,7 @@ export function ModelingInputController({
               getCanvasPoint(event),
             );
             const rect = element.getBoundingClientRect();
-            const selectedVertexIds = activeVertices.flatMap((vertex) => {
+            const selectedVertexIds = getActiveVertices().flatMap((vertex) => {
               const projectedVertex = projectVertexToScreenPoint(
                 vertex.position,
                 camera,
@@ -566,6 +704,12 @@ export function ModelingInputController({
               },
             );
           }
+        } else if (modelingTool === "move") {
+          if (clickCandidate.moved) {
+            commitVertexMoveDrag();
+          } else {
+            cancelVertexMoveDrag();
+          }
         } else if (!clickCandidate.moved && modelingTool === "vertex") {
           addVertex([...modelingPointer.position], {
             edgeTarget: modelingPointer.snappedEdgeTarget,
@@ -579,6 +723,7 @@ export function ModelingInputController({
       lineDragStartVertexId = null;
       lineDragStartSnapped = false;
       lassoPoints = [];
+      moveDragActive = false;
       clearModelingLinePreview();
     };
 
@@ -691,6 +836,7 @@ export function ModelingInputController({
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
       setModelingCameraDragging(false);
+      cancelVertexMoveDrag();
       clearModelingLinePreview();
       clearModelingLassoSelection();
       setModelingPointerHovered(false);
@@ -702,14 +848,16 @@ export function ModelingInputController({
     };
   }, [
     addVertex,
+    beginVertexMoveDrag,
     camera,
+    cancelVertexMoveDrag,
     clearVertexSelection,
     clearModelingLinePreview,
+    commitVertexMoveDrag,
     controlsRef,
     createBoxFromDiagonal,
     createEdgeFromPositions,
     createRectangleFromDiagonal,
-    currentModelId,
     gl,
     modelingPointerAxisSnapEnabled,
     modelingPointerAxisSnapDistance,
@@ -722,7 +870,6 @@ export function ModelingInputController({
     modelingPointerVertexSnapEnabled,
     modelingLineAngleSnapStepDeg,
     modelingRectangleMode,
-    modelsById,
     selectVertices,
     setModelingCameraDragging,
     setModelingLassoSelection,
@@ -736,6 +883,7 @@ export function ModelingInputController({
     setModelingPointerSnappedEdgeTarget,
     setModelingPointerSnappedVertexTarget,
     clearModelingLassoSelection,
+    updateVertexMoveDrag,
   ]);
 
   return null;

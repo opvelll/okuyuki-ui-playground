@@ -535,11 +535,11 @@ export function ModelingSettingsSection({
         Modeling
       </h2>
       <SectionNote>
-        Modeling: select / vertex / line / rectangle / box / camera
+        Modeling: select / move / vertex / line / rectangle / box / camera
         の既定挙動を調整します。
       </SectionNote>
       <SelectField
-        hint="左上 toolbar の既定サブツール。select / vertex / line / rectangle / box 中は Space で一時的に camera に切り替わります。"
+        hint="左上 toolbar の既定サブツール。select / move / vertex / line / rectangle / box 中は Space で一時的に camera に切り替わります。"
         id="modeling-default-tool"
         label="Default Tool / 既定ツール"
         onChange={(value) => {
