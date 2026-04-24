@@ -158,33 +158,51 @@ export function ModelingInputController({
       return modelingState.modelsById[modelingState.currentModelId];
     };
 
-    const getActiveVertices = () => {
+    const getActiveVertices = (excludedVertexIds = new Set<string>()) => {
       const activeModel = getActiveModel();
       return activeModel
-        ? activeModel.vertexOrder.map(
-            (vertexId) => activeModel.verticesById[vertexId],
-          )
+        ? activeModel.vertexOrder
+            .filter((vertexId) => !excludedVertexIds.has(vertexId))
+            .map((vertexId) => activeModel.verticesById[vertexId])
         : [];
     };
 
-    const getActiveVertexPositions = () =>
-      getActiveVertices().map((vertex) => vertex.position);
+    const getActiveVertexPositions = (excludedVertexIds = new Set<string>()) =>
+      getActiveVertices(excludedVertexIds).map((vertex) => vertex.position);
 
-    const getActiveEdgeTargets = () => {
+    const getActiveEdgeTargets = (excludedVertexIds = new Set<string>()) => {
       const activeModel = getActiveModel();
       return activeModel
-        ? activeModel.edgeOrder.map((edgeId) => {
+        ? activeModel.edgeOrder.flatMap((edgeId) => {
             const edge = activeModel.edgesById[edgeId];
 
-            return {
-              edgeId,
-              end: activeModel.verticesById[edge.vertexIds[1]].position,
-              start: activeModel.verticesById[edge.vertexIds[0]].position,
-              vertexIds: [...edge.vertexIds] as [string, string],
-            };
+            if (
+              edge.vertexIds.some((vertexId) => excludedVertexIds.has(vertexId))
+            ) {
+              return [];
+            }
+
+            return [
+              {
+                edgeId,
+                end: activeModel.verticesById[edge.vertexIds[1]].position,
+                start: activeModel.verticesById[edge.vertexIds[0]].position,
+                vertexIds: [...edge.vertexIds] as [string, string],
+              },
+            ];
           })
         : [];
     };
+
+    const getMoveDragVertexIds = () => {
+      const activeMoveDrag = useModelingStore.getState().activeVertexMoveDrag;
+      return activeMoveDrag
+        ? new Set(activeMoveDrag.vertexIds)
+        : new Set<string>();
+    };
+
+    const hasActiveMoveDrag = () =>
+      useModelingStore.getState().activeVertexMoveDrag !== null;
 
     const getRectangleDragPreview = (
       currentPosition: [number, number, number],
@@ -320,7 +338,10 @@ export function ModelingInputController({
             ]);
       const modelingTool = useUiStore.getState().modelingTool;
       const hoveredMoveVertex =
-        modelingTool === "move" && !moveDragActive
+        modelingTool === "move" &&
+        !moveDragActive &&
+        !clickCandidate?.moved &&
+        !hasActiveMoveDrag()
           ? findHoveredVertexAtScreenPoint({
               clientX:
                 ((ndc.x + 1) / 2) * element.getBoundingClientRect().width +
@@ -349,7 +370,11 @@ export function ModelingInputController({
         return;
       }
 
-      const activeVertexPositions = getActiveVertexPositions();
+      const moveDragVertexIds =
+        modelingTool === "move" && hasActiveMoveDrag()
+          ? getMoveDragVertexIds()
+          : new Set<string>();
+      const activeVertexPositions = getActiveVertexPositions(moveDragVertexIds);
       const snapResult = getModelingPointerSnapResult(
         pointerPosition,
         activeVertexPositions,
@@ -364,7 +389,7 @@ export function ModelingInputController({
           axisEnabled: modelingPointerAxisSnapEnabled,
           edgeDistance: modelingPointerEdgeSnapDistance,
           edgeEnabled: modelingPointerEdgeSnapEnabled,
-          edgeSnapTargets: getActiveEdgeTargets(),
+          edgeSnapTargets: getActiveEdgeTargets(moveDragVertexIds),
           gridEnabled: modelingPointerGridSnapEnabled,
           gridStep: effectiveGridStep,
           vertexDistance: modelingPointerVertexSnapDistance,
@@ -390,6 +415,18 @@ export function ModelingInputController({
         directionSnapMode: event.ctrlKey,
         precisionMode: event.shiftKey,
       });
+    };
+
+    const updateMoveDragFromCurrentPointer = () => {
+      const { modelingPointer, modelingTool } = useUiStore.getState();
+
+      if (modelingTool === "move" && hasActiveMoveDrag()) {
+        moveDragActive = true;
+        updateVertexMoveDrag([...modelingPointer.position]);
+        return true;
+      }
+
+      return false;
     };
 
     const getCanvasPoint = (event: PointerEvent) => {
@@ -424,8 +461,7 @@ export function ModelingInputController({
           points: lassoPoints,
         });
       } else if (clickCandidate?.moved && modelingTool === "move") {
-        moveDragActive = true;
-        updateVertexMoveDrag([...modelingPointer.position]);
+        updateMoveDragFromCurrentPointer();
       } else if (clickCandidate?.moved && lineDragStartPosition) {
         if (modelingTool === "line") {
           const planeNormal = new Vector3();
@@ -764,12 +800,26 @@ export function ModelingInputController({
         (event.shiftKey ? modelingPointerDepthPrecisionScale : 1);
       const nextDepth =
         useUiStore.getState().modelingPointer.depth + direction * depthStep;
+      if (
+        useUiStore.getState().modelingTool === "move" &&
+        hasActiveMoveDrag()
+      ) {
+        clickCandidate = clickCandidate
+          ? { ...clickCandidate, moved: true }
+          : {
+              button: 0,
+              moved: true,
+              x: event.clientX,
+              y: event.clientY,
+            };
+      }
       setModelingPointerDepth(nextDepth);
       updatePointerPosition({
         depth: nextDepth,
         directionSnapMode: event.ctrlKey,
         precisionMode: event.shiftKey,
       });
+      updateMoveDragFromCurrentPointer();
     };
 
     const handleKeyDown = (event: KeyboardEvent) => {
