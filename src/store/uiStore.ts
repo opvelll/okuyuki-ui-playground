@@ -44,6 +44,7 @@ export type ModelingRectangleMode =
   | "upright-x-fixed"
   | "upright-z-fixed"
   | "upright-left-square";
+export type ModelingBelowFloorDisplay = "visible" | "hidden" | "faded";
 export type ModelingPointerAxisBelowFloorDisplay = "hidden" | "faded";
 export type AxisMagnetTarget = {
   axis: "x" | "y" | "z";
@@ -122,6 +123,8 @@ type PersistedUiState = {
   modelingPointerVertexSnapDistance: number;
   modelingPointerVertexSnapEnabled: boolean;
   modelingLineOverlayDisplayMode: MoveOverlayDisplayMode;
+  modelingLineOverlayBelowFloorDisplay: ModelingBelowFloorDisplay;
+  modelingLineOverlayRadiusMultiplier: number;
   modelingLineAngleSnapStepDeg: number;
   modelingRectangleMode: ModelingRectangleMode;
   modelingPointerVerticalAxisFloorY: number;
@@ -202,6 +205,10 @@ export type UiState = PersistedUiState & {
   setModelingPointerVertexSnapDistance: (value: number) => void;
   setModelingPointerVertexSnapEnabled: (value: boolean) => void;
   setModelingLineOverlayDisplayMode: (value: MoveOverlayDisplayMode) => void;
+  setModelingLineOverlayBelowFloorDisplay: (
+    value: ModelingBelowFloorDisplay,
+  ) => void;
+  setModelingLineOverlayRadiusMultiplier: (value: number) => void;
   setModelingLineAngleSnapStepDeg: (value: number) => void;
   setModelingRectangleMode: (value: ModelingRectangleMode) => void;
   setModelingPointerVerticalAxisFloorY: (value: number) => void;
@@ -338,6 +345,8 @@ export const createDefaultPersistedUiState = (): PersistedUiState => ({
   modelingPointerVertexSnapDistance: 0.45,
   modelingPointerVertexSnapEnabled: true,
   modelingLineOverlayDisplayMode: "mode-1",
+  modelingLineOverlayBelowFloorDisplay: "faded",
+  modelingLineOverlayRadiusMultiplier: 1,
   modelingLineAngleSnapStepDeg: 45,
   modelingRectangleMode: "upright-up-fixed",
   modelingPointerVerticalAxisFloorY: 0,
@@ -404,6 +413,8 @@ const createInitialUiState = (): Omit<
   | "setModelingPointerVertexSnapDistance"
   | "setModelingPointerVertexSnapEnabled"
   | "setModelingLineOverlayDisplayMode"
+  | "setModelingLineOverlayBelowFloorDisplay"
+  | "setModelingLineOverlayRadiusMultiplier"
   | "setModelingLineAngleSnapStepDeg"
   | "setModelingRectangleMode"
   | "setModelingPointerVerticalAxisFloorY"
@@ -574,6 +585,17 @@ export const useUiStore = create<UiState>()(
       setModelingLineOverlayDisplayMode: (value) =>
         set({
           modelingLineOverlayDisplayMode: value,
+        }),
+      setModelingLineOverlayBelowFloorDisplay: (value) =>
+        set({
+          modelingLineOverlayBelowFloorDisplay: value,
+        }),
+      setModelingLineOverlayRadiusMultiplier: (value) =>
+        set({
+          modelingLineOverlayRadiusMultiplier: Math.max(
+            0.5,
+            Math.min(value, 2),
+          ),
         }),
       setModelingLineAngleSnapStepDeg: (value) =>
         set({
@@ -806,6 +828,10 @@ export const useUiStore = create<UiState>()(
         modelingPointerVertexSnapEnabled:
           state.modelingPointerVertexSnapEnabled,
         modelingLineOverlayDisplayMode: state.modelingLineOverlayDisplayMode,
+        modelingLineOverlayBelowFloorDisplay:
+          state.modelingLineOverlayBelowFloorDisplay,
+        modelingLineOverlayRadiusMultiplier:
+          state.modelingLineOverlayRadiusMultiplier,
         modelingLineAngleSnapStepDeg: state.modelingLineAngleSnapStepDeg,
         modelingRectangleMode: state.modelingRectangleMode,
         modelingPointerVerticalAxisFloorY:

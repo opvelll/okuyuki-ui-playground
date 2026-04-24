@@ -1,4 +1,5 @@
 import type {
+  ModelingBelowFloorDisplay,
   ModelingPointerAxisBelowFloorDisplay,
   ModelingTool,
   MoveAlwaysSnapMode,
@@ -104,6 +105,12 @@ export const modelingPointerAxisBelowFloorDisplayOptions = [
   { label: "fade", value: "faded" },
 ] as const satisfies readonly Option<ModelingPointerAxisBelowFloorDisplay>[];
 
+export const modelingBelowFloorDisplayOptions = [
+  { label: "show", value: "visible" },
+  { label: "hide", value: "hidden" },
+  { label: "fade", value: "faded" },
+] as const satisfies readonly Option<ModelingBelowFloorDisplay>[];
+
 export const isOverlayDisplayMode = createOptionChecker(overlayDisplayOptions);
 export const isDepthDirection = createOptionChecker(depthDirectionOptions);
 export const isAxisMagnetReferenceFrame = createOptionChecker(
@@ -120,6 +127,9 @@ export const isRigidBodyType = createOptionChecker(rigidBodyOptions);
 export const isModelingTool = createOptionChecker(modelingToolOptions);
 export const isModelingPointerAxisBelowFloorDisplay = createOptionChecker(
   modelingPointerAxisBelowFloorDisplayOptions,
+);
+export const isModelingBelowFloorDisplay = createOptionChecker(
+  modelingBelowFloorDisplayOptions,
 );
 
 export function parseNumberInput(value: string) {

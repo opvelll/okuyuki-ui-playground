@@ -18,6 +18,7 @@ import {
   isAxisMagnetReferenceFrame,
   isDepthDirection,
   isGridSnapPattern,
+  isModelingBelowFloorDisplay,
   isModelingPointerAxisBelowFloorDisplay,
   isModelingTool,
   isOverlayDisplayMode,
@@ -25,6 +26,7 @@ import {
   isRotateDirection,
   isRotateDragReleaseBehavior,
   isRotateTwistAxis,
+  modelingBelowFloorDisplayOptions,
   modelingPointerAxisBelowFloorDisplayOptions,
   modelingToolOptions,
   overlayDisplayOptions,
@@ -643,6 +645,30 @@ export function ModelingSettingsSection({
         }}
         options={overlayDisplayOptions}
         value={settings.modelingLineOverlayDisplayMode}
+      />
+      <SelectField
+        hint="Vertical Axis Floor Y より下に入ったドラッグガイド円の見え方。show は従来どおり、hide は非表示、fade は薄く残します。"
+        id="modeling-line-overlay-below-floor-display"
+        label="Line Overlay Below Floor / 下限下のガイド円表示"
+        onChange={(value) => {
+          if (isModelingBelowFloorDisplay(value)) {
+            settings.setModelingLineOverlayBelowFloorDisplay(value);
+          }
+        }}
+        options={modelingBelowFloorDisplayOptions}
+        value={settings.modelingLineOverlayBelowFloorDisplay}
+      />
+      <NumberField
+        hint="Line Overlay Radius Multiplier / ドラッグ開始位置から現在位置までの距離に掛ける倍率。1.0 でドラッグ位置ちょうど、1.15 で少し外側に出します。"
+        id="modeling-line-overlay-radius-multiplier"
+        label="Line Overlay Radius Multiplier / ガイド円半径倍率"
+        max="2"
+        min="0.5"
+        onChange={handleNumberChange(
+          settings.setModelingLineOverlayRadiusMultiplier,
+        )}
+        step="0.01"
+        value={settings.modelingLineOverlayRadiusMultiplier}
       />
       <ToggleField
         checked={settings.modelingPointerVisibleInCameraTool}

@@ -19,13 +19,17 @@ import {
   LineDashedMaterial,
   LineSegments,
   MOUSE,
+  Plane,
   PointsMaterial,
   Quaternion,
   Vector3,
 } from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { useModelingStore } from "../store/modelingStore";
-import type { MoveOverlayOrientationMode } from "../store/uiStore";
+import type {
+  ModelingBelowFloorDisplay,
+  MoveOverlayOrientationMode,
+} from "../store/uiStore";
 import { getEffectiveModelingTool, useUiStore } from "../store/uiStore";
 import { ModelingInputController } from "./scene/ModelingInputController";
 import { calculateDragPlaneOverlayGeometry } from "./scene/dragPlaneOverlay";
@@ -53,6 +57,10 @@ const MODELING_LINE_PREVIEW_COLORS = {
   "screen-horizontal": "#facc15",
   "screen-vertical": "#fb923c",
 } as const;
+const MODELING_LINE_OVERLAY_FILL_OPACITY = 0.18;
+const MODELING_LINE_OVERLAY_BELOW_FLOOR_OPACITY = 0.045;
+const MODELING_LINE_OVERLAY_GHOST_OPACITY = 0.13;
+const MODELING_LINE_OVERLAY_RING_SEGMENTS = 96;
 const AXIS_KEYS = ["x", "y", "z"] as const;
 const HORIZONTAL_AXIS_FADED_OPACITY = 0.18;
 const HORIZONTAL_AXIS_DASH_FADED_OPACITY = 0.12;
@@ -62,6 +70,49 @@ export function shouldShowModelingPointerHorizontalAxes(
   verticalAxisFloorY: number,
 ) {
   return pointerY >= verticalAxisFloorY;
+}
+
+export function getModelingLineOverlayOpacity(
+  centerY: number,
+  floorY: number,
+  belowFloorDisplay: ModelingBelowFloorDisplay,
+) {
+  if (centerY >= floorY || belowFloorDisplay === "visible") {
+    return MODELING_LINE_OVERLAY_FILL_OPACITY;
+  }
+
+  return belowFloorDisplay === "faded"
+    ? MODELING_LINE_OVERLAY_BELOW_FLOOR_OPACITY
+    : 0;
+}
+
+export function getModelingLineOverlayBelowFloorOpacity(
+  belowFloorDisplay: ModelingBelowFloorDisplay,
+) {
+  if (belowFloorDisplay === "hidden") {
+    return 0;
+  }
+
+  return belowFloorDisplay === "faded"
+    ? MODELING_LINE_OVERLAY_BELOW_FLOOR_OPACITY
+    : MODELING_LINE_OVERLAY_FILL_OPACITY;
+}
+
+function createUnitCircleLinePoints(segments: number) {
+  return Array.from({ length: segments + 1 }, (_, index) => {
+    const angle = (index / segments) * Math.PI * 2;
+    return new Vector3(Math.cos(angle), Math.sin(angle), 0);
+  });
+}
+
+function createUnitCircleSegmentPositions(segments: number) {
+  const points = createUnitCircleLinePoints(segments);
+  return new Float32Array(
+    points.slice(0, -1).flatMap((point, index) => {
+      const nextPoint = points[index + 1];
+      return [point.x, point.y, point.z, nextPoint.x, nextPoint.y, nextPoint.z];
+    }),
+  );
 }
 
 function renderModelingAxisSnapGuides(
@@ -503,9 +554,51 @@ function ModelingLassoOverlay() {
   );
 }
 
+function ModelingLineOverlayRing({
+  clippingPlanes,
+  color,
+  depthTest,
+  opacity,
+  renderOrder,
+  ringSegmentPositions,
+}: {
+  clippingPlanes: Plane[];
+  color: string;
+  depthTest: boolean;
+  opacity: number;
+  renderOrder: number;
+  ringSegmentPositions: Float32Array;
+}) {
+  return (
+    <lineSegments renderOrder={renderOrder}>
+      <bufferGeometry>
+        <bufferAttribute
+          args={[ringSegmentPositions, 3]}
+          attach="attributes-position"
+          count={ringSegmentPositions.length / 3}
+        />
+      </bufferGeometry>
+      <lineBasicMaterial
+        clippingPlanes={clippingPlanes}
+        color={color}
+        depthTest={depthTest}
+        depthWrite={false}
+        opacity={opacity}
+        transparent
+      />
+    </lineSegments>
+  );
+}
+
 function ModelingLinePreviewOverlay() {
   const modelingLineOverlayDisplayMode = useUiStore(
     (state) => state.modelingLineOverlayDisplayMode,
+  );
+  const modelingLineOverlayBelowFloorDisplay = useUiStore(
+    (state) => state.modelingLineOverlayBelowFloorDisplay,
+  );
+  const modelingLineOverlayRadiusMultiplier = useUiStore(
+    (state) => state.modelingLineOverlayRadiusMultiplier,
   );
   const modelingLinePreview = useUiStore((state) => state.modelingLinePreview);
   const modelingPointerPosition = useUiStore(
@@ -516,6 +609,21 @@ function ModelingLinePreviewOverlay() {
   );
   const modelingPointerSnappedAxisTargets = useUiStore(
     (state) => state.modelingPointer.snappedAxisTargets,
+  );
+  const verticalAxisFloorY = useUiStore(
+    (state) => state.modelingPointerVerticalAxisFloorY,
+  );
+  const ringSegmentPositions = useMemo(
+    () => createUnitCircleSegmentPositions(MODELING_LINE_OVERLAY_RING_SEGMENTS),
+    [],
+  );
+  const aboveFloorClippingPlanes = useMemo(
+    () => [new Plane(new Vector3(0, 1, 0), -verticalAxisFloorY)],
+    [verticalAxisFloorY],
+  );
+  const belowFloorClippingPlanes = useMemo(
+    () => [new Plane(new Vector3(0, -1, 0), verticalAxisFloorY)],
+    [verticalAxisFloorY],
   );
   const overlayModes = useMemo(() => {
     switch (modelingLineOverlayDisplayMode) {
@@ -550,7 +658,8 @@ function ModelingLinePreviewOverlay() {
           startPoint: new Vector3(...modelingLinePreview.startPosition),
         },
         {
-          radiusMultiplier: 1.15,
+          minRadius: 0,
+          radiusMultiplier: modelingLineOverlayRadiusMultiplier,
         },
       );
 
@@ -563,11 +672,20 @@ function ModelingLinePreviewOverlay() {
       return {
         color: MODELING_LINE_PREVIEW_COLORS[orientationMode],
         ...geometry,
+        belowFloorOpacity: getModelingLineOverlayBelowFloorOpacity(
+          modelingLineOverlayBelowFloorDisplay,
+        ),
         orientationMode,
+        opacity: MODELING_LINE_OVERLAY_FILL_OPACITY,
         planeQuaternion,
       };
     });
-  }, [modelingLinePreview, overlayModes]);
+  }, [
+    modelingLineOverlayBelowFloorDisplay,
+    modelingLineOverlayRadiusMultiplier,
+    modelingLinePreview,
+    overlayModes,
+  ]);
 
   if (!modelingLinePreview.active || overlayGeometries.length === 0) {
     return null;
@@ -604,21 +722,100 @@ function ModelingLinePreviewOverlay() {
   return (
     <group raycast={() => null}>
       {overlayGeometries.map((geometry) => (
-        <mesh
+        <group
           key={geometry.orientationMode}
           position={geometry.center}
           quaternion={geometry.planeQuaternion}
+          scale={[geometry.radius, geometry.radius, 1]}
         >
-          <circleGeometry args={[geometry.radius, 96]} />
-          <meshBasicMaterial
-            color={geometry.color}
-            depthTest={true}
-            depthWrite={false}
-            opacity={0.16}
-            side={DoubleSide}
-            transparent
-          />
-        </mesh>
+          {geometry.opacity > 0 ? (
+            <>
+              <mesh renderOrder={5}>
+                <circleGeometry
+                  args={[1, MODELING_LINE_OVERLAY_RING_SEGMENTS]}
+                />
+                <meshBasicMaterial
+                  clippingPlanes={
+                    modelingLineOverlayBelowFloorDisplay === "visible"
+                      ? []
+                      : aboveFloorClippingPlanes
+                  }
+                  color={geometry.color}
+                  depthTest={true}
+                  depthWrite={false}
+                  opacity={geometry.opacity}
+                  side={DoubleSide}
+                  transparent
+                />
+              </mesh>
+              <ModelingLineOverlayRing
+                clippingPlanes={
+                  modelingLineOverlayBelowFloorDisplay === "visible"
+                    ? []
+                    : aboveFloorClippingPlanes
+                }
+                color={geometry.color}
+                depthTest={true}
+                opacity={Math.min(0.96, geometry.opacity * 5.1)}
+                renderOrder={11}
+                ringSegmentPositions={ringSegmentPositions}
+              />
+              <ModelingLineOverlayRing
+                clippingPlanes={
+                  modelingLineOverlayBelowFloorDisplay === "visible"
+                    ? []
+                    : aboveFloorClippingPlanes
+                }
+                color={geometry.color}
+                depthTest={false}
+                opacity={Math.min(
+                  MODELING_LINE_OVERLAY_GHOST_OPACITY,
+                  geometry.opacity * 2.2,
+                )}
+                renderOrder={2}
+                ringSegmentPositions={ringSegmentPositions}
+              />
+              {geometry.belowFloorOpacity > 0 &&
+              modelingLineOverlayBelowFloorDisplay !== "visible" ? (
+                <>
+                  <mesh renderOrder={5}>
+                    <circleGeometry
+                      args={[1, MODELING_LINE_OVERLAY_RING_SEGMENTS]}
+                    />
+                    <meshBasicMaterial
+                      clippingPlanes={belowFloorClippingPlanes}
+                      color={geometry.color}
+                      depthTest={true}
+                      depthWrite={false}
+                      opacity={geometry.belowFloorOpacity}
+                      side={DoubleSide}
+                      transparent
+                    />
+                  </mesh>
+                  <ModelingLineOverlayRing
+                    clippingPlanes={belowFloorClippingPlanes}
+                    color={geometry.color}
+                    depthTest={true}
+                    opacity={Math.min(0.3, geometry.belowFloorOpacity * 4.2)}
+                    renderOrder={11}
+                    ringSegmentPositions={ringSegmentPositions}
+                  />
+                  <ModelingLineOverlayRing
+                    clippingPlanes={belowFloorClippingPlanes}
+                    color={geometry.color}
+                    depthTest={false}
+                    opacity={Math.min(
+                      MODELING_LINE_OVERLAY_GHOST_OPACITY,
+                      geometry.belowFloorOpacity * 2.2,
+                    )}
+                    renderOrder={2}
+                    ringSegmentPositions={ringSegmentPositions}
+                  />
+                </>
+              ) : null}
+            </>
+          ) : null}
+        </group>
       ))}
       {showRectangleOutline ? (
         <Line
@@ -968,6 +1165,9 @@ export function ModelingScene() {
       <Canvas
         camera={{ fov: 42, position: [8.8, 6.4, 9.4] }}
         dpr={[1, 1.8]}
+        onCreated={({ gl }) => {
+          gl.localClippingEnabled = true;
+        }}
         shadows
       >
         <color attach="background" args={["#74808d"]} />

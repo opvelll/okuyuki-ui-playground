@@ -192,6 +192,21 @@ describe("uiStore", () => {
     );
   });
 
+  it("clamps the modeling line overlay radius multiplier", () => {
+    expect(useUiStore.getState().modelingLineOverlayRadiusMultiplier).toBe(1);
+
+    useUiStore.getState().setModelingLineOverlayRadiusMultiplier(0.1);
+    expect(useUiStore.getState().modelingLineOverlayRadiusMultiplier).toBe(0.5);
+
+    useUiStore.getState().setModelingLineOverlayRadiusMultiplier(3);
+    expect(useUiStore.getState().modelingLineOverlayRadiusMultiplier).toBe(2);
+
+    useUiStore.getState().setModelingLineOverlayRadiusMultiplier(1.15);
+    expect(useUiStore.getState().modelingLineOverlayRadiusMultiplier).toBe(
+      1.15,
+    );
+  });
+
   it("clamps the modeling pointer snap controls", () => {
     useUiStore.getState().setModelingPointerVertexSnapEnabled(false);
     expect(useUiStore.getState().modelingPointerVertexSnapEnabled).toBe(false);

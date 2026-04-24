@@ -1,6 +1,10 @@
 import { PerspectiveCamera } from "three";
 import { describe, expect, it } from "vitest";
-import { shouldShowModelingPointerHorizontalAxes } from "./ModelingScene";
+import {
+  getModelingLineOverlayBelowFloorOpacity,
+  getModelingLineOverlayOpacity,
+  shouldShowModelingPointerHorizontalAxes,
+} from "./ModelingScene";
 import {
   MODELING_POINTER_PRECISION_GRID_STEP_MIN,
   getBoxVerticesFromDiagonal,
@@ -25,6 +29,30 @@ describe("shouldShowModelingPointerHorizontalAxes", () => {
   it("keeps x and z axes visible at or above the vertical axis floor", () => {
     expect(shouldShowModelingPointerHorizontalAxes(0, 0)).toBe(true);
     expect(shouldShowModelingPointerHorizontalAxes(0.1, 0)).toBe(true);
+  });
+});
+
+describe("getModelingLineOverlayOpacity", () => {
+  it("keeps the drag guide circle visible above the floor", () => {
+    expect(getModelingLineOverlayOpacity(0.1, 0, "hidden")).toBeGreaterThan(0);
+  });
+
+  it("can hide or fade the drag guide circle below the floor", () => {
+    expect(getModelingLineOverlayOpacity(-0.1, 0, "hidden")).toBe(0);
+    expect(getModelingLineOverlayOpacity(-0.1, 0, "faded")).toBeGreaterThan(0);
+    expect(getModelingLineOverlayOpacity(-0.1, 0, "visible")).toBeGreaterThan(
+      getModelingLineOverlayOpacity(-0.1, 0, "faded"),
+    );
+  });
+});
+
+describe("getModelingLineOverlayBelowFloorOpacity", () => {
+  it("maps below-floor display modes to clipped guide-circle opacity", () => {
+    expect(getModelingLineOverlayBelowFloorOpacity("hidden")).toBe(0);
+    expect(getModelingLineOverlayBelowFloorOpacity("faded")).toBeGreaterThan(0);
+    expect(getModelingLineOverlayBelowFloorOpacity("visible")).toBeGreaterThan(
+      getModelingLineOverlayBelowFloorOpacity("faded"),
+    );
   });
 });
 

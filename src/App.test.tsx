@@ -446,6 +446,16 @@ describe("App", () => {
       screen.getByLabelText(/Line Overlay \/ lineドラッグ表示/i),
     ).toBeInTheDocument();
     expect(
+      screen.getByLabelText(
+        /Line Overlay Below Floor \/ 下限下のガイド円表示/i,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(
+        /Line Overlay Radius Multiplier \/ ガイド円半径倍率/i,
+      ),
+    ).toBeInTheDocument();
+    expect(
       screen.getByLabelText(/Pointer Panel Radius \/ 面の半径/i),
     ).toBeInTheDocument();
     expect(
