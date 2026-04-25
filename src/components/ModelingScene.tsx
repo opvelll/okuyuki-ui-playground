@@ -35,6 +35,7 @@ import { ModelingInputController } from "./scene/ModelingInputController";
 import { calculateDragPlaneOverlayGeometry } from "./scene/dragPlaneOverlay";
 import {
   type ModelingPointerDepthHint,
+  getBoxPreviewFacePositions,
   getModelingPointerDepthHint,
   modelingPointerPositionsMatch,
 } from "./scene/modelingPointerUtils";
@@ -49,6 +50,7 @@ const MODELING_LINE_PREVIEW_DEFAULT_VERTEX_COLOR = "#ffffff";
 const MODELING_LINE_PREVIEW_SNAPPED_VERTEX_COLOR = "#22c55e";
 const MODELING_LINE_PREVIEW_DEFAULT_LINE_COLOR = "#bfdbfe";
 const MODELING_LINE_PREVIEW_AXIS_SNAPPED_LINE_COLOR = "#fde047";
+const MODELING_BOX_PREVIEW_FACE_COLOR = "#93c5fd";
 const MODELING_POINTER_DEPTH_HINT_SCREEN_DISTANCE_PX = 10;
 const MODELING_POINTER_DEPTH_HINT_OFFSET_X_PX = 12;
 const MODELING_POINTER_DEPTH_HINT_OFFSET_Y_PX = -16;
@@ -649,7 +651,7 @@ function ModelingLinePreviewOverlay() {
     }
   }, [modelingLineOverlayDisplayMode]);
   const overlayGeometries = useMemo(() => {
-    if (!modelingLinePreview.active) {
+    if (!modelingLinePreview.active || modelingLinePreview.tool === "box") {
       return [];
     }
 
@@ -692,7 +694,14 @@ function ModelingLinePreviewOverlay() {
     overlayModes,
   ]);
 
-  if (!modelingLinePreview.active || overlayGeometries.length === 0) {
+  const boxPreviewFacePositions = getBoxPreviewFacePositions(
+    modelingLinePreview.polygonPoints,
+  );
+
+  if (
+    !modelingLinePreview.active ||
+    (overlayGeometries.length === 0 && boxPreviewFacePositions.length === 0)
+  ) {
     return null;
   }
 
@@ -822,6 +831,25 @@ function ModelingLinePreviewOverlay() {
           ) : null}
         </group>
       ))}
+      {boxPreviewFacePositions.length > 0 ? (
+        <mesh renderOrder={4}>
+          <bufferGeometry>
+            <bufferAttribute
+              args={[new Float32Array(boxPreviewFacePositions), 3]}
+              attach="attributes-position"
+              count={boxPreviewFacePositions.length / 3}
+            />
+          </bufferGeometry>
+          <meshBasicMaterial
+            color={MODELING_BOX_PREVIEW_FACE_COLOR}
+            depthTest={true}
+            depthWrite={false}
+            opacity={0.28}
+            side={DoubleSide}
+            transparent
+          />
+        </mesh>
+      ) : null}
       {showRectangleOutline ? (
         <Line
           color={MODELING_LINE_PREVIEW_DEFAULT_LINE_COLOR}

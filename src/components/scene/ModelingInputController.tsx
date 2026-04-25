@@ -529,7 +529,7 @@ export function ModelingInputController({
             modelingPointer.snappedVertexTarget !== null ||
             modelingPointer.snappedEdgeTarget !== null,
           planeNormal: [planeNormal.x, planeNormal.y, planeNormal.z],
-          polygonPoints: [],
+          polygonPoints: boxPreview.corners.map((corner) => [...corner]),
           startSnapped: lineDragStartSnapped,
           startPosition: lineDragStartPosition,
           tool: "box",

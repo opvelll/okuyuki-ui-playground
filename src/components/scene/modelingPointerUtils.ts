@@ -414,6 +414,31 @@ export function getBoxVerticesFromDiagonal(
   };
 }
 
+export function getBoxPreviewFacePositions(corners: Vector3Tuple[]) {
+  if (corners.length !== 8) {
+    return [];
+  }
+
+  const faceTriangles = [
+    [0, 1, 2],
+    [0, 2, 3],
+    [4, 6, 5],
+    [4, 7, 6],
+    [0, 4, 5],
+    [0, 5, 1],
+    [1, 5, 6],
+    [1, 6, 2],
+    [2, 6, 7],
+    [2, 7, 3],
+    [3, 7, 4],
+    [3, 4, 0],
+  ] as const;
+
+  return faceTriangles.flatMap((triangle) =>
+    triangle.flatMap((cornerIndex) => corners[cornerIndex]),
+  );
+}
+
 export function getModelingPointerSnapResult(
   position: Vector3Tuple,
   vertexPositions: Vector3Tuple[],

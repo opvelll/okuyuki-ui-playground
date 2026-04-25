@@ -7,6 +7,7 @@ import {
 } from "./ModelingScene";
 import {
   MODELING_POINTER_PRECISION_GRID_STEP_MIN,
+  getBoxPreviewFacePositions,
   getBoxVerticesFromDiagonal,
   getEffectiveModelingPointerGridStep,
   getLineDirectionSnapPosition,
@@ -52,6 +53,18 @@ describe("getModelingLineOverlayBelowFloorOpacity", () => {
     expect(getModelingLineOverlayBelowFloorOpacity("faded")).toBeGreaterThan(0);
     expect(getModelingLineOverlayBelowFloorOpacity("visible")).toBeGreaterThan(
       getModelingLineOverlayBelowFloorOpacity("faded"),
+    );
+  });
+});
+
+describe("getBoxPreviewFacePositions", () => {
+  it("builds six quad faces as triangle positions from box corners", () => {
+    const box = getBoxVerticesFromDiagonal([4, 6, 8], [1, 2, 3]);
+
+    expect(box).not.toBeNull();
+    expect(getBoxPreviewFacePositions(box?.corners ?? [])).toHaveLength(108);
+    expect(getBoxPreviewFacePositions(box?.corners ?? []).slice(0, 18)).toEqual(
+      [1, 2, 3, 4, 2, 3, 4, 6, 3, 1, 2, 3, 4, 6, 3, 1, 6, 3],
     );
   });
 });
