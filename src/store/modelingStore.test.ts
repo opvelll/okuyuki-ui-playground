@@ -552,6 +552,85 @@ describe("modelingStore", () => {
       [insertedVertexId, newTipVertexId],
     ]);
   });
+
+  it("creates a pen stroke as connected vertices and rewrites the last history entry", () => {
+    const params = {
+      mergeDistance: 0.2,
+      mergeVertices: false,
+      resampleSpacing: 0,
+      simplificationDistance: 0,
+      smoothingIterations: 0,
+    };
+
+    expect(
+      useModelingStore.getState().createPenStrokeFromPositions(
+        [
+          [0, 0, 0],
+          [1, 0, 0],
+          [2, 0, 0],
+        ],
+        params,
+      ),
+    ).toBe(true);
+
+    let state = useModelingStore.getState();
+    let currentModel = state.modelsById[state.currentModelId];
+    const strokeHistoryIndex = state.historyIndex;
+
+    expect(currentModel.vertexOrder).toHaveLength(3);
+    expect(currentModel.edgeOrder).toHaveLength(2);
+
+    expect(
+      useModelingStore.getState().updateLastPenStrokeFromPositions(
+        [
+          [0, 0, 0],
+          [1, 0, 0],
+          [2, 0, 0],
+        ],
+        {
+          ...params,
+          simplificationDistance: 2,
+        },
+        strokeHistoryIndex,
+      ),
+    ).toBe(true);
+
+    state = useModelingStore.getState();
+    currentModel = state.modelsById[state.currentModelId];
+
+    expect(state.historyIndex).toBe(strokeHistoryIndex);
+    expect(state.history).toHaveLength(strokeHistoryIndex + 1);
+    expect(currentModel.vertexOrder).toHaveLength(2);
+    expect(currentModel.edgeOrder).toHaveLength(1);
+  });
+
+  it("can merge pen stroke samples onto existing vertices", () => {
+    const startVertex = useModelingStore.getState().addVertex([0, 0, 0]);
+
+    expect(
+      useModelingStore.getState().createPenStrokeFromPositions(
+        [
+          [0.05, 0, 0],
+          [1, 0, 0],
+        ],
+        {
+          mergeDistance: 0.2,
+          mergeVertices: true,
+          resampleSpacing: 0,
+          simplificationDistance: 0,
+          smoothingIterations: 0,
+        },
+      ),
+    ).toBe(true);
+
+    const state = useModelingStore.getState();
+    const currentModel = state.modelsById[state.currentModelId];
+
+    expect(currentModel.vertexOrder).toHaveLength(2);
+    expect(currentModel.edgesById[currentModel.edgeOrder[0]].vertexIds[0]).toBe(
+      startVertex?.id,
+    );
+  });
 });
 
 function comparePositions(

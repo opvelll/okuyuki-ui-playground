@@ -1,5 +1,7 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
+import type { PenStrokeParams } from "../components/scene/penStrokeProcessing";
+import type { Vector3Tuple } from "../types/scene";
 
 export type MoveDepthWheelDirection = "normal" | "inverted";
 export type InteractionState = "idle" | "active" | "dragging";
@@ -10,6 +12,7 @@ export type ModelingTool =
   | "move"
   | "vertex"
   | "line"
+  | "pen"
   | "rectangle"
   | "box"
   | "camera";
@@ -88,6 +91,17 @@ export type ModelingLassoSelectionState = {
   points: Array<[number, number]>;
 };
 
+export type ModelingPenPreviewState = {
+  active: boolean;
+  points: Array<[number, number]>;
+};
+
+export type ActivePenStrokeState = {
+  historyIndex: number;
+  params: PenStrokeParams;
+  rawPoints: Vector3Tuple[];
+};
+
 export type CameraSnapshot = {
   position: [number, number, number];
   target: [number, number, number];
@@ -161,10 +175,12 @@ type PersistedUiState = {
 
 export type UiState = PersistedUiState & {
   axisMagnetTarget: AxisMagnetTarget | null;
+  activePenStroke: ActivePenStrokeState | null;
   interactionState: InteractionState;
   modelingCamera: CameraSnapshot;
   modelingLinePreview: ModelingLinePreviewState;
   modelingLassoSelection: ModelingLassoSelectionState;
+  modelingPenPreview: ModelingPenPreviewState;
   modelingPointer: ModelingPointerState;
   modelingCameraDragging: boolean;
   modelingCameraOverride: boolean;
@@ -172,8 +188,11 @@ export type UiState = PersistedUiState & {
   selectedObjectId: string | null;
   completeMoveDrag: () => void;
   clearSelection: () => void;
+  clearActivePenStroke: () => void;
   selectObject: (objectId: string) => void;
   setCurrentScreen: (screen: AppScreen) => void;
+  setActivePenStroke: (stroke: ActivePenStrokeState | null) => void;
+  setActivePenStrokeParams: (params: PenStrokeParams) => void;
   setAxisMagnetTarget: (target: AxisMagnetTarget | null) => void;
   setFloorFriction: (value: number) => void;
   setFloorColor: (value: string) => void;
@@ -267,6 +286,8 @@ export type UiState = PersistedUiState & {
   clearModelingLinePreview: () => void;
   setModelingLassoSelection: (selection: ModelingLassoSelectionState) => void;
   clearModelingLassoSelection: () => void;
+  setModelingPenPreview: (points: Array<[number, number]>) => void;
+  clearModelingPenPreview: () => void;
   setPrototypeCamera: (camera: CameraSnapshot) => void;
 };
 
@@ -312,6 +333,19 @@ const DEFAULT_MODELING_LINE_PREVIEW: ModelingLinePreviewState = {
 const DEFAULT_MODELING_LASSO_SELECTION: ModelingLassoSelectionState = {
   phase: "idle",
   points: [],
+};
+
+const DEFAULT_MODELING_PEN_PREVIEW: ModelingPenPreviewState = {
+  active: false,
+  points: [],
+};
+
+export const DEFAULT_PEN_STROKE_PARAMS: PenStrokeParams = {
+  mergeDistance: 0.22,
+  mergeVertices: true,
+  resampleSpacing: 0.18,
+  simplificationDistance: 0.035,
+  smoothingIterations: 1,
 };
 
 export const createDefaultPersistedUiState = (): PersistedUiState => ({
@@ -384,8 +418,11 @@ const createInitialUiState = (): Omit<
   UiState,
   | "completeMoveDrag"
   | "clearSelection"
+  | "clearActivePenStroke"
   | "selectObject"
   | "setCurrentScreen"
+  | "setActivePenStroke"
+  | "setActivePenStrokeParams"
   | "setAxisMagnetTarget"
   | "setFloorFriction"
   | "setFloorColor"
@@ -465,9 +502,12 @@ const createInitialUiState = (): Omit<
   | "clearModelingLinePreview"
   | "setModelingLassoSelection"
   | "clearModelingLassoSelection"
+  | "setModelingPenPreview"
+  | "clearModelingPenPreview"
   | "setPrototypeCamera"
 > => ({
   ...createDefaultPersistedUiState(),
+  activePenStroke: null,
   axisMagnetTarget: null,
   interactionState: "idle",
   modelingCamera: DEFAULT_MODELING_CAMERA,
@@ -475,6 +515,7 @@ const createInitialUiState = (): Omit<
   modelingCameraOverride: false,
   modelingLassoSelection: DEFAULT_MODELING_LASSO_SELECTION,
   modelingLinePreview: DEFAULT_MODELING_LINE_PREVIEW,
+  modelingPenPreview: DEFAULT_MODELING_PEN_PREVIEW,
   modelingPointer: {
     depth: 8,
     hovered: false,
@@ -501,18 +542,22 @@ export const useUiStore = create<UiState>()(
         }),
       clearSelection: () =>
         set({
+          activePenStroke: null,
           axisMagnetTarget: null,
           interactionState: "idle",
           selectedObjectId: null,
         }),
+      clearActivePenStroke: () => set({ activePenStroke: null }),
       selectObject: (objectId) =>
         set({
+          activePenStroke: null,
           axisMagnetTarget: null,
           interactionState: "active",
           selectedObjectId: objectId,
         }),
       setCurrentScreen: (screen) =>
         set({
+          activePenStroke: null,
           axisMagnetTarget: null,
           currentScreen: screen,
           interactionState: "idle",
@@ -520,8 +565,66 @@ export const useUiStore = create<UiState>()(
           modelingCameraOverride: false,
           modelingLassoSelection: DEFAULT_MODELING_LASSO_SELECTION,
           modelingLinePreview: DEFAULT_MODELING_LINE_PREVIEW,
+          modelingPenPreview: DEFAULT_MODELING_PEN_PREVIEW,
           selectedObjectId: null,
         }),
+      setActivePenStroke: (stroke) =>
+        set({
+          activePenStroke: stroke
+            ? {
+                historyIndex: stroke.historyIndex,
+                params: {
+                  mergeDistance: Math.max(
+                    0,
+                    Math.min(stroke.params.mergeDistance, 4),
+                  ),
+                  mergeVertices: stroke.params.mergeVertices,
+                  resampleSpacing: Math.max(
+                    0,
+                    Math.min(stroke.params.resampleSpacing, 4),
+                  ),
+                  simplificationDistance: Math.max(
+                    0,
+                    Math.min(stroke.params.simplificationDistance, 4),
+                  ),
+                  smoothingIterations: Math.max(
+                    0,
+                    Math.min(Math.round(stroke.params.smoothingIterations), 5),
+                  ),
+                },
+                rawPoints: stroke.rawPoints.map((point) => [...point]),
+              }
+            : null,
+        }),
+      setActivePenStrokeParams: (params) =>
+        set((state) =>
+          state.activePenStroke
+            ? {
+                activePenStroke: {
+                  ...state.activePenStroke,
+                  params: {
+                    mergeDistance: Math.max(
+                      0,
+                      Math.min(params.mergeDistance, 4),
+                    ),
+                    mergeVertices: params.mergeVertices,
+                    resampleSpacing: Math.max(
+                      0,
+                      Math.min(params.resampleSpacing, 4),
+                    ),
+                    simplificationDistance: Math.max(
+                      0,
+                      Math.min(params.simplificationDistance, 4),
+                    ),
+                    smoothingIterations: Math.max(
+                      0,
+                      Math.min(Math.round(params.smoothingIterations), 5),
+                    ),
+                  },
+                },
+              }
+            : state,
+        ),
       setAxisMagnetTarget: (target) => set({ axisMagnetTarget: target }),
       setFloorFriction: (value) => set({ floorFriction: value }),
       setFloorColor: (value) => set({ floorColor: value }),
@@ -627,10 +730,12 @@ export const useUiStore = create<UiState>()(
         set({ modelingPointerVisibleInCameraTool: value }),
       setModelingTool: (tool) =>
         set({
+          activePenStroke: null,
           modelingCameraDragging: false,
           modelingCameraOverride: false,
           modelingLassoSelection: DEFAULT_MODELING_LASSO_SELECTION,
           modelingLinePreview: DEFAULT_MODELING_LINE_PREVIEW,
+          modelingPenPreview: DEFAULT_MODELING_PEN_PREVIEW,
           modelingTool: tool,
         }),
       setObjectAngularDamping: (value) => set({ objectAngularDamping: value }),
@@ -778,6 +883,17 @@ export const useUiStore = create<UiState>()(
       clearModelingLassoSelection: () =>
         set({
           modelingLassoSelection: DEFAULT_MODELING_LASSO_SELECTION,
+        }),
+      setModelingPenPreview: (points) =>
+        set({
+          modelingPenPreview: {
+            active: points.length >= 2,
+            points: points.map((point) => [...point]),
+          },
+        }),
+      clearModelingPenPreview: () =>
+        set({
+          modelingPenPreview: DEFAULT_MODELING_PEN_PREVIEW,
         }),
       setPrototypeCamera: (camera) => set({ prototypeCamera: camera }),
     }),

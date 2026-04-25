@@ -5,7 +5,11 @@ import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { isEditableTarget } from "../../lib/isEditableTarget";
 import { compareVector3Tuple } from "../../lib/vector3Tuple";
 import { useModelingStore } from "../../store/modelingStore";
-import { getEffectiveModelingTool, useUiStore } from "../../store/uiStore";
+import {
+  DEFAULT_PEN_STROKE_PARAMS,
+  getEffectiveModelingTool,
+  useUiStore,
+} from "../../store/uiStore";
 import {
   getBoxVerticesFromDiagonal,
   getEffectiveModelingPointerGridStep,
@@ -52,6 +56,9 @@ export function ModelingInputController({
   );
   const createBoxFromDiagonal = useModelingStore(
     (state) => state.createBoxFromDiagonal,
+  );
+  const createPenStrokeFromPositions = useModelingStore(
+    (state) => state.createPenStrokeFromPositions,
   );
   const selectVertices = useModelingStore((state) => state.selectVertices);
   const updateVertexMoveDrag = useModelingStore(
@@ -132,6 +139,16 @@ export function ModelingInputController({
   const clearModelingLassoSelection = useUiStore(
     (state) => state.clearModelingLassoSelection,
   );
+  const setModelingPenPreview = useUiStore(
+    (state) => state.setModelingPenPreview,
+  );
+  const clearModelingPenPreview = useUiStore(
+    (state) => state.clearModelingPenPreview,
+  );
+  const setActivePenStroke = useUiStore((state) => state.setActivePenStroke);
+  const clearActivePenStroke = useUiStore(
+    (state) => state.clearActivePenStroke,
+  );
 
   useEffect(() => {
     const element = gl.domElement;
@@ -154,6 +171,8 @@ export function ModelingInputController({
     let lineDragStartVertexId: string | null = null;
     let lineDragStartSnapped = false;
     let lassoPoints: Array<[number, number]> = [];
+    let penStrokePoints: Array<[number, number, number]> = [];
+    let penStrokeScreenPoints: Array<[number, number]> = [];
     let moveDragActive = false;
 
     const getActiveModel = () => {
@@ -563,6 +582,16 @@ export function ModelingInputController({
         });
       } else if (clickCandidate?.moved && modelingTool === "move") {
         updateMoveDragFromCurrentPointer();
+      } else if (clickCandidate?.moved && modelingTool === "pen") {
+        penStrokePoints = [
+          ...penStrokePoints,
+          [...useUiStore.getState().modelingPointer.position],
+        ];
+        penStrokeScreenPoints = [
+          ...penStrokeScreenPoints,
+          getCanvasPoint(event),
+        ];
+        setModelingPenPreview(penStrokeScreenPoints);
       } else if (clickCandidate?.moved && lineDragStartPosition) {
         updateLineDragPreviewFromCurrentPointer();
       }
@@ -576,9 +605,12 @@ export function ModelingInputController({
       lineDragStartVertexId = null;
       lineDragStartSnapped = false;
       lassoPoints = [];
+      penStrokePoints = [];
+      penStrokeScreenPoints = [];
       moveDragActive = false;
       clearModelingLassoSelection();
       clearModelingLinePreview();
+      clearModelingPenPreview();
       cancelVertexMoveDrag();
       setModelingPointerHovered(false);
       setModelingPointerSnappedAxes([false, false, false]);
@@ -588,6 +620,7 @@ export function ModelingInputController({
     };
 
     const handlePointerDown = (event: PointerEvent) => {
+      clearActivePenStroke();
       updatePointerFromEvent(event);
       const effectiveTool = getEffectiveModelingTool(useUiStore.getState());
 
@@ -633,10 +666,16 @@ export function ModelingInputController({
           clearVertexSelection();
         } else if (
           modelingTool === "line" ||
+          modelingTool === "pen" ||
           modelingTool === "rectangle" ||
           modelingTool === "box"
         ) {
           lineDragStartPosition = [...modelingPointer.position];
+          if (modelingTool === "pen") {
+            penStrokePoints = [[...modelingPointer.position]];
+            penStrokeScreenPoints = [getCanvasPoint(event)];
+            clearModelingPenPreview();
+          }
           lineDragStartEdgeTarget = modelingPointer.snappedEdgeTarget;
           lineDragStartVertexId = findVertexIdByPosition(
             modelingPointer.snappedVertexTarget,
@@ -720,6 +759,25 @@ export function ModelingInputController({
               },
             );
           }
+        } else if (modelingTool === "pen") {
+          if (clickCandidate.moved) {
+            const rawPoints = [
+              ...penStrokePoints,
+              [...modelingPointer.position] as [number, number, number],
+            ];
+            const created = createPenStrokeFromPositions(
+              rawPoints,
+              DEFAULT_PEN_STROKE_PARAMS,
+            );
+
+            if (created) {
+              setActivePenStroke({
+                historyIndex: useModelingStore.getState().historyIndex,
+                params: DEFAULT_PEN_STROKE_PARAMS,
+                rawPoints,
+              });
+            }
+          }
         } else if (modelingTool === "rectangle") {
           if (clickCandidate.moved && lineDragStartPosition) {
             const projectedEndPosition = getRectangleDragPosition(
@@ -795,8 +853,11 @@ export function ModelingInputController({
       lineDragStartVertexId = null;
       lineDragStartSnapped = false;
       lassoPoints = [];
+      penStrokePoints = [];
+      penStrokeScreenPoints = [];
       moveDragActive = false;
       clearModelingLinePreview();
+      clearModelingPenPreview();
     };
 
     const handleWheel = (event: WheelEvent) => {
@@ -929,6 +990,7 @@ export function ModelingInputController({
       cancelVertexMoveDrag();
       clearModelingLinePreview();
       clearModelingLassoSelection();
+      clearModelingPenPreview();
       setModelingPointerHovered(false);
       setModelingPointerSnappedAxes([false, false, false]);
       setModelingPointerSnappedAxisTargets([null, null, null]);
@@ -941,12 +1003,15 @@ export function ModelingInputController({
     beginVertexMoveDrag,
     camera,
     cancelVertexMoveDrag,
+    clearActivePenStroke,
     clearVertexSelection,
     clearModelingLinePreview,
+    clearModelingPenPreview,
     commitVertexMoveDrag,
     controlsRef,
     createBoxFromDiagonal,
     createEdgeFromPositions,
+    createPenStrokeFromPositions,
     createRectangleFromDiagonal,
     gl,
     modelingPointerAxisSnapEnabled,
@@ -962,9 +1027,11 @@ export function ModelingInputController({
     modelingLineAngleSnapStepDeg,
     modelingRectangleMode,
     selectVertices,
+    setActivePenStroke,
     setModelingCameraDragging,
     setModelingLassoSelection,
     setModelingLinePreview,
+    setModelingPenPreview,
     setModelingPointerDepth,
     setModelingPointerHovered,
     setModelingPointerPlane,

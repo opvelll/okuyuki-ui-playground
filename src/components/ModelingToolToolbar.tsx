@@ -53,6 +53,11 @@ const pointerSubtools = [
     tool: "line",
   },
   {
+    description: "drag a freehand stroke into connected vertices and edges",
+    label: "Pen",
+    tool: "pen",
+  },
+  {
     description: "drag a diagonal to create a rectangle",
     label: "Rectangle",
     tool: "rectangle",
@@ -76,6 +81,9 @@ const pointerSubtoolIcons: Record<
   ),
   line: () => (
     <PenLine aria-hidden="true" className="h-3.5 w-3.5" strokeWidth={2} />
+  ),
+  pen: () => (
+    <PenLine aria-hidden="true" className="h-3.5 w-3.5" strokeWidth={2.4} />
   ),
   rectangle: () => (
     <Square aria-hidden="true" className="h-3.5 w-3.5" strokeWidth={2} />
@@ -255,6 +263,9 @@ export function ModelingToolToolbar() {
   const redo = useModelingStore((state) => state.redo);
   const undo = useModelingStore((state) => state.undo);
   const setModelingTool = useUiStore((state) => state.setModelingTool);
+  const clearActivePenStroke = useUiStore(
+    (state) => state.clearActivePenStroke,
+  );
   const effectiveTool = getEffectiveModelingTool({
     modelingCameraDragging,
     modelingCameraOverride,
@@ -267,6 +278,7 @@ export function ModelingToolToolbar() {
     modelingTool === "move" ||
     modelingTool === "vertex" ||
     modelingTool === "line" ||
+    modelingTool === "pen" ||
     modelingTool === "rectangle" ||
     modelingTool === "box";
 
@@ -283,7 +295,10 @@ export function ModelingToolToolbar() {
             aria-label="Undo modeling action"
             className="inline-flex items-center justify-center gap-1.5 border-r border-white/8 px-2 py-1.5 text-[0.68rem] text-slate-200 transition hover:bg-white/[0.04] disabled:cursor-not-allowed disabled:opacity-40"
             disabled={!canUndo}
-            onClick={undo}
+            onClick={() => {
+              clearActivePenStroke();
+              undo();
+            }}
             type="button"
           >
             <Undo2 aria-hidden="true" className="h-3.5 w-3.5" strokeWidth={2} />
@@ -293,7 +308,10 @@ export function ModelingToolToolbar() {
             aria-label="Redo modeling action"
             className="inline-flex items-center justify-center gap-1.5 px-2 py-1.5 text-[0.68rem] text-slate-200 transition hover:bg-white/[0.04] disabled:cursor-not-allowed disabled:opacity-40"
             disabled={!canRedo}
-            onClick={redo}
+            onClick={() => {
+              clearActivePenStroke();
+              redo();
+            }}
             type="button"
           >
             <Redo2 aria-hidden="true" className="h-3.5 w-3.5" strokeWidth={2} />

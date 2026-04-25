@@ -926,6 +926,34 @@ function ModelingLinePreviewOverlay() {
   );
 }
 
+function ModelingPenPreviewOverlay() {
+  const modelingPenPreview = useUiStore((state) => state.modelingPenPreview);
+
+  if (!modelingPenPreview.active || modelingPenPreview.points.length < 2) {
+    return null;
+  }
+
+  const pathPoints = modelingPenPreview.points
+    .map(([x, y]) => `${x},${y}`)
+    .join(" ");
+
+  return (
+    <svg
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-0 z-20 h-full w-full"
+    >
+      <polyline
+        fill="none"
+        points={pathPoints}
+        stroke="#050505"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2.6"
+      />
+    </svg>
+  );
+}
+
 function ModelingMesh() {
   const currentModelId = useModelingStore((state) => state.currentModelId);
   const modelsById = useModelingStore((state) => state.modelsById);
@@ -1268,6 +1296,7 @@ export function ModelingScene() {
         />
       </Canvas>
       <ModelingLassoOverlay />
+      <ModelingPenPreviewOverlay />
       {depthHint ? (
         <div
           className="pointer-events-none absolute left-0 top-0 z-10 flex items-center gap-2 text-[11px] font-medium tracking-[0.08em] text-slate-50/72"

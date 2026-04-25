@@ -8,6 +8,9 @@ export function ModelingToolHotkeys() {
   const setModelingCameraOverride = useUiStore(
     (state) => state.setModelingCameraOverride,
   );
+  const clearActivePenStroke = useUiStore(
+    (state) => state.clearActivePenStroke,
+  );
   const connectSelectedVerticesAsEdge = useModelingStore(
     (state) => state.connectSelectedVerticesAsEdge,
   );
@@ -33,6 +36,7 @@ export function ModelingToolHotkeys() {
 
       if ((event.metaKey || event.ctrlKey) && event.code === "KeyZ") {
         event.preventDefault();
+        clearActivePenStroke();
         if (event.shiftKey) {
           redo();
         } else {
@@ -43,12 +47,14 @@ export function ModelingToolHotkeys() {
 
       if ((event.metaKey || event.ctrlKey) && event.code === "KeyY") {
         event.preventDefault();
+        clearActivePenStroke();
         redo();
         return;
       }
 
       if ((event.metaKey || event.ctrlKey) && event.code === "KeyA") {
         event.preventDefault();
+        clearActivePenStroke();
         const state = useModelingStore.getState();
         const currentModel = state.modelsById[state.currentModelId];
         selectVertices(currentModel?.vertexOrder ?? [], false);
@@ -57,18 +63,21 @@ export function ModelingToolHotkeys() {
 
       if (event.code === "KeyE") {
         event.preventDefault();
+        clearActivePenStroke();
         connectSelectedVerticesAsEdge();
         return;
       }
 
       if (event.code === "KeyF") {
         event.preventDefault();
+        clearActivePenStroke();
         createFaceFromSelectedVertices();
         return;
       }
 
       if (event.code === "Delete" || event.code === "Backspace") {
         event.preventDefault();
+        clearActivePenStroke();
         deleteSelectedVertices();
         return;
       }
@@ -96,6 +105,7 @@ export function ModelingToolHotkeys() {
       setModelingCameraOverride(false);
     };
   }, [
+    clearActivePenStroke,
     connectSelectedVerticesAsEdge,
     createFaceFromSelectedVertices,
     deleteSelectedVertices,

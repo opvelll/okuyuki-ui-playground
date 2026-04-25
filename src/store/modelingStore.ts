@@ -4,6 +4,10 @@ import {
   getBoxVerticesFromDiagonal,
   getRectangleVerticesFromDiagonal,
 } from "../components/scene/modelingPointerUtils";
+import {
+  type PenStrokeParams,
+  processPenStrokePoints,
+} from "../components/scene/penStrokeProcessing";
 import { compareVector3Tuple } from "../lib/vector3Tuple";
 import type { Vector3Tuple } from "../types/scene";
 import type { ModelingRectangleMode } from "./uiStore";
@@ -123,6 +127,10 @@ type ModelingState = ModelingSnapshot & {
       startVertexId?: string | null;
     },
   ) => boolean;
+  createPenStrokeFromPositions: (
+    rawPoints: Vector3Tuple[],
+    params: PenStrokeParams,
+  ) => boolean;
   deleteSelectedVertices: () => boolean;
   findNearestVertex: (
     pointerPosition: Vector3Tuple,
@@ -149,6 +157,11 @@ type ModelingState = ModelingSnapshot & {
   updateCurrentModelRootPosition: (position: Vector3Tuple) => void;
   updateCurrentModelRootRotation: (rotation: Vector3Tuple) => void;
   updateSelectedVerticesCenter: (position: Vector3Tuple) => void;
+  updateLastPenStrokeFromPositions: (
+    rawPoints: Vector3Tuple[],
+    params: PenStrokeParams,
+    historyIndex: number,
+  ) => boolean;
   updateVertexPosition: (vertexId: string, position: Vector3Tuple) => void;
   updateVertexMoveDrag: (targetPosition: Vector3Tuple) => boolean;
 };
@@ -559,6 +572,60 @@ function ensureFaceInModel(
     vertexIds,
   };
   return true;
+}
+
+function createPenStrokeSnapshot(
+  snapshot: ModelingSnapshot,
+  rawPoints: Vector3Tuple[],
+  params: PenStrokeParams,
+) {
+  const currentModel = snapshot.modelsById[snapshot.currentModelId];
+
+  if (!currentModel) {
+    return null;
+  }
+
+  const processedPoints = processPenStrokePoints(rawPoints, params);
+  if (processedPoints.length < 2) {
+    return null;
+  }
+
+  const nextModel = cloneModel(currentModel);
+  const selectedVertexIds: string[] = [];
+  const strokeVertexIds = processedPoints.map((point) => {
+    const snappedVertex = params.mergeVertices
+      ? findNearestVertexInModel(nextModel, point, params.mergeDistance)
+      : null;
+
+    return ensureVertexInModel(nextModel, selectedVertexIds, point, {
+      snappedVertex,
+    });
+  });
+  let changed = false;
+
+  for (let index = 0; index < strokeVertexIds.length - 1; index += 1) {
+    changed =
+      ensureEdgeInModel(nextModel, [
+        strokeVertexIds[index],
+        strokeVertexIds[index + 1],
+      ]) || changed;
+  }
+
+  if (!changed) {
+    return null;
+  }
+
+  return {
+    currentModelId: snapshot.currentModelId,
+    modelsById: {
+      ...snapshot.modelsById,
+      [currentModel.id]: nextModel,
+    },
+    selectedRoot: false,
+    selectedVertexIds: selectedVertexIds.filter(
+      (vertexId, index, list) => list.indexOf(vertexId) === index,
+    ),
+  } satisfies ModelingSnapshot;
 }
 
 function commitSnapshot(
@@ -1188,6 +1255,29 @@ export const useModelingStore = create<ModelingState>()(
 
         return true;
       },
+      createPenStrokeFromPositions: (rawPoints, params) => {
+        const state = get();
+        const nextSnapshot = createPenStrokeSnapshot(
+          {
+            currentModelId: state.currentModelId,
+            modelsById: state.modelsById,
+            selectedRoot: state.selectedRoot,
+            selectedVertexIds: state.selectedVertexIds,
+          },
+          rawPoints,
+          params,
+        );
+
+        if (!nextSnapshot) {
+          return false;
+        }
+
+        set({
+          ...commitSnapshot(state, nextSnapshot),
+        });
+
+        return true;
+      },
       deleteSelectedVertices: () => {
         const state = get();
         if (state.selectedVertexIds.length === 0) {
@@ -1634,6 +1724,40 @@ export const useModelingStore = create<ModelingState>()(
             selectedVertexIds: [vertexId],
           });
         }),
+      updateLastPenStrokeFromPositions: (rawPoints, params, historyIndex) => {
+        const state = get();
+        if (
+          historyIndex <= 0 ||
+          state.historyIndex !== historyIndex ||
+          state.history.length <= historyIndex
+        ) {
+          return false;
+        }
+
+        const nextSnapshot = createPenStrokeSnapshot(
+          state.history[historyIndex - 1],
+          rawPoints,
+          params,
+        );
+
+        if (!nextSnapshot) {
+          return false;
+        }
+
+        const clonedSnapshot = cloneSnapshot(nextSnapshot);
+        const nextHistory = state.history.map((snapshot, index) =>
+          index === historyIndex ? clonedSnapshot : cloneSnapshot(snapshot),
+        );
+
+        set({
+          ...clonedSnapshot,
+          activeVertexMoveDrag: null,
+          history: nextHistory,
+          historyIndex,
+        });
+
+        return true;
+      },
       updateVertexMoveDrag: (targetPosition) => {
         const state = get();
         const drag = state.activeVertexMoveDrag;

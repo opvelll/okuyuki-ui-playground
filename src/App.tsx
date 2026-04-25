@@ -9,6 +9,7 @@ import {
   ModelingToolHeaderProperties,
   ModelingToolToolbar,
 } from "./components/ModelingToolToolbar";
+import { PenStrokeWindow } from "./components/PenStrokeWindow";
 import { PrototypeSceneFallback } from "./components/PrototypeSceneFallback";
 import { SceneStatusHud } from "./components/SceneStatusHud";
 import { SettingsWindow } from "./components/SettingsWindow";
@@ -126,6 +127,7 @@ export default function App() {
         <Toolbar />
         {HeaderProperties ? <HeaderProperties /> : null}
         {currentScreen === "modeling" ? <ModelingInspectorWindow /> : null}
+        {currentScreen === "modeling" ? <PenStrokeWindow /> : null}
         <SettingsWindow />
         <SceneStatusHud />
       </section>
