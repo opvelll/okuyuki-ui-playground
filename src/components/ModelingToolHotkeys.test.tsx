@@ -1,4 +1,4 @@
-import { render } from "@testing-library/react";
+import { fireEvent, render } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
 import { useModelingStore } from "../store/modelingStore";
@@ -42,5 +42,22 @@ describe("ModelingToolHotkeys", () => {
 
     expect(currentModel.vertexOrder).toEqual([]);
     expect(state.selectedVertexIds).toEqual([]);
+  });
+
+  it("selects all vertices with Ctrl+A", () => {
+    render(<ModelingToolHotkeys />);
+
+    const vertexA = useModelingStore.getState().addVertex([0, 0, 0]);
+    const vertexB = useModelingStore.getState().addVertex([1, 0, 0]);
+    const vertexC = useModelingStore.getState().addVertex([2, 0, 0]);
+    useModelingStore.getState().selectVertex(vertexB?.id ?? "", false);
+
+    fireEvent.keyDown(window, { code: "KeyA", ctrlKey: true });
+
+    expect(useModelingStore.getState().selectedVertexIds).toEqual([
+      vertexA?.id,
+      vertexB?.id,
+      vertexC?.id,
+    ]);
   });
 });

@@ -697,6 +697,8 @@ export function ModelingInputController({
               points: finalizedLassoPoints,
             });
             selectVertices(selectedVertexIds, event.shiftKey);
+          } else if (!findHoveredVertexAtScreenPoint(event)) {
+            selectVertices([], false);
           }
         } else if (modelingTool === "line") {
           if (clickCandidate.moved && lineDragStartPosition) {

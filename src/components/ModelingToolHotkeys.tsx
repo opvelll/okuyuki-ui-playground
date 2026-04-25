@@ -18,6 +18,7 @@ export function ModelingToolHotkeys() {
     (state) => state.deleteSelectedVertices,
   );
   const redo = useModelingStore((state) => state.redo);
+  const selectVertices = useModelingStore((state) => state.selectVertices);
   const undo = useModelingStore((state) => state.undo);
 
   useEffect(() => {
@@ -43,6 +44,14 @@ export function ModelingToolHotkeys() {
       if ((event.metaKey || event.ctrlKey) && event.code === "KeyY") {
         event.preventDefault();
         redo();
+        return;
+      }
+
+      if ((event.metaKey || event.ctrlKey) && event.code === "KeyA") {
+        event.preventDefault();
+        const state = useModelingStore.getState();
+        const currentModel = state.modelsById[state.currentModelId];
+        selectVertices(currentModel?.vertexOrder ?? [], false);
         return;
       }
 
@@ -92,6 +101,7 @@ export function ModelingToolHotkeys() {
     deleteSelectedVertices,
     modelingTool,
     redo,
+    selectVertices,
     setModelingCameraOverride,
     undo,
   ]);
