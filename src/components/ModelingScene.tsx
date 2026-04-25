@@ -450,6 +450,9 @@ function ModelingPointerDepthHintController({
   const modelingPointerVisibleInCameraTool = useUiStore(
     (state) => state.modelingPointerVisibleInCameraTool,
   );
+  const modelingPointerScreenVertexSnapEnabled = useUiStore(
+    (state) => state.modelingPointerScreenVertexSnapEnabled,
+  );
   const modelingTool = useUiStore((state) => state.modelingTool);
   const pointerPosition = useUiStore((state) => state.modelingPointer.position);
   const vertexSnapDistance = useUiStore(
@@ -477,6 +480,8 @@ function ModelingPointerDepthHintController({
     const shouldHide =
       !hovered ||
       modelingTool === "lasso" ||
+      modelingTool === "move" ||
+      modelingPointerScreenVertexSnapEnabled ||
       vertexPositions.length === 0 ||
       (effectiveTool === "camera" && !modelingPointerVisibleInCameraTool);
     if (shouldHide) {

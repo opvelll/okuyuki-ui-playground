@@ -229,6 +229,11 @@ describe("uiStore", () => {
     useUiStore.getState().setModelingPointerGridSnapEnabled(true);
     expect(useUiStore.getState().modelingPointerGridSnapEnabled).toBe(true);
 
+    useUiStore.getState().setModelingPointerScreenVertexSnapEnabled(true);
+    expect(useUiStore.getState().modelingPointerScreenVertexSnapEnabled).toBe(
+      true,
+    );
+
     useUiStore.getState().setModelingPointerGridSnapStep(0);
     expect(useUiStore.getState().modelingPointerGridSnapStep).toBe(0.01);
 

@@ -162,11 +162,13 @@ function ToolSettingNumberField({
 
 function ToolSettingToggle({
   checked,
+  disabled = false,
   label,
   onChange,
   title,
 }: {
   checked: boolean;
+  disabled?: boolean;
   label: string;
   onChange: (checked: boolean) => void;
   title: string;
@@ -182,11 +184,12 @@ function ToolSettingToggle({
           aria-label={label}
           checked={checked}
           className="peer sr-only"
+          disabled={disabled}
           onChange={(event) => onChange(event.target.checked)}
           type="checkbox"
         />
-        <span className="block h-4.5 w-8 rounded-full bg-slate-400/35 transition peer-checked:bg-sky-300" />
-        <span className="pointer-events-none absolute left-[2px] h-3.5 w-3.5 rounded-full bg-slate-50 transition peer-checked:translate-x-[14px]" />
+        <span className="block h-4.5 w-8 rounded-full bg-slate-400/35 transition peer-checked:bg-sky-300 peer-disabled:opacity-60" />
+        <span className="pointer-events-none absolute left-[2px] h-3.5 w-3.5 rounded-full bg-slate-50 transition peer-checked:translate-x-[14px] peer-disabled:opacity-80" />
       </span>
     </label>
   );
@@ -454,6 +457,9 @@ export function ModelingToolHeaderProperties() {
   const modelingPointerGridSnapStep = useUiStore(
     (state) => state.modelingPointerGridSnapStep,
   );
+  const modelingPointerScreenVertexSnapEnabled = useUiStore(
+    (state) => state.modelingPointerScreenVertexSnapEnabled,
+  );
   const modelingPointerVertexSnapDistance = useUiStore(
     (state) => state.modelingPointerVertexSnapDistance,
   );
@@ -487,6 +493,9 @@ export function ModelingToolHeaderProperties() {
   const setModelingPointerGridSnapStep = useUiStore(
     (state) => state.setModelingPointerGridSnapStep,
   );
+  const setModelingPointerScreenVertexSnapEnabled = useUiStore(
+    (state) => state.setModelingPointerScreenVertexSnapEnabled,
+  );
   const setModelingPointerVertexSnapDistance = useUiStore(
     (state) => state.setModelingPointerVertexSnapDistance,
   );
@@ -512,6 +521,19 @@ export function ModelingToolHeaderProperties() {
   return (
     <div className="absolute left-1/2 top-3 z-20 flex w-max max-w-[calc(100vw-8rem)] -translate-x-1/2 flex-nowrap items-start justify-center gap-1 overflow-x-auto px-1 pb-1">
       <div className={propertyPanelClasses}>
+        <ToolSettingToggle
+          checked={
+            modelingTool === "move" || modelingPointerScreenVertexSnapEnabled
+          }
+          disabled={modelingTool === "move"}
+          label="Hover Snap"
+          onChange={setModelingPointerScreenVertexSnapEnabled}
+          title={
+            modelingTool === "move"
+              ? "Move tool always snaps the 3D pointer onto a vertex under the mouse."
+              : "Toggle snapping the 3D pointer onto a vertex directly under the mouse in screen space."
+          }
+        />
         <ToolSettingToggle
           checked={modelingPointerVertexSnapEnabled}
           label="Vertex Snap"

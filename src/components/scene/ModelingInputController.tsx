@@ -23,7 +23,7 @@ import {
 const CAMERA_DOLLY_MIN_DISTANCE = 2.4;
 const CAMERA_DOLLY_STEP = 0.55;
 const CURSOR_DEPTH_STEP = 0.45;
-const MOVE_TOOL_VERTEX_HIT_RADIUS_PX = 10;
+const SCREEN_VERTEX_HIT_RADIUS_PX = 10;
 
 export function ModelingInputController({
   controlsRef,
@@ -77,6 +77,9 @@ export function ModelingInputController({
   );
   const modelingPointerGridSnapStep = useUiStore(
     (state) => state.modelingPointerGridSnapStep,
+  );
+  const modelingPointerScreenVertexSnapEnabled = useUiStore(
+    (state) => state.modelingPointerScreenVertexSnapEnabled,
   );
   const modelingPointerVertexSnapDistance = useUiStore(
     (state) => state.modelingPointerVertexSnapDistance,
@@ -279,7 +282,7 @@ export function ModelingInputController({
           projectedVertex.point[1] - (event.clientY - rect.top),
         );
 
-        if (screenDistance > MOVE_TOOL_VERTEX_HIT_RADIUS_PX) {
+        if (screenDistance > SCREEN_VERTEX_HIT_RADIUS_PX) {
           continue;
         }
 
@@ -337,8 +340,12 @@ export function ModelingInputController({
               number,
             ]);
       const modelingTool = useUiStore.getState().modelingTool;
-      const hoveredMoveVertex =
-        modelingTool === "move" &&
+      const screenVertexSnapEnabled =
+        modelingTool === "move" || modelingPointerScreenVertexSnapEnabled;
+      const hoveredScreenVertex =
+        screenVertexSnapEnabled &&
+        modelingTool !== "lasso" &&
+        modelingTool !== "camera" &&
         !moveDragActive &&
         !clickCandidate?.moved &&
         !hasActiveMoveDrag()
@@ -352,8 +359,8 @@ export function ModelingInputController({
             } as PointerEvent)
           : null;
 
-      if (hoveredMoveVertex) {
-        const hoveredPosition = new Vector3(...hoveredMoveVertex.position);
+      if (hoveredScreenVertex) {
+        const hoveredPosition = new Vector3(...hoveredScreenVertex.position);
         const nextDepth = hoveredPosition
           .sub(raycaster.ray.origin)
           .dot(raycaster.ray.direction);
@@ -362,11 +369,11 @@ export function ModelingInputController({
           setModelingPointerDepth(nextDepth);
         }
 
-        setModelingPointerPosition(hoveredMoveVertex.position);
+        setModelingPointerPosition(hoveredScreenVertex.position);
         setModelingPointerSnappedAxes([false, false, false]);
         setModelingPointerSnappedAxisTargets([null, null, null]);
         setModelingPointerSnappedEdgeTarget(null);
-        setModelingPointerSnappedVertexTarget(hoveredMoveVertex.position);
+        setModelingPointerSnappedVertexTarget(hoveredScreenVertex.position);
         return;
       }
 
@@ -916,6 +923,7 @@ export function ModelingInputController({
     modelingPointerEdgeSnapEnabled,
     modelingPointerGridSnapEnabled,
     modelingPointerGridSnapStep,
+    modelingPointerScreenVertexSnapEnabled,
     modelingPointerVertexSnapDistance,
     modelingPointerVertexSnapEnabled,
     modelingLineAngleSnapStepDeg,

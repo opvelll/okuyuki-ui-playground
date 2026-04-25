@@ -120,6 +120,7 @@ type PersistedUiState = {
   modelingPointerGridSnapEnabled: boolean;
   modelingPointerGridSnapStep: number;
   modelingPointerPanelRadius: number;
+  modelingPointerScreenVertexSnapEnabled: boolean;
   modelingPointerVertexSnapDistance: number;
   modelingPointerVertexSnapEnabled: boolean;
   modelingLineOverlayDisplayMode: MoveOverlayDisplayMode;
@@ -202,6 +203,7 @@ export type UiState = PersistedUiState & {
   setModelingPointerGridSnapEnabled: (value: boolean) => void;
   setModelingPointerGridSnapStep: (value: number) => void;
   setModelingPointerPanelRadius: (value: number) => void;
+  setModelingPointerScreenVertexSnapEnabled: (value: boolean) => void;
   setModelingPointerVertexSnapDistance: (value: number) => void;
   setModelingPointerVertexSnapEnabled: (value: boolean) => void;
   setModelingLineOverlayDisplayMode: (value: MoveOverlayDisplayMode) => void;
@@ -342,6 +344,7 @@ export const createDefaultPersistedUiState = (): PersistedUiState => ({
   modelingPointerGridSnapEnabled: false,
   modelingPointerGridSnapStep: 0.05,
   modelingPointerPanelRadius: 0.72,
+  modelingPointerScreenVertexSnapEnabled: false,
   modelingPointerVertexSnapDistance: 0.45,
   modelingPointerVertexSnapEnabled: true,
   modelingLineOverlayDisplayMode: "mode-1",
@@ -410,6 +413,7 @@ const createInitialUiState = (): Omit<
   | "setModelingPointerGridSnapEnabled"
   | "setModelingPointerGridSnapStep"
   | "setModelingPointerPanelRadius"
+  | "setModelingPointerScreenVertexSnapEnabled"
   | "setModelingPointerVertexSnapDistance"
   | "setModelingPointerVertexSnapEnabled"
   | "setModelingLineOverlayDisplayMode"
@@ -573,6 +577,10 @@ export const useUiStore = create<UiState>()(
       setModelingPointerPanelRadius: (value) =>
         set({
           modelingPointerPanelRadius: Math.max(0.2, Math.min(value, 8)),
+        }),
+      setModelingPointerScreenVertexSnapEnabled: (value) =>
+        set({
+          modelingPointerScreenVertexSnapEnabled: value,
         }),
       setModelingPointerVertexSnapDistance: (value) =>
         set({
@@ -823,6 +831,8 @@ export const useUiStore = create<UiState>()(
         modelingPointerGridSnapEnabled: state.modelingPointerGridSnapEnabled,
         modelingPointerGridSnapStep: state.modelingPointerGridSnapStep,
         modelingPointerPanelRadius: state.modelingPointerPanelRadius,
+        modelingPointerScreenVertexSnapEnabled:
+          state.modelingPointerScreenVertexSnapEnabled,
         modelingPointerVertexSnapDistance:
           state.modelingPointerVertexSnapDistance,
         modelingPointerVertexSnapEnabled:

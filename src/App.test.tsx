@@ -498,6 +498,7 @@ describe("App", () => {
     expect(screen.getByLabelText(/^Vertex Snap$/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/^Axis Snap$/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/^Grid Snap$/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Hover Snap$/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/^Angle Step$/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Overlay/i)).toBeInTheDocument();
 
@@ -537,6 +538,8 @@ describe("App", () => {
     expect(screen.getByLabelText(/^Vertex Snap$/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/^Axis Snap$/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/^Grid Snap$/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Hover Snap$/i)).toBeChecked();
+    expect(screen.getByLabelText(/^Hover Snap$/i)).toBeDisabled();
     expect(screen.queryByLabelText(/Snap Distance/i)).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/Overlay/i)).not.toBeInTheDocument();
   });
