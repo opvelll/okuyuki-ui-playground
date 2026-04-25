@@ -436,6 +436,100 @@ export function ModelingInputController({
       return false;
     };
 
+    const updateLineDragPreviewFromCurrentPointer = () => {
+      if (!clickCandidate?.moved || !lineDragStartPosition) {
+        return false;
+      }
+
+      const { modelingPointer, modelingTool } = useUiStore.getState();
+
+      if (modelingTool === "line") {
+        const planeNormal = new Vector3();
+        camera.getWorldDirection(planeNormal);
+
+        setModelingLinePreview({
+          currentPosition: [...modelingPointer.position],
+          currentSnapped:
+            modelingPointer.snappedVertexTarget !== null ||
+            modelingPointer.snappedEdgeTarget !== null,
+          planeNormal: [planeNormal.x, planeNormal.y, planeNormal.z],
+          polygonPoints: [],
+          startSnapped: lineDragStartSnapped,
+          startPosition: lineDragStartPosition,
+          tool: "line",
+          wireframeEdges: [],
+        });
+        return true;
+      }
+
+      if (modelingTool === "rectangle") {
+        const rectanglePreview = getRectangleDragPreview(
+          modelingPointer.position,
+        );
+
+        if (!rectanglePreview) {
+          clearModelingLinePreview();
+          return false;
+        }
+
+        setModelingLinePreview({
+          currentPosition: rectanglePreview.corners[2],
+          currentSnapped: compareVector3Tuple(
+            rectanglePreview.corners[2],
+            modelingPointer.position,
+          )
+            ? modelingPointer.snappedVertexTarget !== null ||
+              modelingPointer.snappedEdgeTarget !== null
+            : false,
+          planeNormal: rectanglePreview.planeNormal,
+          polygonPoints: rectanglePreview.corners,
+          startSnapped: lineDragStartSnapped,
+          startPosition: lineDragStartPosition,
+          tool: "rectangle",
+          wireframeEdges: [],
+        });
+        return true;
+      }
+
+      if (modelingTool === "box") {
+        const boxPreview = getBoxVerticesFromDiagonal(
+          lineDragStartPosition,
+          modelingPointer.position,
+        );
+        const planeNormal = new Vector3();
+        camera.getWorldDirection(planeNormal);
+
+        if (!boxPreview) {
+          clearModelingLinePreview();
+          return false;
+        }
+
+        setModelingLinePreview({
+          currentPosition: [...modelingPointer.position],
+          currentSnapped:
+            modelingPointer.snappedVertexTarget !== null ||
+            modelingPointer.snappedEdgeTarget !== null,
+          planeNormal: [planeNormal.x, planeNormal.y, planeNormal.z],
+          polygonPoints: [],
+          startSnapped: lineDragStartSnapped,
+          startPosition: lineDragStartPosition,
+          tool: "box",
+          wireframeEdges: boxPreview.edges,
+        });
+        return true;
+      }
+
+      return false;
+    };
+
+    const updateActiveDragFromCurrentPointer = () => {
+      if (updateMoveDragFromCurrentPointer()) {
+        return true;
+      }
+
+      return updateLineDragPreviewFromCurrentPointer();
+    };
+
     const getCanvasPoint = (event: PointerEvent) => {
       const rect = element.getBoundingClientRect();
       return [event.clientX - rect.left, event.clientY - rect.top] as [
@@ -460,7 +554,7 @@ export function ModelingInputController({
 
       updatePointerFromEvent(event);
 
-      const { modelingPointer, modelingTool } = useUiStore.getState();
+      const { modelingTool } = useUiStore.getState();
       if (clickCandidate?.moved && modelingTool === "lasso") {
         lassoPoints = appendLassoPoint(lassoPoints, getCanvasPoint(event));
         setModelingLassoSelection({
@@ -470,74 +564,7 @@ export function ModelingInputController({
       } else if (clickCandidate?.moved && modelingTool === "move") {
         updateMoveDragFromCurrentPointer();
       } else if (clickCandidate?.moved && lineDragStartPosition) {
-        if (modelingTool === "line") {
-          const planeNormal = new Vector3();
-          camera.getWorldDirection(planeNormal);
-
-          setModelingLinePreview({
-            currentPosition: [...modelingPointer.position],
-            currentSnapped:
-              modelingPointer.snappedVertexTarget !== null ||
-              modelingPointer.snappedEdgeTarget !== null,
-            planeNormal: [planeNormal.x, planeNormal.y, planeNormal.z],
-            polygonPoints: [],
-            startSnapped: lineDragStartSnapped,
-            startPosition: lineDragStartPosition,
-            tool: "line",
-            wireframeEdges: [],
-          });
-        } else if (modelingTool === "rectangle") {
-          const rectanglePreview = getRectangleDragPreview(
-            modelingPointer.position,
-          );
-
-          if (!rectanglePreview) {
-            clearModelingLinePreview();
-            return;
-          }
-
-          setModelingLinePreview({
-            currentPosition: rectanglePreview.corners[2],
-            currentSnapped: compareVector3Tuple(
-              rectanglePreview.corners[2],
-              modelingPointer.position,
-            )
-              ? modelingPointer.snappedVertexTarget !== null ||
-                modelingPointer.snappedEdgeTarget !== null
-              : false,
-            planeNormal: rectanglePreview.planeNormal,
-            polygonPoints: rectanglePreview.corners,
-            startSnapped: lineDragStartSnapped,
-            startPosition: lineDragStartPosition,
-            tool: "rectangle",
-            wireframeEdges: [],
-          });
-        } else if (modelingTool === "box") {
-          const boxPreview = getBoxVerticesFromDiagonal(
-            lineDragStartPosition,
-            modelingPointer.position,
-          );
-          const planeNormal = new Vector3();
-          camera.getWorldDirection(planeNormal);
-
-          if (!boxPreview) {
-            clearModelingLinePreview();
-            return;
-          }
-
-          setModelingLinePreview({
-            currentPosition: [...modelingPointer.position],
-            currentSnapped:
-              modelingPointer.snappedVertexTarget !== null ||
-              modelingPointer.snappedEdgeTarget !== null,
-            planeNormal: [planeNormal.x, planeNormal.y, planeNormal.z],
-            polygonPoints: [],
-            startSnapped: lineDragStartSnapped,
-            startPosition: lineDragStartPosition,
-            tool: "box",
-            wireframeEdges: boxPreview.edges,
-          });
-        }
+        updateLineDragPreviewFromCurrentPointer();
       }
     };
 
@@ -826,7 +853,7 @@ export function ModelingInputController({
         directionSnapMode: event.ctrlKey,
         precisionMode: event.shiftKey,
       });
-      updateMoveDragFromCurrentPointer();
+      updateActiveDragFromCurrentPointer();
     };
 
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -849,8 +876,10 @@ export function ModelingInputController({
         clearVertexSelection();
       } else if (event.key === "Shift") {
         updatePointerPosition({ precisionMode: true });
+        updateActiveDragFromCurrentPointer();
       } else if (event.key === "Control") {
         updatePointerPosition({ directionSnapMode: true });
+        updateActiveDragFromCurrentPointer();
       }
     };
 
@@ -865,8 +894,10 @@ export function ModelingInputController({
 
       if (event.key === "Shift") {
         updatePointerPosition({ precisionMode: false });
+        updateActiveDragFromCurrentPointer();
       } else if (event.key === "Control") {
         updatePointerPosition({ directionSnapMode: false });
+        updateActiveDragFromCurrentPointer();
       }
     };
 
