@@ -61,7 +61,9 @@ export function ModelingInputController({
   const createPenStrokeFromPositions = useModelingStore(
     (state) => state.createPenStrokeFromPositions,
   );
-  const selectVertices = useModelingStore((state) => state.selectVertices);
+  const selectModelingElements = useModelingStore(
+    (state) => state.selectModelingElements,
+  );
   const updateVertexMoveDrag = useModelingStore(
     (state) => state.updateVertexMoveDrag,
   );
@@ -103,6 +105,15 @@ export function ModelingInputController({
   );
   const modelingLineAngleSnapStepDeg = useUiStore(
     (state) => state.modelingLineAngleSnapStepDeg,
+  );
+  const modelingLassoSelectEdgesEnabled = useUiStore(
+    (state) => state.modelingLassoSelectEdgesEnabled,
+  );
+  const modelingLassoSelectFacesEnabled = useUiStore(
+    (state) => state.modelingLassoSelectFacesEnabled,
+  );
+  const modelingLassoSelectVerticesEnabled = useUiStore(
+    (state) => state.modelingLassoSelectVerticesEnabled,
   );
   const modelingRectangleMode = useUiStore(
     (state) => state.modelingRectangleMode,
@@ -261,6 +272,27 @@ export function ModelingInputController({
         : [];
     };
 
+    const getEdgeCenter = (edge: {
+      end: [number, number, number];
+      start: [number, number, number];
+    }): [number, number, number] => [
+      (edge.start[0] + edge.end[0]) / 2,
+      (edge.start[1] + edge.end[1]) / 2,
+      (edge.start[2] + edge.end[2]) / 2,
+    ];
+
+    const getFaceCenter = (face: {
+      positions: [
+        [number, number, number],
+        [number, number, number],
+        [number, number, number],
+      ];
+    }): [number, number, number] => [
+      (face.positions[0][0] + face.positions[1][0] + face.positions[2][0]) / 3,
+      (face.positions[0][1] + face.positions[1][1] + face.positions[2][1]) / 3,
+      (face.positions[0][2] + face.positions[1][2] + face.positions[2][2]) / 3,
+    ];
+
     const getMoveDragVertexIds = () => {
       const activeMoveDrag = useModelingStore.getState().activeVertexMoveDrag;
       return activeMoveDrag
@@ -366,6 +398,94 @@ export function ModelingInputController({
       }
 
       return nearestMatch;
+    };
+
+    const findLassoElementAtScreenPoint = (event: PointerEvent) => {
+      const rect = element.getBoundingClientRect();
+      const pointerScreen = {
+        x: event.clientX - rect.left,
+        y: event.clientY - rect.top,
+      };
+      const viewport = {
+        height: rect.height,
+        width: rect.width,
+      };
+      const candidates: Array<{
+        distance: number;
+        projectedZ: number;
+        selection: {
+          edgeIds?: string[];
+          faceIds?: string[];
+          vertexIds?: string[];
+        };
+      }> = [];
+
+      if (modelingLassoSelectVerticesEnabled) {
+        const hoveredVertex = findHoveredVertexAtScreenPoint(event);
+        if (hoveredVertex) {
+          candidates.push({
+            distance: hoveredVertex.screenDistance,
+            projectedZ: hoveredVertex.projectedZ,
+            selection: { vertexIds: [hoveredVertex.id] },
+          });
+        }
+      }
+
+      if (modelingLassoSelectEdgesEnabled) {
+        for (const edge of getActiveEdgeTargets()) {
+          const projectedCenter = projectVertexToScreenPoint(
+            getEdgeCenter(edge),
+            camera,
+            viewport,
+          );
+          if (!projectedCenter) {
+            continue;
+          }
+
+          const distance = Math.hypot(
+            projectedCenter.point[0] - pointerScreen.x,
+            projectedCenter.point[1] - pointerScreen.y,
+          );
+          if (distance <= SCREEN_VERTEX_HIT_RADIUS_PX) {
+            candidates.push({
+              distance,
+              projectedZ: projectedCenter.projectedZ,
+              selection: { edgeIds: [edge.edgeId] },
+            });
+          }
+        }
+      }
+
+      if (modelingLassoSelectFacesEnabled) {
+        for (const face of getActiveFaceTargets()) {
+          const projectedCenter = projectVertexToScreenPoint(
+            getFaceCenter(face),
+            camera,
+            viewport,
+          );
+          if (!projectedCenter) {
+            continue;
+          }
+
+          const distance = Math.hypot(
+            projectedCenter.point[0] - pointerScreen.x,
+            projectedCenter.point[1] - pointerScreen.y,
+          );
+          if (distance <= SCREEN_VERTEX_HIT_RADIUS_PX) {
+            candidates.push({
+              distance,
+              projectedZ: projectedCenter.projectedZ,
+              selection: { faceIds: [face.faceId] },
+            });
+          }
+        }
+      }
+
+      return (
+        candidates.sort(
+          (a, b) => a.distance - b.distance || a.projectedZ - b.projectedZ,
+        )[0]?.selection ?? null
+      );
     };
 
     const findHoveredSurfaceAtScreenPoint = (
@@ -1021,29 +1141,81 @@ export function ModelingInputController({
               getCanvasPoint(event),
             );
             const rect = element.getBoundingClientRect();
-            const selectedVertexIds = getActiveVertices().flatMap((vertex) => {
-              const projectedVertex = projectVertexToScreenPoint(
-                vertex.position,
-                camera,
-                {
-                  height: rect.height,
-                  width: rect.width,
-                },
-              );
+            const viewport = {
+              height: rect.height,
+              width: rect.width,
+            };
+            const selectedVertexIds = modelingLassoSelectVerticesEnabled
+              ? getActiveVertices().flatMap((vertex) => {
+                  const projectedVertex = projectVertexToScreenPoint(
+                    vertex.position,
+                    camera,
+                    viewport,
+                  );
 
-              return projectedVertex &&
-                isPointInsideLasso(projectedVertex.point, finalizedLassoPoints)
-                ? [vertex.id]
-                : [];
-            });
+                  return projectedVertex &&
+                    isPointInsideLasso(
+                      projectedVertex.point,
+                      finalizedLassoPoints,
+                    )
+                    ? [vertex.id]
+                    : [];
+                })
+              : [];
+            const selectedEdgeIds = modelingLassoSelectEdgesEnabled
+              ? getActiveEdgeTargets().flatMap((edge) => {
+                  const projectedEdgeCenter = projectVertexToScreenPoint(
+                    getEdgeCenter(edge),
+                    camera,
+                    viewport,
+                  );
+
+                  return projectedEdgeCenter &&
+                    isPointInsideLasso(
+                      projectedEdgeCenter.point,
+                      finalizedLassoPoints,
+                    )
+                    ? [edge.edgeId]
+                    : [];
+                })
+              : [];
+            const selectedFaceIds = modelingLassoSelectFacesEnabled
+              ? getActiveFaceTargets().flatMap((face) => {
+                  const projectedFaceCenter = projectVertexToScreenPoint(
+                    getFaceCenter(face),
+                    camera,
+                    viewport,
+                  );
+
+                  return projectedFaceCenter &&
+                    isPointInsideLasso(
+                      projectedFaceCenter.point,
+                      finalizedLassoPoints,
+                    )
+                    ? [face.faceId]
+                    : [];
+                })
+              : [];
 
             setModelingLassoSelection({
               phase: "settled",
               points: finalizedLassoPoints,
             });
-            selectVertices(selectedVertexIds, event.shiftKey);
-          } else if (!findHoveredVertexAtScreenPoint(event)) {
-            selectVertices([], false);
+            selectModelingElements(
+              {
+                edgeIds: selectedEdgeIds,
+                faceIds: selectedFaceIds,
+                vertexIds: selectedVertexIds,
+              },
+              event.shiftKey,
+            );
+          } else {
+            const clickedSelection = findLassoElementAtScreenPoint(event);
+            if (clickedSelection) {
+              selectModelingElements(clickedSelection, event.shiftKey);
+            } else {
+              selectModelingElements({}, false);
+            }
           }
         } else if (modelingTool === "line") {
           if (clickCandidate.moved && lineDragStartPosition) {
@@ -1333,9 +1505,12 @@ export function ModelingInputController({
     modelingPointerScreenVertexSnapEnabled,
     modelingPointerVertexSnapDistance,
     modelingPointerVertexSnapEnabled,
+    modelingLassoSelectEdgesEnabled,
+    modelingLassoSelectFacesEnabled,
+    modelingLassoSelectVerticesEnabled,
     modelingLineAngleSnapStepDeg,
     modelingRectangleMode,
-    selectVertices,
+    selectModelingElements,
     setActivePenStroke,
     setModelingCameraDragging,
     setModelingLassoSelection,

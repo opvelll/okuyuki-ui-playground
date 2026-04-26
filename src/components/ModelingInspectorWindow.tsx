@@ -136,6 +136,8 @@ export function ModelingInspectorWindow() {
   const [open, setOpen] = useState(true);
   const currentModelId = useModelingStore((state) => state.currentModelId);
   const modelsById = useModelingStore((state) => state.modelsById);
+  const selectedEdgeIds = useModelingStore((state) => state.selectedEdgeIds);
+  const selectedFaceIds = useModelingStore((state) => state.selectedFaceIds);
   const selectedRoot = useModelingStore((state) => state.selectedRoot);
   const selectedVertexIds = useModelingStore(
     (state) => state.selectedVertexIds,
@@ -288,9 +290,22 @@ export function ModelingInspectorWindow() {
                 />
               )}
             </div>
+          ) : selectedEdgeIds.length > 0 || selectedFaceIds.length > 0 ? (
+            <div className="grid gap-2">
+              {selectedEdgeIds.length > 0 ? (
+                <p className="text-[0.66rem] font-semibold text-orange-100">
+                  {selectedEdgeIds.length} edge selected
+                </p>
+              ) : null}
+              {selectedFaceIds.length > 0 ? (
+                <p className="text-[0.66rem] font-semibold text-orange-100">
+                  {selectedFaceIds.length} face selected
+                </p>
+              ) : null}
+            </div>
           ) : (
             <p className="text-[0.68rem] leading-5 text-slate-400">
-              Select the red root dot or a vertex to edit coordinates.
+              Select the red root dot, a vertex, an edge, or a face.
             </p>
           )}
         </div>

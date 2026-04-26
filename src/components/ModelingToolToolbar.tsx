@@ -457,6 +457,15 @@ export function ModelingToolHeaderProperties() {
   const modelingLineOverlayDisplayMode = useUiStore(
     (state) => state.modelingLineOverlayDisplayMode,
   );
+  const modelingLassoSelectEdgesEnabled = useUiStore(
+    (state) => state.modelingLassoSelectEdgesEnabled,
+  );
+  const modelingLassoSelectFacesEnabled = useUiStore(
+    (state) => state.modelingLassoSelectFacesEnabled,
+  );
+  const modelingLassoSelectVerticesEnabled = useUiStore(
+    (state) => state.modelingLassoSelectVerticesEnabled,
+  );
   const modelingLineAngleSnapStepDeg = useUiStore(
     (state) => state.modelingLineAngleSnapStepDeg,
   );
@@ -492,6 +501,15 @@ export function ModelingToolHeaderProperties() {
   );
   const setModelingLineOverlayDisplayMode = useUiStore(
     (state) => state.setModelingLineOverlayDisplayMode,
+  );
+  const setModelingLassoSelectEdgesEnabled = useUiStore(
+    (state) => state.setModelingLassoSelectEdgesEnabled,
+  );
+  const setModelingLassoSelectFacesEnabled = useUiStore(
+    (state) => state.setModelingLassoSelectFacesEnabled,
+  );
+  const setModelingLassoSelectVerticesEnabled = useUiStore(
+    (state) => state.setModelingLassoSelectVerticesEnabled,
   );
   const setModelingLineAngleSnapStepDeg = useUiStore(
     (state) => state.setModelingLineAngleSnapStepDeg,
@@ -544,99 +562,122 @@ export function ModelingToolHeaderProperties() {
     modelingTool,
   });
 
-  if (effectiveTool !== "pointer" || modelingTool === "lasso") {
+  if (effectiveTool !== "pointer") {
     return null;
   }
 
   return (
     <div className="absolute inset-x-3 top-3 z-30 flex flex-nowrap items-start justify-start gap-1 overflow-x-auto px-1 pb-1 md:inset-x-auto md:left-1/2 md:w-max md:max-w-[calc(100vw-8rem)] md:-translate-x-1/2 md:justify-center">
-      <div className={propertyPanelClasses}>
-        <ToolSettingToggle
-          checked={
-            modelingTool === "move" || modelingPointerScreenVertexSnapEnabled
-          }
-          disabled={modelingTool === "move"}
-          label="Hover Vertex"
-          onChange={setModelingPointerScreenVertexSnapEnabled}
-          title={
-            modelingTool === "move"
-              ? "Move tool always snaps the 3D pointer onto a vertex under the mouse."
-              : "Toggle snapping the 3D pointer onto a vertex directly under the mouse in screen space."
-          }
-        />
-        <ToolSettingToggle
-          checked={modelingPointerScreenEdgeSnapEnabled}
-          label="Hover Edge"
-          onChange={setModelingPointerScreenEdgeSnapEnabled}
-          title="Toggle snapping the 3D pointer onto an edge directly under the mouse in screen space."
-        />
-        <ToolSettingToggle
-          checked={modelingPointerScreenFaceSnapEnabled}
-          label="Hover Face"
-          onChange={setModelingPointerScreenFaceSnapEnabled}
-          title="Toggle snapping the 3D pointer onto a face directly under the mouse in screen space."
-        />
-        <ToolSettingToggle
-          checked={modelingPointerVertexSnapEnabled}
-          label="Vertex Snap"
-          onChange={setModelingPointerVertexSnapEnabled}
-          title="Toggle 3D pointer snapping directly onto nearby existing vertices."
-        />
-        <ToolSettingNumberField
-          id="pointer-vertex-snap-distance"
-          label="Vertex Distance"
-          min="0"
-          onChange={setModelingPointerVertexSnapDistance}
-          step="0.01"
-          title="Maximum world-space distance used when snapping the 3D pointer onto a nearby vertex."
-          value={modelingPointerVertexSnapDistance}
-        />
-        <ToolSettingToggle
-          checked={modelingPointerAxisSnapEnabled}
-          label="Axis Snap"
-          onChange={setModelingPointerAxisSnapEnabled}
-          title="Toggle 3D pointer snapping each XYZ component to nearby vertex coordinates."
-        />
-        <ToolSettingNumberField
-          id="pointer-axis-snap-distance"
-          label="Axis Distance"
-          min="0"
-          onChange={setModelingPointerAxisSnapDistance}
-          step="0.01"
-          title="Maximum world-space distance used when snapping each XYZ component to nearby vertex coordinates."
-          value={modelingPointerAxisSnapDistance}
-        />
-        <ToolSettingToggle
-          checked={modelingPointerEdgeSnapEnabled}
-          label="Edge Snap"
-          onChange={setModelingPointerEdgeSnapEnabled}
-          title="Toggle 3D pointer snapping onto the nearest point along an existing edge."
-        />
-        <ToolSettingNumberField
-          id="pointer-edge-snap-distance"
-          label="Edge Distance"
-          min="0"
-          onChange={setModelingPointerEdgeSnapDistance}
-          step="0.01"
-          title="Maximum world-space distance used when snapping the 3D pointer onto an existing edge."
-          value={modelingPointerEdgeSnapDistance}
-        />
-        <ToolSettingToggle
-          checked={modelingPointerGridSnapEnabled}
-          label="Grid Snap"
-          onChange={setModelingPointerGridSnapEnabled}
-          title="Toggle fixed world-interval snapping on axes that did not snap to another vertex."
-        />
-        <ToolSettingNumberField
-          id="pointer-grid-snap-step"
-          label="Grid Step"
-          min="0.01"
-          onChange={setModelingPointerGridSnapStep}
-          step="0.01"
-          title="Fixed world interval used on axes that did not snap to another vertex."
-          value={modelingPointerGridSnapStep}
-        />
-      </div>
+      {modelingTool === "lasso" ? (
+        <div className={propertyPanelClasses}>
+          <ToolSettingToggle
+            checked={modelingLassoSelectVerticesEnabled}
+            label="Vertex"
+            onChange={setModelingLassoSelectVerticesEnabled}
+            title="Toggle lasso selection of vertices."
+          />
+          <ToolSettingToggle
+            checked={modelingLassoSelectEdgesEnabled}
+            label="Edge"
+            onChange={setModelingLassoSelectEdgesEnabled}
+            title="Toggle lasso selection of edge midpoints."
+          />
+          <ToolSettingToggle
+            checked={modelingLassoSelectFacesEnabled}
+            label="Face"
+            onChange={setModelingLassoSelectFacesEnabled}
+            title="Toggle lasso selection of face center dots."
+          />
+        </div>
+      ) : (
+        <div className={propertyPanelClasses}>
+          <ToolSettingToggle
+            checked={
+              modelingTool === "move" || modelingPointerScreenVertexSnapEnabled
+            }
+            disabled={modelingTool === "move"}
+            label="Hover Vertex"
+            onChange={setModelingPointerScreenVertexSnapEnabled}
+            title={
+              modelingTool === "move"
+                ? "Move tool always snaps the 3D pointer onto a vertex under the mouse."
+                : "Toggle snapping the 3D pointer onto a vertex directly under the mouse in screen space."
+            }
+          />
+          <ToolSettingToggle
+            checked={modelingPointerScreenEdgeSnapEnabled}
+            label="Hover Edge"
+            onChange={setModelingPointerScreenEdgeSnapEnabled}
+            title="Toggle snapping the 3D pointer onto an edge directly under the mouse in screen space."
+          />
+          <ToolSettingToggle
+            checked={modelingPointerScreenFaceSnapEnabled}
+            label="Hover Face"
+            onChange={setModelingPointerScreenFaceSnapEnabled}
+            title="Toggle snapping the 3D pointer onto a face directly under the mouse in screen space."
+          />
+          <ToolSettingToggle
+            checked={modelingPointerVertexSnapEnabled}
+            label="Vertex Snap"
+            onChange={setModelingPointerVertexSnapEnabled}
+            title="Toggle 3D pointer snapping directly onto nearby existing vertices."
+          />
+          <ToolSettingNumberField
+            id="pointer-vertex-snap-distance"
+            label="Vertex Distance"
+            min="0"
+            onChange={setModelingPointerVertexSnapDistance}
+            step="0.01"
+            title="Maximum world-space distance used when snapping the 3D pointer onto a nearby vertex."
+            value={modelingPointerVertexSnapDistance}
+          />
+          <ToolSettingToggle
+            checked={modelingPointerAxisSnapEnabled}
+            label="Axis Snap"
+            onChange={setModelingPointerAxisSnapEnabled}
+            title="Toggle 3D pointer snapping each XYZ component to nearby vertex coordinates."
+          />
+          <ToolSettingNumberField
+            id="pointer-axis-snap-distance"
+            label="Axis Distance"
+            min="0"
+            onChange={setModelingPointerAxisSnapDistance}
+            step="0.01"
+            title="Maximum world-space distance used when snapping each XYZ component to nearby vertex coordinates."
+            value={modelingPointerAxisSnapDistance}
+          />
+          <ToolSettingToggle
+            checked={modelingPointerEdgeSnapEnabled}
+            label="Edge Snap"
+            onChange={setModelingPointerEdgeSnapEnabled}
+            title="Toggle 3D pointer snapping onto the nearest point along an existing edge."
+          />
+          <ToolSettingNumberField
+            id="pointer-edge-snap-distance"
+            label="Edge Distance"
+            min="0"
+            onChange={setModelingPointerEdgeSnapDistance}
+            step="0.01"
+            title="Maximum world-space distance used when snapping the 3D pointer onto an existing edge."
+            value={modelingPointerEdgeSnapDistance}
+          />
+          <ToolSettingToggle
+            checked={modelingPointerGridSnapEnabled}
+            label="Grid Snap"
+            onChange={setModelingPointerGridSnapEnabled}
+            title="Toggle fixed world-interval snapping on axes that did not snap to another vertex."
+          />
+          <ToolSettingNumberField
+            id="pointer-grid-snap-step"
+            label="Grid Step"
+            min="0.01"
+            onChange={setModelingPointerGridSnapStep}
+            step="0.01"
+            title="Fixed world interval used on axes that did not snap to another vertex."
+            value={modelingPointerGridSnapStep}
+          />
+        </div>
+      )}
       {modelingTool === "line" ? (
         <div className={propertyPanelClasses}>
           <ToolSettingSelectField

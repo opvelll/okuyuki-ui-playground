@@ -244,7 +244,7 @@ export function SceneStatusHud() {
       ? effectiveModelingTool === "camera"
         ? "Camera tool: left drag rotates, wheel dollies, right drag slides, and releasing Space after starting a drag keeps camera control until the drag ends."
         : modelingTool === "lasso"
-          ? "Lasso tool: drag a screen-space loop to select enclosed vertices, hold Shift to add to the current selection, press Delete to remove selected vertices, press E for an edge, press F for a face, and hold Space for temporary camera control."
+          ? "Lasso tool: drag a screen-space loop to select enabled vertices, edges, or face center dots, hold Shift to add to the current selection, press Delete to remove selected elements, press E for an edge, press F for a face, and hold Space for temporary camera control."
           : modelingTool === "move"
             ? "Move tool: hover a vertex to lock the 3D pointer onto it, click to keep that vertex selected or add it to the current selection, and drag to move the selected vertices together with the pointer."
             : modelingTool === "vertex"

@@ -133,6 +133,9 @@ type PersistedUiState = {
   moveVerticalDropGuide: boolean;
   modelingPointerAxisSnapEnabled: boolean;
   modelingPointerAxisSnapDistance: number;
+  modelingLassoSelectEdgesEnabled: boolean;
+  modelingLassoSelectFacesEnabled: boolean;
+  modelingLassoSelectVerticesEnabled: boolean;
   modelingPointerDepthPrecisionScale: number;
   modelingPointerEdgeSnapDistance: number;
   modelingPointerEdgeSnapEnabled: boolean;
@@ -224,6 +227,9 @@ export type UiState = PersistedUiState & {
   setMoveVerticalDropGuide: (value: boolean) => void;
   setModelingPointerAxisSnapEnabled: (value: boolean) => void;
   setModelingPointerAxisSnapDistance: (value: number) => void;
+  setModelingLassoSelectEdgesEnabled: (value: boolean) => void;
+  setModelingLassoSelectFacesEnabled: (value: boolean) => void;
+  setModelingLassoSelectVerticesEnabled: (value: boolean) => void;
   setModelingPointerDepthPrecisionScale: (value: number) => void;
   setModelingPointerEdgeSnapDistance: (value: number) => void;
   setModelingPointerEdgeSnapEnabled: (value: boolean) => void;
@@ -386,6 +392,9 @@ export const createDefaultPersistedUiState = (): PersistedUiState => ({
   moveVerticalDropGuide: true,
   modelingPointerAxisSnapEnabled: true,
   modelingPointerAxisSnapDistance: 0.1,
+  modelingLassoSelectEdgesEnabled: false,
+  modelingLassoSelectFacesEnabled: false,
+  modelingLassoSelectVerticesEnabled: true,
   modelingPointerDepthPrecisionScale: 0.1,
   modelingPointerEdgeSnapDistance: 0.25,
   modelingPointerEdgeSnapEnabled: true,
@@ -459,6 +468,9 @@ const createInitialUiState = (): Omit<
   | "setMoveOverlayRadiusMultiplier"
   | "setMovePrecisionStep"
   | "setMoveVerticalDropGuide"
+  | "setModelingLassoSelectEdgesEnabled"
+  | "setModelingLassoSelectFacesEnabled"
+  | "setModelingLassoSelectVerticesEnabled"
   | "setModelingPointerAxisSnapEnabled"
   | "setModelingPointerAxisSnapDistance"
   | "setModelingPointerDepthPrecisionScale"
@@ -673,6 +685,12 @@ export const useUiStore = create<UiState>()(
       setMovePrecisionStep: (step) => set({ movePrecisionStep: step }),
       setMoveVerticalDropGuide: (value) =>
         set({ moveVerticalDropGuide: value }),
+      setModelingLassoSelectEdgesEnabled: (value) =>
+        set({ modelingLassoSelectEdgesEnabled: value }),
+      setModelingLassoSelectFacesEnabled: (value) =>
+        set({ modelingLassoSelectFacesEnabled: value }),
+      setModelingLassoSelectVerticesEnabled: (value) =>
+        set({ modelingLassoSelectVerticesEnabled: value }),
       setModelingPointerAxisSnapEnabled: (value) =>
         set({ modelingPointerAxisSnapEnabled: value }),
       setModelingPointerAxisSnapDistance: (value) =>
@@ -940,13 +958,16 @@ export const useUiStore = create<UiState>()(
     }),
     {
       name: UI_STORE_PERSIST_KEY,
-      version: 3,
+      version: 4,
       migrate: (persistedState) => {
         if (!persistedState || typeof persistedState !== "object") {
           return persistedState;
         }
 
         const migratedState = {
+          modelingLassoSelectEdgesEnabled: false,
+          modelingLassoSelectFacesEnabled: false,
+          modelingLassoSelectVerticesEnabled: true,
           modelingFaceBelowFloorDisplay: "faded",
           ...persistedState,
         };
@@ -986,6 +1007,10 @@ export const useUiStore = create<UiState>()(
         moveOverlayRadiusMultiplier: state.moveOverlayRadiusMultiplier,
         movePrecisionStep: state.movePrecisionStep,
         moveVerticalDropGuide: state.moveVerticalDropGuide,
+        modelingLassoSelectEdgesEnabled: state.modelingLassoSelectEdgesEnabled,
+        modelingLassoSelectFacesEnabled: state.modelingLassoSelectFacesEnabled,
+        modelingLassoSelectVerticesEnabled:
+          state.modelingLassoSelectVerticesEnabled,
         modelingPointerAxisSnapEnabled: state.modelingPointerAxisSnapEnabled,
         modelingPointerAxisSnapDistance: state.modelingPointerAxisSnapDistance,
         modelingPointerDepthPrecisionScale:

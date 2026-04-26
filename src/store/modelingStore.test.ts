@@ -172,6 +172,39 @@ describe("modelingStore", () => {
     expect(currentModel.faceOrder).toHaveLength(1);
   });
 
+  it("selects edges and faces separately from vertex move selection", () => {
+    const vertexA = useModelingStore.getState().addVertex([0, 0, 0]);
+    const vertexB = useModelingStore.getState().addVertex([1, 0, 0]);
+    const vertexC = useModelingStore.getState().addVertex([0, 1, 0]);
+
+    useModelingStore.getState().selectVertex(vertexA?.id ?? "", false);
+    useModelingStore.getState().selectVertex(vertexB?.id ?? "", true);
+    useModelingStore.getState().selectVertex(vertexC?.id ?? "", true);
+    useModelingStore.getState().createFaceFromSelectedVertices();
+
+    const state = useModelingStore.getState();
+    const currentModel = state.modelsById[state.currentModelId];
+    const edgeId = currentModel.edgeOrder[0];
+    const faceId = currentModel.faceOrder[0];
+
+    useModelingStore.getState().selectModelingElements({
+      edgeIds: [edgeId],
+      faceIds: [faceId],
+    });
+
+    expect(useModelingStore.getState().selectedEdgeIds).toEqual([edgeId]);
+    expect(useModelingStore.getState().selectedFaceIds).toEqual([faceId]);
+    expect(useModelingStore.getState().selectedVertexIds).toEqual([]);
+
+    expect(
+      useModelingStore.getState().beginVertexMoveDrag(vertexA?.id ?? ""),
+    ).toBe(false);
+
+    useModelingStore.getState().selectVertex(vertexA?.id ?? "", false);
+    expect(useModelingStore.getState().selectedEdgeIds).toEqual([]);
+    expect(useModelingStore.getState().selectedFaceIds).toEqual([]);
+  });
+
   it("creates a rectangle from a dragged diagonal as two triangle faces", () => {
     expect(
       useModelingStore

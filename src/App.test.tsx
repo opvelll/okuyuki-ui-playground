@@ -189,9 +189,12 @@ describe("App", () => {
     expect(screen.getByText(/2D Selection/i)).toBeInTheDocument();
     expect(
       screen.getByText(
-        /Lasso tool: drag a screen-space loop to select enclosed vertices/i,
+        /Lasso tool: drag a screen-space loop to select enabled vertices, edges, or face center dots/i,
       ),
     ).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Vertex$/i)).toBeChecked();
+    expect(screen.getByLabelText(/^Edge$/i)).not.toBeChecked();
+    expect(screen.getByLabelText(/^Face$/i)).not.toBeChecked();
     expect(
       screen.getByRole("button", { name: /Switch to Modeling screen/i }),
     ).toHaveAttribute("aria-pressed", "true");
@@ -526,6 +529,9 @@ describe("App", () => {
     await switchToModelingScreen(user);
 
     expect(screen.getAllByText("2D Selection")).toHaveLength(1);
+    expect(screen.getByLabelText(/^Vertex$/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Edge$/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Face$/i)).toBeInTheDocument();
     expect(
       screen.queryByLabelText(/^Vertex Distance$/i),
     ).not.toBeInTheDocument();

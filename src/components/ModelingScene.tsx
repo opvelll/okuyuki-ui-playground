@@ -45,6 +45,8 @@ const POINTER_AXIS_DASH_EXTENT = 120;
 const POINTER_AXIS_DASH_SIZE = 0.18;
 const POINTER_AXIS_GAP_SIZE = 0.08;
 const MODEL_VERTEX_PIXEL_SIZE = 4;
+const MODEL_FACE_CENTER_PIXEL_SIZE = 5;
+const MODELING_SELECTION_COLOR = "#f97316";
 const DEFAULT_OVERLAY_NORMAL = new Vector3(0, 0, 1);
 const MODELING_LINE_PREVIEW_DEFAULT_VERTEX_COLOR = "#ffffff";
 const MODELING_LINE_PREVIEW_SNAPPED_VERTEX_COLOR = "#22c55e";
@@ -1112,11 +1114,16 @@ function ModelingMesh() {
   const modelsById = useModelingStore((state) => state.modelsById);
   const selectRoot = useModelingStore((state) => state.selectRoot);
   const selectedRoot = useModelingStore((state) => state.selectedRoot);
+  const selectedEdgeIds = useModelingStore((state) => state.selectedEdgeIds);
+  const selectedFaceIds = useModelingStore((state) => state.selectedFaceIds);
   const selectedVertexIds = useModelingStore(
     (state) => state.selectedVertexIds,
   );
   const faceBelowFloorDisplay = useUiStore(
     (state) => state.modelingFaceBelowFloorDisplay,
+  );
+  const modelingLassoSelectFacesEnabled = useUiStore(
+    (state) => state.modelingLassoSelectFacesEnabled,
   );
   const verticalAxisFloorY = useUiStore(
     (state) => state.modelingPointerVerticalAxisFloorY,
@@ -1126,6 +1133,14 @@ function ModelingMesh() {
     () => new Set(selectedVertexIds),
     [selectedVertexIds],
   );
+  const selectedEdgeSet = useMemo(
+    () => new Set(selectedEdgeIds),
+    [selectedEdgeIds],
+  );
+  const selectedFaceSet = useMemo(
+    () => new Set(selectedFaceIds),
+    [selectedFaceIds],
+  );
   const edgeGeometry = useMemo(() => {
     const geometry = new BufferGeometry();
     if (!activeModel || activeModel.edgeOrder.length === 0) {
@@ -1133,6 +1148,10 @@ function ModelingMesh() {
     }
 
     const positions = activeModel.edgeOrder.flatMap((edgeId) => {
+      if (selectedEdgeSet.has(edgeId)) {
+        return [];
+      }
+
       const edge = activeModel.edgesById[edgeId];
       return edge.vertexIds.flatMap(
         (vertexId) => activeModel.verticesById[vertexId].position,
@@ -1141,7 +1160,27 @@ function ModelingMesh() {
 
     geometry.setAttribute("position", new Float32BufferAttribute(positions, 3));
     return geometry;
-  }, [activeModel]);
+  }, [activeModel, selectedEdgeSet]);
+  const selectedEdgeGeometry = useMemo(() => {
+    const geometry = new BufferGeometry();
+    if (!activeModel || selectedEdgeIds.length === 0) {
+      return geometry;
+    }
+
+    const positions = activeModel.edgeOrder.flatMap((edgeId) => {
+      if (!selectedEdgeSet.has(edgeId)) {
+        return [];
+      }
+
+      const edge = activeModel.edgesById[edgeId];
+      return edge.vertexIds.flatMap(
+        (vertexId) => activeModel.verticesById[vertexId].position,
+      );
+    });
+
+    geometry.setAttribute("position", new Float32BufferAttribute(positions, 3));
+    return geometry;
+  }, [activeModel, selectedEdgeIds.length, selectedEdgeSet]);
   const faceGeometry = useMemo(() => {
     const geometry = new BufferGeometry();
     if (!activeModel || activeModel.faceOrder.length === 0) {
@@ -1149,6 +1188,10 @@ function ModelingMesh() {
     }
 
     const positions = activeModel.faceOrder.flatMap((faceId) => {
+      if (selectedFaceSet.has(faceId)) {
+        return [];
+      }
+
       const face = activeModel.facesById[faceId];
       return face.vertexIds.flatMap(
         (vertexId) => activeModel.verticesById[vertexId].position,
@@ -1158,7 +1201,115 @@ function ModelingMesh() {
     geometry.setAttribute("position", new Float32BufferAttribute(positions, 3));
     geometry.computeVertexNormals();
     return geometry;
-  }, [activeModel]);
+  }, [activeModel, selectedFaceSet]);
+  const selectedFaceGeometry = useMemo(() => {
+    const geometry = new BufferGeometry();
+    if (!activeModel || selectedFaceIds.length === 0) {
+      return geometry;
+    }
+
+    const positions = activeModel.faceOrder.flatMap((faceId) => {
+      if (!selectedFaceSet.has(faceId)) {
+        return [];
+      }
+
+      const face = activeModel.facesById[faceId];
+      return face.vertexIds.flatMap(
+        (vertexId) => activeModel.verticesById[vertexId].position,
+      );
+    });
+
+    geometry.setAttribute("position", new Float32BufferAttribute(positions, 3));
+    geometry.computeVertexNormals();
+    return geometry;
+  }, [activeModel, selectedFaceIds.length, selectedFaceSet]);
+  const faceCenterGeometry = useMemo(() => {
+    const geometry = new BufferGeometry();
+    if (!activeModel || !modelingLassoSelectFacesEnabled) {
+      return geometry;
+    }
+
+    const positions = activeModel.faceOrder.flatMap((faceId) => {
+      if (selectedFaceSet.has(faceId)) {
+        return [];
+      }
+
+      const face = activeModel.facesById[faceId];
+      const vertices = face.vertexIds.map(
+        (vertexId) => activeModel.verticesById[vertexId],
+      );
+
+      if (vertices.some((vertex) => vertex === undefined)) {
+        return [];
+      }
+
+      return [
+        (vertices[0].position[0] +
+          vertices[1].position[0] +
+          vertices[2].position[0]) /
+          3,
+        (vertices[0].position[1] +
+          vertices[1].position[1] +
+          vertices[2].position[1]) /
+          3,
+        (vertices[0].position[2] +
+          vertices[1].position[2] +
+          vertices[2].position[2]) /
+          3,
+      ];
+    });
+
+    geometry.setAttribute("position", new Float32BufferAttribute(positions, 3));
+    return geometry;
+  }, [activeModel, modelingLassoSelectFacesEnabled, selectedFaceSet]);
+  const selectedFaceCenterGeometry = useMemo(() => {
+    const geometry = new BufferGeometry();
+    if (
+      !activeModel ||
+      !modelingLassoSelectFacesEnabled ||
+      selectedFaceIds.length === 0
+    ) {
+      return geometry;
+    }
+
+    const positions = activeModel.faceOrder.flatMap((faceId) => {
+      if (!selectedFaceSet.has(faceId)) {
+        return [];
+      }
+
+      const face = activeModel.facesById[faceId];
+      const vertices = face.vertexIds.map(
+        (vertexId) => activeModel.verticesById[vertexId],
+      );
+
+      if (vertices.some((vertex) => vertex === undefined)) {
+        return [];
+      }
+
+      return [
+        (vertices[0].position[0] +
+          vertices[1].position[0] +
+          vertices[2].position[0]) /
+          3,
+        (vertices[0].position[1] +
+          vertices[1].position[1] +
+          vertices[2].position[1]) /
+          3,
+        (vertices[0].position[2] +
+          vertices[1].position[2] +
+          vertices[2].position[2]) /
+          3,
+      ];
+    });
+
+    geometry.setAttribute("position", new Float32BufferAttribute(positions, 3));
+    return geometry;
+  }, [
+    activeModel,
+    modelingLassoSelectFacesEnabled,
+    selectedFaceIds.length,
+    selectedFaceSet,
+  ]);
   const vertexGeometry = useMemo(() => {
     const geometry = new BufferGeometry();
     if (!activeModel) {
@@ -1203,8 +1354,28 @@ function ModelingMesh() {
   const selectedVertexMaterial = useMemo(
     () =>
       new PointsMaterial({
-        color: "#ffffff",
+        color: MODELING_SELECTION_COLOR,
         size: MODEL_VERTEX_PIXEL_SIZE,
+        sizeAttenuation: false,
+      }),
+    [],
+  );
+  const faceCenterMaterial = useMemo(
+    () =>
+      new PointsMaterial({
+        color: "#000000",
+        depthTest: false,
+        size: MODEL_FACE_CENTER_PIXEL_SIZE,
+        sizeAttenuation: false,
+      }),
+    [],
+  );
+  const selectedFaceCenterMaterial = useMemo(
+    () =>
+      new PointsMaterial({
+        color: MODELING_SELECTION_COLOR,
+        depthTest: false,
+        size: MODEL_FACE_CENTER_PIXEL_SIZE,
         sizeAttenuation: false,
       }),
     [],
@@ -1226,15 +1397,27 @@ function ModelingMesh() {
   useEffect(() => {
     return () => {
       edgeGeometry.dispose();
+      faceCenterGeometry.dispose();
       faceGeometry.dispose();
+      selectedEdgeGeometry.dispose();
+      selectedFaceCenterGeometry.dispose();
+      selectedFaceGeometry.dispose();
       vertexGeometry.dispose();
+      faceCenterMaterial.dispose();
+      selectedFaceCenterMaterial.dispose();
       selectedVertexGeometry.dispose();
       vertexMaterial.dispose();
       selectedVertexMaterial.dispose();
     };
   }, [
     edgeGeometry,
+    faceCenterGeometry,
+    faceCenterMaterial,
     faceGeometry,
+    selectedEdgeGeometry,
+    selectedFaceCenterGeometry,
+    selectedFaceCenterMaterial,
+    selectedFaceGeometry,
     selectedVertexGeometry,
     selectedVertexMaterial,
     vertexGeometry,
@@ -1260,7 +1443,7 @@ function ModelingMesh() {
             />
           </bufferGeometry>
           <pointsMaterial
-            color="#ffffff"
+            color={MODELING_SELECTION_COLOR}
             depthTest={false}
             size={8}
             sizeAttenuation={false}
@@ -1303,23 +1486,66 @@ function ModelingMesh() {
               transparent
             />
           </mesh>
+          <mesh geometry={selectedFaceGeometry} renderOrder={3}>
+            <meshStandardMaterial
+              clippingPlanes={
+                faceBelowFloorDisplay === "visible"
+                  ? []
+                  : aboveFloorClippingPlanes
+              }
+              color={MODELING_SELECTION_COLOR}
+              opacity={0.58}
+              side={DoubleSide}
+              transparent
+            />
+          </mesh>
           {faceBelowFloorOpacity > 0 && faceBelowFloorDisplay !== "visible" ? (
-            <mesh geometry={faceGeometry} renderOrder={3}>
-              <meshStandardMaterial
-                clippingPlanes={belowFloorClippingPlanes}
-                color="#2563eb"
-                opacity={faceBelowFloorOpacity}
-                side={DoubleSide}
-                transparent
-              />
-            </mesh>
+            <>
+              <mesh geometry={faceGeometry} renderOrder={3}>
+                <meshStandardMaterial
+                  clippingPlanes={belowFloorClippingPlanes}
+                  color="#2563eb"
+                  opacity={faceBelowFloorOpacity}
+                  side={DoubleSide}
+                  transparent
+                />
+              </mesh>
+              <mesh geometry={selectedFaceGeometry} renderOrder={3}>
+                <meshStandardMaterial
+                  clippingPlanes={belowFloorClippingPlanes}
+                  color={MODELING_SELECTION_COLOR}
+                  opacity={Math.max(faceBelowFloorOpacity, 0.18)}
+                  side={DoubleSide}
+                  transparent
+                />
+              </mesh>
+            </>
           ) : null}
         </>
       ) : null}
       {activeModel.edgeOrder.length > 0 ? (
-        <lineSegments geometry={edgeGeometry} renderOrder={4}>
-          <lineBasicMaterial color="#bfdbfe" />
-        </lineSegments>
+        <>
+          <lineSegments geometry={edgeGeometry} renderOrder={4}>
+            <lineBasicMaterial color="#bfdbfe" />
+          </lineSegments>
+          <lineSegments geometry={selectedEdgeGeometry} renderOrder={5}>
+            <lineBasicMaterial color={MODELING_SELECTION_COLOR} />
+          </lineSegments>
+        </>
+      ) : null}
+      {modelingLassoSelectFacesEnabled ? (
+        <>
+          <points
+            geometry={faceCenterGeometry}
+            material={faceCenterMaterial}
+            renderOrder={8}
+          />
+          <points
+            geometry={selectedFaceCenterGeometry}
+            material={selectedFaceCenterMaterial}
+            renderOrder={9}
+          />
+        </>
       ) : null}
       <points
         geometry={vertexGeometry}

@@ -43,6 +43,8 @@ export type ModelingModel = {
 type ModelingSnapshot = {
   currentModelId: string;
   modelsById: Record<string, ModelingModel>;
+  selectedEdgeIds: string[];
+  selectedFaceIds: string[];
   selectedRoot: boolean;
   selectedVertexIds: string[];
 };
@@ -151,6 +153,16 @@ type ModelingState = ModelingSnapshot & {
     appendToSelection?: boolean,
     maxDistance?: number,
   ) => ModelingVertex | null;
+  selectModelingElements: (
+    selection: {
+      edgeIds?: string[];
+      faceIds?: string[];
+      vertexIds?: string[];
+    },
+    appendToSelection?: boolean,
+  ) => void;
+  selectEdges: (edgeIds: string[], appendToSelection?: boolean) => void;
+  selectFaces: (faceIds: string[], appendToSelection?: boolean) => void;
   selectVertices: (vertexIds: string[], appendToSelection?: boolean) => void;
   selectVertex: (vertexId: string, appendToSelection?: boolean) => void;
   undo: () => void;
@@ -244,7 +256,13 @@ function normalizeModel(model: ModelingModel): ModelingModel {
   };
 }
 
-function cloneSnapshot(snapshot: ModelingSnapshot): ModelingSnapshot {
+type SnapshotInput = Omit<
+  ModelingSnapshot,
+  "selectedEdgeIds" | "selectedFaceIds"
+> &
+  Partial<Pick<ModelingSnapshot, "selectedEdgeIds" | "selectedFaceIds">>;
+
+function cloneSnapshot(snapshot: SnapshotInput): ModelingSnapshot {
   return {
     currentModelId: snapshot.currentModelId,
     modelsById: Object.fromEntries(
@@ -253,6 +271,8 @@ function cloneSnapshot(snapshot: ModelingSnapshot): ModelingSnapshot {
         normalizeModel(cloneModel(model)),
       ]),
     ),
+    selectedEdgeIds: [...(snapshot.selectedEdgeIds ?? [])],
+    selectedFaceIds: [...(snapshot.selectedFaceIds ?? [])],
     selectedRoot: snapshot.selectedRoot ?? false,
     selectedVertexIds: [...snapshot.selectedVertexIds],
   };
@@ -265,6 +285,8 @@ function createInitialSnapshot(): ModelingSnapshot {
     modelsById: {
       [initialModel.id]: initialModel,
     },
+    selectedEdgeIds: [],
+    selectedFaceIds: [],
     selectedRoot: true,
     selectedVertexIds: [],
   };
@@ -575,7 +597,7 @@ function ensureFaceInModel(
 }
 
 function createPenStrokeSnapshot(
-  snapshot: ModelingSnapshot,
+  snapshot: SnapshotInput,
   rawPoints: Vector3Tuple[],
   params: PenStrokeParams,
 ) {
@@ -621,6 +643,8 @@ function createPenStrokeSnapshot(
       ...snapshot.modelsById,
       [currentModel.id]: nextModel,
     },
+    selectedEdgeIds: [],
+    selectedFaceIds: [],
     selectedRoot: false,
     selectedVertexIds: selectedVertexIds.filter(
       (vertexId, index, list) => list.indexOf(vertexId) === index,
@@ -630,13 +654,15 @@ function createPenStrokeSnapshot(
 
 function commitSnapshot(
   state: ModelingState,
-  nextSnapshot: ModelingSnapshot,
+  nextSnapshot: SnapshotInput,
 ): Pick<
   ModelingState,
   | "currentModelId"
   | "history"
   | "historyIndex"
   | "modelsById"
+  | "selectedEdgeIds"
+  | "selectedFaceIds"
   | "selectedRoot"
   | "selectedVertexIds"
 > {
@@ -658,9 +684,57 @@ type PersistedModelingState = Pick<
   | "autoNameIndex"
   | "currentModelId"
   | "modelsById"
+  | "selectedEdgeIds"
+  | "selectedFaceIds"
   | "selectedRoot"
   | "selectedVertexIds"
 >;
+
+function getValidSelectionIds(
+  currentModel: ModelingModel,
+  selection: {
+    edgeIds?: string[];
+    faceIds?: string[];
+    vertexIds?: string[];
+  },
+) {
+  const selectedEdgeInput = new Set(selection.edgeIds ?? []);
+  const selectedFaceInput = new Set(selection.faceIds ?? []);
+  const selectedVertexInput = new Set(selection.vertexIds ?? []);
+
+  return {
+    edgeIds: currentModel.edgeOrder.filter(
+      (edgeId) =>
+        selectedEdgeInput.has(edgeId) && currentModel.edgesById[edgeId],
+    ),
+    faceIds: currentModel.faceOrder.filter(
+      (faceId) =>
+        selectedFaceInput.has(faceId) && currentModel.facesById[faceId],
+    ),
+    vertexIds: currentModel.vertexOrder.filter(
+      (vertexId) =>
+        selectedVertexInput.has(vertexId) &&
+        currentModel.verticesById[vertexId],
+    ),
+  };
+}
+
+function areStringArraysEqual(left: string[], right: string[]) {
+  return (
+    left.length === right.length &&
+    left.every((value, index) => value === right[index])
+  );
+}
+
+function appendUniqueIds(currentIds: string[], nextIds: string[]) {
+  const mergedIds = [...currentIds];
+  for (const id of nextIds) {
+    if (!mergedIds.includes(id)) {
+      mergedIds.push(id);
+    }
+  }
+  return mergedIds;
+}
 
 export const useModelingStore = create<ModelingState>()(
   persist(
@@ -696,11 +770,15 @@ export const useModelingStore = create<ModelingState>()(
             snapshot: cloneSnapshot({
               currentModelId: state.currentModelId,
               modelsById: state.modelsById,
+              selectedEdgeIds: state.selectedEdgeIds,
+              selectedFaceIds: state.selectedFaceIds,
               selectedRoot: state.selectedRoot,
               selectedVertexIds: state.selectedVertexIds,
             }),
             vertexIds: normalizedVertexIds,
           },
+          selectedEdgeIds: [],
+          selectedFaceIds: [],
           selectedVertexIds: [...normalizedVertexIds],
           selectedRoot: false,
         });
@@ -968,9 +1046,14 @@ export const useModelingStore = create<ModelingState>()(
       },
       clearVertexSelection: () =>
         set((state) =>
-          state.selectedVertexIds.length === 0 && !state.selectedRoot
+          state.selectedEdgeIds.length === 0 &&
+          state.selectedFaceIds.length === 0 &&
+          state.selectedVertexIds.length === 0 &&
+          !state.selectedRoot
             ? state
             : {
+                selectedEdgeIds: [],
+                selectedFaceIds: [],
                 selectedRoot: false,
                 selectedVertexIds: [],
               },
@@ -1280,7 +1363,11 @@ export const useModelingStore = create<ModelingState>()(
       },
       deleteSelectedVertices: () => {
         const state = get();
-        if (state.selectedVertexIds.length === 0) {
+        if (
+          state.selectedEdgeIds.length === 0 &&
+          state.selectedFaceIds.length === 0 &&
+          state.selectedVertexIds.length === 0
+        ) {
           return false;
         }
 
@@ -1290,11 +1377,19 @@ export const useModelingStore = create<ModelingState>()(
         }
 
         const selectedVertexSet = new Set(state.selectedVertexIds);
+        const selectedEdgeSet = new Set(state.selectedEdgeIds);
+        const selectedFaceSet = new Set(state.selectedFaceIds);
         const hasSelectedVertex = state.selectedVertexIds.some(
           (vertexId) => currentModel.verticesById[vertexId],
         );
+        const hasSelectedEdge = state.selectedEdgeIds.some(
+          (edgeId) => currentModel.edgesById[edgeId],
+        );
+        const hasSelectedFace = state.selectedFaceIds.some(
+          (faceId) => currentModel.facesById[faceId],
+        );
 
-        if (!hasSelectedVertex) {
+        if (!hasSelectedVertex && !hasSelectedEdge && !hasSelectedFace) {
           return false;
         }
 
@@ -1310,13 +1405,15 @@ export const useModelingStore = create<ModelingState>()(
         );
         nextModel.edgeOrder = nextModel.edgeOrder.filter((edgeId) => {
           const edge = nextModel.edgesById[edgeId];
-          return !edge.vertexIds.some((vertexId) =>
-            selectedVertexSet.has(vertexId),
+          return (
+            !selectedEdgeSet.has(edgeId) &&
+            !edge.vertexIds.some((vertexId) => selectedVertexSet.has(vertexId))
           );
         });
         nextModel.edgesById = Object.fromEntries(
           Object.entries(nextModel.edgesById).filter(
-            ([, edge]) =>
+            ([edgeId, edge]) =>
+              !selectedEdgeSet.has(edgeId) &&
               !edge.vertexIds.some((vertexId) =>
                 selectedVertexSet.has(vertexId),
               ),
@@ -1324,13 +1421,15 @@ export const useModelingStore = create<ModelingState>()(
         );
         nextModel.faceOrder = nextModel.faceOrder.filter((faceId) => {
           const face = nextModel.facesById[faceId];
-          return !face.vertexIds.some((vertexId) =>
-            selectedVertexSet.has(vertexId),
+          return (
+            !selectedFaceSet.has(faceId) &&
+            !face.vertexIds.some((vertexId) => selectedVertexSet.has(vertexId))
           );
         });
         nextModel.facesById = Object.fromEntries(
           Object.entries(nextModel.facesById).filter(
-            ([, face]) =>
+            ([faceId, face]) =>
+              !selectedFaceSet.has(faceId) &&
               !face.vertexIds.some((vertexId) =>
                 selectedVertexSet.has(vertexId),
               ),
@@ -1344,6 +1443,8 @@ export const useModelingStore = create<ModelingState>()(
               ...state.modelsById,
               [currentModel.id]: nextModel,
             },
+            selectedEdgeIds: [],
+            selectedFaceIds: [],
             selectedRoot: false,
             selectedVertexIds: [],
           }),
@@ -1409,6 +1510,8 @@ export const useModelingStore = create<ModelingState>()(
           ...commitSnapshot(state, {
             currentModelId: state.currentModelId,
             modelsById: state.modelsById,
+            selectedEdgeIds: [],
+            selectedFaceIds: [],
             selectedRoot: false,
             selectedVertexIds: state.selectedVertexIds,
           }),
@@ -1457,9 +1560,14 @@ export const useModelingStore = create<ModelingState>()(
       resetModeling: () => set(createInitialState()),
       selectRoot: () =>
         set((state) =>
-          state.selectedRoot && state.selectedVertexIds.length === 0
+          state.selectedRoot &&
+          state.selectedEdgeIds.length === 0 &&
+          state.selectedFaceIds.length === 0 &&
+          state.selectedVertexIds.length === 0
             ? state
             : {
+                selectedEdgeIds: [],
+                selectedFaceIds: [],
                 selectedRoot: true,
                 selectedVertexIds: [],
               },
@@ -1485,9 +1593,17 @@ export const useModelingStore = create<ModelingState>()(
         if (!nearestVertex) {
           if (
             !appendToSelection &&
-            (state.selectedVertexIds.length > 0 || state.selectedRoot)
+            (state.selectedEdgeIds.length > 0 ||
+              state.selectedFaceIds.length > 0 ||
+              state.selectedVertexIds.length > 0 ||
+              state.selectedRoot)
           ) {
-            set({ selectedRoot: false, selectedVertexIds: [] });
+            set({
+              selectedEdgeIds: [],
+              selectedFaceIds: [],
+              selectedRoot: false,
+              selectedVertexIds: [],
+            });
           }
           return null;
         }
@@ -1514,6 +1630,8 @@ export const useModelingStore = create<ModelingState>()(
           }
 
           if (
+            state.selectedEdgeIds.length === 0 &&
+            state.selectedFaceIds.length === 0 &&
             state.selectedVertexIds.length === 1 &&
             state.selectedVertexIds[0] === vertexId
           ) {
@@ -1521,8 +1639,88 @@ export const useModelingStore = create<ModelingState>()(
           }
 
           return {
+            selectedEdgeIds: [],
+            selectedFaceIds: [],
             selectedRoot: false,
             selectedVertexIds: [vertexId],
+          };
+        }),
+      selectEdges: (edgeIds, appendToSelection = false) =>
+        get().selectModelingElements({ edgeIds }, appendToSelection),
+      selectFaces: (faceIds, appendToSelection = false) =>
+        get().selectModelingElements({ faceIds }, appendToSelection),
+      selectModelingElements: (selection, appendToSelection = false) =>
+        set((state) => {
+          const currentModel = state.modelsById[state.currentModelId];
+          if (!currentModel) {
+            return state;
+          }
+
+          const validSelection = getValidSelectionIds(currentModel, selection);
+
+          if (appendToSelection) {
+            const nextSelectedEdgeIds = appendUniqueIds(
+              state.selectedEdgeIds,
+              validSelection.edgeIds,
+            );
+            const nextSelectedFaceIds = appendUniqueIds(
+              state.selectedFaceIds,
+              validSelection.faceIds,
+            );
+            const nextSelectedVertexIds = appendUniqueIds(
+              state.selectedVertexIds,
+              validSelection.vertexIds,
+            );
+
+            if (
+              areStringArraysEqual(
+                nextSelectedEdgeIds,
+                state.selectedEdgeIds,
+              ) &&
+              areStringArraysEqual(
+                nextSelectedFaceIds,
+                state.selectedFaceIds,
+              ) &&
+              areStringArraysEqual(
+                nextSelectedVertexIds,
+                state.selectedVertexIds,
+              ) &&
+              !state.selectedRoot
+            ) {
+              return state;
+            }
+
+            return {
+              selectedEdgeIds: nextSelectedEdgeIds,
+              selectedFaceIds: nextSelectedFaceIds,
+              selectedRoot: false,
+              selectedVertexIds: nextSelectedVertexIds,
+            };
+          }
+
+          if (
+            areStringArraysEqual(
+              validSelection.edgeIds,
+              state.selectedEdgeIds,
+            ) &&
+            areStringArraysEqual(
+              validSelection.faceIds,
+              state.selectedFaceIds,
+            ) &&
+            areStringArraysEqual(
+              validSelection.vertexIds,
+              state.selectedVertexIds,
+            ) &&
+            !state.selectedRoot
+          ) {
+            return state;
+          }
+
+          return {
+            selectedEdgeIds: validSelection.edgeIds,
+            selectedFaceIds: validSelection.faceIds,
+            selectedRoot: false,
+            selectedVertexIds: validSelection.vertexIds,
           };
         }),
       selectVertices: (vertexIds, appendToSelection = false) =>
@@ -1541,7 +1739,12 @@ export const useModelingStore = create<ModelingState>()(
           if (validVertexIds.length === 0) {
             return appendToSelection
               ? state
-              : { selectedRoot: false, selectedVertexIds: [] };
+              : {
+                  selectedEdgeIds: [],
+                  selectedFaceIds: [],
+                  selectedRoot: false,
+                  selectedVertexIds: [],
+                };
           }
 
           if (appendToSelection) {
@@ -1570,6 +1773,8 @@ export const useModelingStore = create<ModelingState>()(
           }
 
           if (
+            state.selectedEdgeIds.length === 0 &&
+            state.selectedFaceIds.length === 0 &&
             validVertexIds.length === state.selectedVertexIds.length &&
             validVertexIds.every(
               (vertexId, index) => vertexId === state.selectedVertexIds[index],
@@ -1579,6 +1784,8 @@ export const useModelingStore = create<ModelingState>()(
           }
 
           return {
+            selectedEdgeIds: [],
+            selectedFaceIds: [],
             selectedRoot: false,
             selectedVertexIds: validVertexIds,
           };
@@ -1815,6 +2022,10 @@ export const useModelingStore = create<ModelingState>()(
           currentModelId:
             persisted.currentModelId ?? currentState.currentModelId,
           modelsById: persisted.modelsById ?? currentState.modelsById,
+          selectedEdgeIds:
+            persisted.selectedEdgeIds ?? currentState.selectedEdgeIds,
+          selectedFaceIds:
+            persisted.selectedFaceIds ?? currentState.selectedFaceIds,
           selectedRoot: persisted.selectedRoot ?? currentState.selectedRoot,
           selectedVertexIds:
             persisted.selectedVertexIds ?? currentState.selectedVertexIds,
@@ -1834,6 +2045,8 @@ export const useModelingStore = create<ModelingState>()(
         autoNameIndex: state.autoNameIndex,
         currentModelId: state.currentModelId,
         modelsById: state.modelsById,
+        selectedEdgeIds: state.selectedEdgeIds,
+        selectedFaceIds: state.selectedFaceIds,
         selectedRoot: state.selectedRoot,
         selectedVertexIds: state.selectedVertexIds,
       }),

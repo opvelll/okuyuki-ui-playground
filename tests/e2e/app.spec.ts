@@ -129,9 +129,12 @@ test("switches to the modeling screen", async ({ page }) => {
   await expect(page.getByText("2D Selection", { exact: true })).toBeVisible();
   await expect(
     page.getByText(
-      /Lasso tool: drag a screen-space loop to select enclosed vertices/i,
+      /Lasso tool: drag a screen-space loop to select enabled vertices, edges, or face center dots/i,
     ),
   ).toBeVisible();
+  await expect(page.getByLabel(/^Vertex$/i)).toBeChecked();
+  await expect(page.getByLabel(/^Edge$/i)).not.toBeChecked();
+  await expect(page.getByLabel(/^Face$/i)).not.toBeChecked();
   await expect(
     page.getByRole("button", { name: /Switch to Modeling screen/i }),
   ).toHaveAttribute("aria-pressed", "true");
