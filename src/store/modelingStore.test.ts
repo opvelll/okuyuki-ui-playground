@@ -46,6 +46,51 @@ describe("modelingStore", () => {
     expect(persistedValue).toContain("vertex-1");
   });
 
+  it("replaces modeling data as a fresh project", () => {
+    useModelingStore.getState().addVertex([9, 9, 9]);
+
+    useModelingStore.getState().replaceModelingProject(
+      {
+        currentModelId: "model-imported",
+        modelsById: {
+          "model-imported": {
+            edgeOrder: [],
+            edgesById: {},
+            faceOrder: [],
+            facesById: {},
+            id: "model-imported",
+            name: "Imported",
+            rootPosition: [1, 2, 3],
+            rootRotation: [0, 0, 0],
+            vertexOrder: ["vertex-imported"],
+            verticesById: {
+              "vertex-imported": {
+                id: "vertex-imported",
+                position: [4, 5, 6],
+              },
+            },
+          },
+        },
+        selectedEdgeIds: [],
+        selectedFaceIds: [],
+        selectedRoot: false,
+        selectedVertexIds: ["vertex-imported"],
+      },
+      { autoNameIndex: 7 },
+    );
+
+    const state = useModelingStore.getState();
+    const currentModel = state.modelsById[state.currentModelId];
+
+    expect(currentModel.name).toBe("Imported");
+    expect(currentModel.verticesById["vertex-imported"].position).toEqual([
+      4, 5, 6,
+    ]);
+    expect(state.autoNameIndex).toBe(7);
+    expect(state.history).toHaveLength(1);
+    expect(state.historyIndex).toBe(0);
+  });
+
   it("adds a vertex and selects it", () => {
     const vertex = useModelingStore.getState().addVertex([1, 2, 3]);
     const state = useModelingStore.getState();

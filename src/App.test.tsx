@@ -484,6 +484,17 @@ describe("App", () => {
 
     await renderApp(App);
     await switchToModelingScreen(user);
+
+    expect(
+      screen.getByRole("button", { name: /Save modeling project/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Load modeling project/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Export modeling project as OBJ/i }),
+    ).toBeInTheDocument();
+
     await user.click(
       screen.getByRole("button", { name: /Switch to Camera Move tool/i }),
     );

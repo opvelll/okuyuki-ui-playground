@@ -40,7 +40,7 @@ export type ModelingModel = {
   verticesById: Record<string, ModelingVertex>;
 };
 
-type ModelingSnapshot = {
+export type ModelingSnapshot = {
   currentModelId: string;
   modelsById: Record<string, ModelingModel>;
   selectedEdgeIds: string[];
@@ -146,6 +146,10 @@ type ModelingState = ModelingSnapshot & {
   commitVertexMoveDrag: () => boolean;
   redo: () => void;
   renameCurrentModel: (name: string) => void;
+  replaceModelingProject: (
+    snapshot: ModelingSnapshot,
+    options?: { autoNameIndex?: number },
+  ) => void;
   resetModeling: () => void;
   selectRoot: () => void;
   selectNearestVertex: (
@@ -1555,6 +1559,18 @@ export const useModelingStore = create<ModelingState>()(
               ...state.modelsById,
               [currentModel.id]: nextModel,
             },
+          };
+        }),
+      replaceModelingProject: (snapshot, options) =>
+        set((state) => {
+          const clonedSnapshot = cloneSnapshot(snapshot);
+
+          return {
+            ...clonedSnapshot,
+            activeVertexMoveDrag: null,
+            autoNameIndex: options?.autoNameIndex ?? state.autoNameIndex,
+            history: [cloneSnapshot(clonedSnapshot)],
+            historyIndex: 0,
           };
         }),
       resetModeling: () => set(createInitialState()),

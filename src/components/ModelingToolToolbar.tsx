@@ -2,15 +2,23 @@ import {
   Box,
   Camera,
   CircleDashed,
+  Download,
+  FolderOpen,
   MousePointer2,
   Move,
   PenLine,
   Plus,
   Redo2,
+  Save,
   Square,
   Undo2,
 } from "lucide-react";
-import type { ReactNode } from "react";
+import { type ChangeEvent, type ReactNode, useRef, useState } from "react";
+import { exportModelingSnapshotToObj } from "../lib/modelingObjExport";
+import {
+  parseModelingProjectFile,
+  serializeModelingProjectFile,
+} from "../lib/modelingProjectFile";
 import { useModelingStore } from "../store/modelingStore";
 import {
   type ModelingRectangleMode,
@@ -125,6 +133,20 @@ const fieldClasses =
 
 const propertyPanelClasses =
   "flex shrink-0 items-center gap-1.5 border border-white/12 bg-slate-950/80 px-2 py-1.5 shadow-[0_14px_28px_rgba(3,10,20,0.22)] backdrop-blur";
+
+function getSafeFileBaseName(name: string) {
+  const normalizedName = name.trim().replace(/[^\w.-]+/g, "-");
+  return normalizedName.length > 0 ? normalizedName : "naname-model";
+}
+
+function downloadTextFile(filename: string, text: string, type: string) {
+  const url = URL.createObjectURL(new Blob([text], { type }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
 
 function ToolSettingNumberField({
   id,
@@ -251,6 +273,10 @@ function ToolSettingSelectField<T extends string | number>({
 }
 
 export function ModelingToolToolbar() {
+  const loadProjectInputRef = useRef<HTMLInputElement>(null);
+  const [projectFileStatus, setProjectFileStatus] = useState<string | null>(
+    null,
+  );
   const modelingTool = useUiStore((state) => state.modelingTool);
   const modelingCameraDragging = useUiStore(
     (state) => state.modelingCameraDragging,
@@ -260,6 +286,18 @@ export function ModelingToolToolbar() {
   );
   const history = useModelingStore((state) => state.history);
   const historyIndex = useModelingStore((state) => state.historyIndex);
+  const autoNameIndex = useModelingStore((state) => state.autoNameIndex);
+  const currentModelId = useModelingStore((state) => state.currentModelId);
+  const modelsById = useModelingStore((state) => state.modelsById);
+  const selectedEdgeIds = useModelingStore((state) => state.selectedEdgeIds);
+  const selectedFaceIds = useModelingStore((state) => state.selectedFaceIds);
+  const selectedRoot = useModelingStore((state) => state.selectedRoot);
+  const selectedVertexIds = useModelingStore(
+    (state) => state.selectedVertexIds,
+  );
+  const replaceModelingProject = useModelingStore(
+    (state) => state.replaceModelingProject,
+  );
   const redo = useModelingStore((state) => state.redo);
   const undo = useModelingStore((state) => state.undo);
   const setModelingTool = useUiStore((state) => state.setModelingTool);
@@ -281,6 +319,57 @@ export function ModelingToolToolbar() {
     modelingTool === "pen" ||
     modelingTool === "rectangle" ||
     modelingTool === "box";
+  const currentModel = modelsById[currentModelId];
+  const currentFileBaseName = getSafeFileBaseName(
+    currentModel?.name ?? "naname-model",
+  );
+  const projectSnapshot = {
+    currentModelId,
+    modelsById,
+    selectedEdgeIds,
+    selectedFaceIds,
+    selectedRoot,
+    selectedVertexIds,
+  };
+
+  const handleSaveProject = () => {
+    downloadTextFile(
+      `${currentFileBaseName}.naname.json`,
+      serializeModelingProjectFile(projectSnapshot, { autoNameIndex }),
+      "application/json",
+    );
+    setProjectFileStatus("Saved project file.");
+  };
+
+  const handleExportObj = () => {
+    downloadTextFile(
+      `${currentFileBaseName}.obj`,
+      exportModelingSnapshotToObj(projectSnapshot),
+      "model/obj",
+    );
+    setProjectFileStatus("Exported OBJ file.");
+  };
+
+  const handleLoadProject = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file) {
+      return;
+    }
+
+    const result = parseModelingProjectFile(await file.text());
+    if ("error" in result) {
+      setProjectFileStatus(result.error);
+      return;
+    }
+
+    clearActivePenStroke();
+    replaceModelingProject(result.snapshot, {
+      autoNameIndex: result.autoNameIndex,
+    });
+    setProjectFileStatus(`Loaded ${file.name}.`);
+  };
 
   return (
     <aside className="absolute left-3 top-3 z-20 w-52 border border-white/12 bg-slate-950/80 shadow-[0_14px_28px_rgba(3,10,20,0.22)] backdrop-blur md:left-4 md:top-4">
@@ -441,6 +530,59 @@ export function ModelingToolToolbar() {
           </span>
           <span className="min-w-0 font-semibold">Camera</span>
         </button>
+        <div className="grid grid-cols-3 border-t border-white/8">
+          <button
+            aria-label="Save modeling project"
+            className="inline-flex items-center justify-center gap-1.5 border-r border-white/8 px-2 py-1.5 text-[0.68rem] text-slate-200 transition hover:bg-white/[0.04]"
+            onClick={handleSaveProject}
+            title="save project as .naname.json"
+            type="button"
+          >
+            <Save aria-hidden="true" className="h-3.5 w-3.5" strokeWidth={2} />
+            <span>Save</span>
+          </button>
+          <button
+            aria-label="Load modeling project"
+            className="inline-flex items-center justify-center gap-1.5 border-r border-white/8 px-2 py-1.5 text-[0.68rem] text-slate-200 transition hover:bg-white/[0.04]"
+            onClick={() => loadProjectInputRef.current?.click()}
+            title="load project from .naname.json"
+            type="button"
+          >
+            <FolderOpen
+              aria-hidden="true"
+              className="h-3.5 w-3.5"
+              strokeWidth={2}
+            />
+            <span>Load</span>
+          </button>
+          <button
+            aria-label="Export modeling project as OBJ"
+            className="inline-flex items-center justify-center gap-1.5 px-2 py-1.5 text-[0.68rem] text-slate-200 transition hover:bg-white/[0.04]"
+            onClick={handleExportObj}
+            title="export OBJ for Blender"
+            type="button"
+          >
+            <Download
+              aria-hidden="true"
+              className="h-3.5 w-3.5"
+              strokeWidth={2}
+            />
+            <span>Export</span>
+          </button>
+        </div>
+        <input
+          accept=".naname.json,application/json"
+          aria-label="Modeling project file"
+          className="sr-only"
+          onChange={handleLoadProject}
+          ref={loadProjectInputRef}
+          type="file"
+        />
+        {projectFileStatus ? (
+          <p className="border-t border-white/8 px-3 py-1.5 text-[0.62rem] leading-4 text-slate-300">
+            {projectFileStatus}
+          </p>
+        ) : null}
       </div>
     </aside>
   );
