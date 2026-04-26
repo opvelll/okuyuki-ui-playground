@@ -5,7 +5,7 @@ import type {
 } from "../store/modelingStore";
 import type { Vector3Tuple } from "../types/scene";
 
-export const MODELING_PROJECT_FORMAT = "naname-ui-modeling-project";
+export const MODELING_PROJECT_FORMAT = "okuyuki-ui-modeling-project";
 export const MODELING_PROJECT_FORMAT_VERSION = 1;
 
 export type ModelingProjectFile = {

@@ -136,7 +136,7 @@ const propertyPanelClasses =
 
 function getSafeFileBaseName(name: string) {
   const normalizedName = name.trim().replace(/[^\w.-]+/g, "-");
-  return normalizedName.length > 0 ? normalizedName : "naname-model";
+  return normalizedName.length > 0 ? normalizedName : "okuyuki-model";
 }
 
 function downloadTextFile(filename: string, text: string, type: string) {
@@ -321,7 +321,7 @@ export function ModelingToolToolbar() {
     modelingTool === "box";
   const currentModel = modelsById[currentModelId];
   const currentFileBaseName = getSafeFileBaseName(
-    currentModel?.name ?? "naname-model",
+    currentModel?.name ?? "okuyuki-model",
   );
   const projectSnapshot = {
     currentModelId,
@@ -334,7 +334,7 @@ export function ModelingToolToolbar() {
 
   const handleSaveProject = () => {
     downloadTextFile(
-      `${currentFileBaseName}.naname.json`,
+      `${currentFileBaseName}.okuyuki.json`,
       serializeModelingProjectFile(projectSnapshot, { autoNameIndex }),
       "application/json",
     );
@@ -535,7 +535,7 @@ export function ModelingToolToolbar() {
             aria-label="Save modeling project"
             className="inline-flex items-center justify-center gap-1.5 border-r border-white/8 px-2 py-1.5 text-[0.68rem] text-slate-200 transition hover:bg-white/[0.04]"
             onClick={handleSaveProject}
-            title="save project as .naname.json"
+            title="save project as .okuyuki.json"
             type="button"
           >
             <Save aria-hidden="true" className="h-3.5 w-3.5" strokeWidth={2} />
@@ -545,7 +545,7 @@ export function ModelingToolToolbar() {
             aria-label="Load modeling project"
             className="inline-flex items-center justify-center gap-1.5 border-r border-white/8 px-2 py-1.5 text-[0.68rem] text-slate-200 transition hover:bg-white/[0.04]"
             onClick={() => loadProjectInputRef.current?.click()}
-            title="load project from .naname.json"
+            title="load project from .okuyuki.json"
             type="button"
           >
             <FolderOpen
@@ -571,7 +571,7 @@ export function ModelingToolToolbar() {
           </button>
         </div>
         <input
-          accept=".naname.json,application/json"
+          accept=".okuyuki.json,application/json"
           aria-label="Modeling project file"
           className="sr-only"
           onChange={handleLoadProject}
