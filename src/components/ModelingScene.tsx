@@ -62,6 +62,14 @@ const MODELING_LINE_PREVIEW_COLORS = {
 const MODELING_LINE_OVERLAY_FILL_OPACITY = 0.18;
 const MODELING_LINE_OVERLAY_BELOW_FLOOR_OPACITY = 0.045;
 const MODELING_LINE_OVERLAY_GHOST_OPACITY = 0.13;
+const MODELING_POINTER_PANEL_OPACITY = 0.3;
+const MODELING_POINTER_PANEL_BELOW_FLOOR_OPACITY = 0.075;
+const MODELING_VERTICAL_POINTER_PANEL_OPACITY = 0.28;
+const MODELING_VERTICAL_POINTER_PANEL_BELOW_FLOOR_OPACITY = 0.07;
+const MODELING_FACE_OPACITY = 0.42;
+const MODELING_FACE_BELOW_FLOOR_OPACITY = 0.1;
+const MODELING_BOX_PREVIEW_FACE_OPACITY = 0.28;
+const MODELING_BOX_PREVIEW_FACE_BELOW_FLOOR_OPACITY = 0.07;
 const MODELING_LINE_OVERLAY_RING_SEGMENTS = 96;
 const AXIS_KEYS = ["x", "y", "z"] as const;
 const HORIZONTAL_AXIS_FADED_OPACITY = 0.18;
@@ -98,6 +106,21 @@ export function getModelingLineOverlayBelowFloorOpacity(
   return belowFloorDisplay === "faded"
     ? MODELING_LINE_OVERLAY_BELOW_FLOOR_OPACITY
     : MODELING_LINE_OVERLAY_FILL_OPACITY;
+}
+
+export function getModelingBelowFloorSurfaceOpacity(
+  belowFloorDisplay: ModelingBelowFloorDisplay,
+  visibleOpacity: number,
+  fadedOpacity: number,
+) {
+  switch (belowFloorDisplay) {
+    case "hidden":
+      return 0;
+    case "faded":
+      return fadedOpacity;
+    default:
+      return visibleOpacity;
+  }
 }
 
 function createUnitCircleLinePoints(segments: number) {
@@ -197,6 +220,9 @@ function ModelingPointer() {
   const horizontalAxisBelowFloorDisplay = useUiStore(
     (state) => state.modelingPointerAxisBelowFloorDisplay,
   );
+  const faceBelowFloorDisplay = useUiStore(
+    (state) => state.modelingFaceBelowFloorDisplay,
+  );
   const effectiveTool = getEffectiveModelingTool({
     modelingCameraDragging,
     modelingCameraOverride,
@@ -214,6 +240,24 @@ function ModelingPointer() {
   const horizontalAxisDashOpacity = showHorizontalAxes
     ? 0.7
     : HORIZONTAL_AXIS_DASH_FADED_OPACITY;
+  const aboveFloorClippingPlanes = useMemo(
+    () => [new Plane(new Vector3(0, 1, 0), -verticalAxisFloorY)],
+    [verticalAxisFloorY],
+  );
+  const belowFloorClippingPlanes = useMemo(
+    () => [new Plane(new Vector3(0, -1, 0), verticalAxisFloorY)],
+    [verticalAxisFloorY],
+  );
+  const horizontalPanelBelowFloorOpacity = getModelingBelowFloorSurfaceOpacity(
+    faceBelowFloorDisplay,
+    MODELING_POINTER_PANEL_OPACITY,
+    MODELING_POINTER_PANEL_BELOW_FLOOR_OPACITY,
+  );
+  const verticalPanelBelowFloorOpacity = getModelingBelowFloorSurfaceOpacity(
+    faceBelowFloorDisplay,
+    MODELING_VERTICAL_POINTER_PANEL_OPACITY,
+    MODELING_VERTICAL_POINTER_PANEL_BELOW_FLOOR_OPACITY,
+  );
   const xAxisLine = useMemo(() => {
     const geometry = new BufferGeometry();
     geometry.setAttribute(
@@ -405,31 +449,76 @@ function ModelingPointer() {
         <primitive object={zAxisLine} renderOrder={10} />
       ) : null}
       {plane === "horizontal" ? (
-        <mesh
-          geometry={panelGeometry}
-          position={[0, 0.001, 0]}
-          renderOrder={9}
-          rotation={[-Math.PI / 2, 0, 0]}
-        >
-          <meshBasicMaterial
-            color="#7dd3fc"
-            depthTest={false}
-            opacity={0.3}
-            side={DoubleSide}
-            transparent
-          />
-        </mesh>
+        <>
+          <mesh
+            geometry={panelGeometry}
+            position={[0, 0.001, 0]}
+            renderOrder={9}
+            rotation={[-Math.PI / 2, 0, 0]}
+          >
+            <meshBasicMaterial
+              clippingPlanes={
+                faceBelowFloorDisplay === "visible"
+                  ? []
+                  : aboveFloorClippingPlanes
+              }
+              color="#7dd3fc"
+              depthTest={false}
+              opacity={MODELING_POINTER_PANEL_OPACITY}
+              side={DoubleSide}
+              transparent
+            />
+          </mesh>
+          {horizontalPanelBelowFloorOpacity > 0 &&
+          faceBelowFloorDisplay !== "visible" ? (
+            <mesh
+              geometry={panelGeometry}
+              position={[0, 0.001, 0]}
+              renderOrder={9}
+              rotation={[-Math.PI / 2, 0, 0]}
+            >
+              <meshBasicMaterial
+                clippingPlanes={belowFloorClippingPlanes}
+                color="#7dd3fc"
+                depthTest={false}
+                opacity={horizontalPanelBelowFloorOpacity}
+                side={DoubleSide}
+                transparent
+              />
+            </mesh>
+          ) : null}
+        </>
       ) : null}
       {plane === "vertical" ? (
-        <mesh geometry={panelGeometry} renderOrder={9}>
-          <meshBasicMaterial
-            color="#fbbf24"
-            depthTest={false}
-            opacity={0.28}
-            side={DoubleSide}
-            transparent
-          />
-        </mesh>
+        <>
+          <mesh geometry={panelGeometry} renderOrder={9}>
+            <meshBasicMaterial
+              clippingPlanes={
+                faceBelowFloorDisplay === "visible"
+                  ? []
+                  : aboveFloorClippingPlanes
+              }
+              color="#fbbf24"
+              depthTest={false}
+              opacity={MODELING_VERTICAL_POINTER_PANEL_OPACITY}
+              side={DoubleSide}
+              transparent
+            />
+          </mesh>
+          {verticalPanelBelowFloorOpacity > 0 &&
+          faceBelowFloorDisplay !== "visible" ? (
+            <mesh geometry={panelGeometry} renderOrder={9}>
+              <meshBasicMaterial
+                clippingPlanes={belowFloorClippingPlanes}
+                color="#fbbf24"
+                depthTest={false}
+                opacity={verticalPanelBelowFloorOpacity}
+                side={DoubleSide}
+                transparent
+              />
+            </mesh>
+          ) : null}
+        </>
       ) : null}
     </group>
   );
@@ -604,6 +693,9 @@ function ModelingLinePreviewOverlay() {
   const modelingLineOverlayBelowFloorDisplay = useUiStore(
     (state) => state.modelingLineOverlayBelowFloorDisplay,
   );
+  const modelingFaceBelowFloorDisplay = useUiStore(
+    (state) => state.modelingFaceBelowFloorDisplay,
+  );
   const modelingLineOverlayRadiusMultiplier = useUiStore(
     (state) => state.modelingLineOverlayRadiusMultiplier,
   );
@@ -696,6 +788,11 @@ function ModelingLinePreviewOverlay() {
 
   const boxPreviewFacePositions = getBoxPreviewFacePositions(
     modelingLinePreview.polygonPoints,
+  );
+  const boxPreviewBelowFloorOpacity = getModelingBelowFloorSurfaceOpacity(
+    modelingFaceBelowFloorDisplay,
+    MODELING_BOX_PREVIEW_FACE_OPACITY,
+    MODELING_BOX_PREVIEW_FACE_BELOW_FLOOR_OPACITY,
   );
 
   if (
@@ -832,23 +929,51 @@ function ModelingLinePreviewOverlay() {
         </group>
       ))}
       {boxPreviewFacePositions.length > 0 ? (
-        <mesh renderOrder={4}>
-          <bufferGeometry>
-            <bufferAttribute
-              args={[new Float32Array(boxPreviewFacePositions), 3]}
-              attach="attributes-position"
-              count={boxPreviewFacePositions.length / 3}
+        <>
+          <mesh renderOrder={4}>
+            <bufferGeometry>
+              <bufferAttribute
+                args={[new Float32Array(boxPreviewFacePositions), 3]}
+                attach="attributes-position"
+                count={boxPreviewFacePositions.length / 3}
+              />
+            </bufferGeometry>
+            <meshBasicMaterial
+              clippingPlanes={
+                modelingFaceBelowFloorDisplay === "visible"
+                  ? []
+                  : aboveFloorClippingPlanes
+              }
+              color={MODELING_BOX_PREVIEW_FACE_COLOR}
+              depthTest={true}
+              depthWrite={false}
+              opacity={MODELING_BOX_PREVIEW_FACE_OPACITY}
+              side={DoubleSide}
+              transparent
             />
-          </bufferGeometry>
-          <meshBasicMaterial
-            color={MODELING_BOX_PREVIEW_FACE_COLOR}
-            depthTest={true}
-            depthWrite={false}
-            opacity={0.28}
-            side={DoubleSide}
-            transparent
-          />
-        </mesh>
+          </mesh>
+          {boxPreviewBelowFloorOpacity > 0 &&
+          modelingFaceBelowFloorDisplay !== "visible" ? (
+            <mesh renderOrder={4}>
+              <bufferGeometry>
+                <bufferAttribute
+                  args={[new Float32Array(boxPreviewFacePositions), 3]}
+                  attach="attributes-position"
+                  count={boxPreviewFacePositions.length / 3}
+                />
+              </bufferGeometry>
+              <meshBasicMaterial
+                clippingPlanes={belowFloorClippingPlanes}
+                color={MODELING_BOX_PREVIEW_FACE_COLOR}
+                depthTest={true}
+                depthWrite={false}
+                opacity={boxPreviewBelowFloorOpacity}
+                side={DoubleSide}
+                transparent
+              />
+            </mesh>
+          ) : null}
+        </>
       ) : null}
       {showRectangleOutline ? (
         <Line
@@ -990,6 +1115,12 @@ function ModelingMesh() {
   const selectedVertexIds = useModelingStore(
     (state) => state.selectedVertexIds,
   );
+  const faceBelowFloorDisplay = useUiStore(
+    (state) => state.modelingFaceBelowFloorDisplay,
+  );
+  const verticalAxisFloorY = useUiStore(
+    (state) => state.modelingPointerVerticalAxisFloorY,
+  );
   const activeModel = modelsById[currentModelId];
   const selectedVertexSet = useMemo(
     () => new Set(selectedVertexIds),
@@ -1078,6 +1209,19 @@ function ModelingMesh() {
       }),
     [],
   );
+  const aboveFloorClippingPlanes = useMemo(
+    () => [new Plane(new Vector3(0, 1, 0), -verticalAxisFloorY)],
+    [verticalAxisFloorY],
+  );
+  const belowFloorClippingPlanes = useMemo(
+    () => [new Plane(new Vector3(0, -1, 0), verticalAxisFloorY)],
+    [verticalAxisFloorY],
+  );
+  const faceBelowFloorOpacity = getModelingBelowFloorSurfaceOpacity(
+    faceBelowFloorDisplay,
+    MODELING_FACE_OPACITY,
+    MODELING_FACE_BELOW_FLOOR_OPACITY,
+  );
 
   useEffect(() => {
     return () => {
@@ -1145,14 +1289,32 @@ function ModelingMesh() {
         />
       </points>
       {activeModel.faceOrder.length > 0 ? (
-        <mesh geometry={faceGeometry} renderOrder={3}>
-          <meshStandardMaterial
-            color="#2563eb"
-            opacity={0.42}
-            side={DoubleSide}
-            transparent
-          />
-        </mesh>
+        <>
+          <mesh geometry={faceGeometry} renderOrder={3}>
+            <meshStandardMaterial
+              clippingPlanes={
+                faceBelowFloorDisplay === "visible"
+                  ? []
+                  : aboveFloorClippingPlanes
+              }
+              color="#2563eb"
+              opacity={MODELING_FACE_OPACITY}
+              side={DoubleSide}
+              transparent
+            />
+          </mesh>
+          {faceBelowFloorOpacity > 0 && faceBelowFloorDisplay !== "visible" ? (
+            <mesh geometry={faceGeometry} renderOrder={3}>
+              <meshStandardMaterial
+                clippingPlanes={belowFloorClippingPlanes}
+                color="#2563eb"
+                opacity={faceBelowFloorOpacity}
+                side={DoubleSide}
+                transparent
+              />
+            </mesh>
+          ) : null}
+        </>
       ) : null}
       {activeModel.edgeOrder.length > 0 ? (
         <lineSegments geometry={edgeGeometry} renderOrder={4}>

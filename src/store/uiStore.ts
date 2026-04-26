@@ -146,6 +146,7 @@ type PersistedUiState = {
   modelingPointerVertexSnapEnabled: boolean;
   modelingLineOverlayDisplayMode: MoveOverlayDisplayMode;
   modelingLineOverlayBelowFloorDisplay: ModelingBelowFloorDisplay;
+  modelingFaceBelowFloorDisplay: ModelingBelowFloorDisplay;
   modelingLineOverlayRadiusMultiplier: number;
   modelingLineAngleSnapStepDeg: number;
   modelingRectangleMode: ModelingRectangleMode;
@@ -238,6 +239,7 @@ export type UiState = PersistedUiState & {
   setModelingLineOverlayBelowFloorDisplay: (
     value: ModelingBelowFloorDisplay,
   ) => void;
+  setModelingFaceBelowFloorDisplay: (value: ModelingBelowFloorDisplay) => void;
   setModelingLineOverlayRadiusMultiplier: (value: number) => void;
   setModelingLineAngleSnapStepDeg: (value: number) => void;
   setModelingRectangleMode: (value: ModelingRectangleMode) => void;
@@ -397,6 +399,7 @@ export const createDefaultPersistedUiState = (): PersistedUiState => ({
   modelingPointerVertexSnapEnabled: true,
   modelingLineOverlayDisplayMode: "mode-1",
   modelingLineOverlayBelowFloorDisplay: "faded",
+  modelingFaceBelowFloorDisplay: "faded",
   modelingLineOverlayRadiusMultiplier: 1,
   modelingLineAngleSnapStepDeg: 45,
   modelingRectangleMode: "upright-up-fixed",
@@ -471,6 +474,7 @@ const createInitialUiState = (): Omit<
   | "setModelingPointerVertexSnapEnabled"
   | "setModelingLineOverlayDisplayMode"
   | "setModelingLineOverlayBelowFloorDisplay"
+  | "setModelingFaceBelowFloorDisplay"
   | "setModelingLineOverlayRadiusMultiplier"
   | "setModelingLineAngleSnapStepDeg"
   | "setModelingRectangleMode"
@@ -727,6 +731,10 @@ export const useUiStore = create<UiState>()(
         set({
           modelingLineOverlayBelowFloorDisplay: value,
         }),
+      setModelingFaceBelowFloorDisplay: (value) =>
+        set({
+          modelingFaceBelowFloorDisplay: value,
+        }),
       setModelingLineOverlayRadiusMultiplier: (value) =>
         set({
           modelingLineOverlayRadiusMultiplier: Math.max(
@@ -932,21 +940,28 @@ export const useUiStore = create<UiState>()(
     }),
     {
       name: UI_STORE_PERSIST_KEY,
-      version: 2,
+      version: 3,
       migrate: (persistedState) => {
+        if (!persistedState || typeof persistedState !== "object") {
+          return persistedState;
+        }
+
+        const migratedState = {
+          modelingFaceBelowFloorDisplay: "faded",
+          ...persistedState,
+        };
+
         if (
-          persistedState &&
-          typeof persistedState === "object" &&
-          "modelingTool" in persistedState &&
-          persistedState.modelingTool === "select"
+          "modelingTool" in migratedState &&
+          migratedState.modelingTool === "select"
         ) {
           return {
-            ...persistedState,
+            ...migratedState,
             modelingTool: "lasso",
           };
         }
 
-        return persistedState;
+        return migratedState;
       },
       partialize: (state) => ({
         currentScreen: state.currentScreen,
@@ -993,6 +1008,7 @@ export const useUiStore = create<UiState>()(
         modelingLineOverlayDisplayMode: state.modelingLineOverlayDisplayMode,
         modelingLineOverlayBelowFloorDisplay:
           state.modelingLineOverlayBelowFloorDisplay,
+        modelingFaceBelowFloorDisplay: state.modelingFaceBelowFloorDisplay,
         modelingLineOverlayRadiusMultiplier:
           state.modelingLineOverlayRadiusMultiplier,
         modelingLineAngleSnapStepDeg: state.modelingLineAngleSnapStepDeg,

@@ -1,6 +1,7 @@
 import { PerspectiveCamera } from "three";
 import { describe, expect, it } from "vitest";
 import {
+  getModelingBelowFloorSurfaceOpacity,
   getModelingLineOverlayBelowFloorOpacity,
   getModelingLineOverlayOpacity,
   shouldShowModelingPointerHorizontalAxes,
@@ -53,6 +54,16 @@ describe("getModelingLineOverlayBelowFloorOpacity", () => {
     expect(getModelingLineOverlayBelowFloorOpacity("faded")).toBeGreaterThan(0);
     expect(getModelingLineOverlayBelowFloorOpacity("visible")).toBeGreaterThan(
       getModelingLineOverlayBelowFloorOpacity("faded"),
+    );
+  });
+});
+
+describe("getModelingBelowFloorSurfaceOpacity", () => {
+  it("maps below-floor face display modes to surface opacity", () => {
+    expect(getModelingBelowFloorSurfaceOpacity("hidden", 0.42, 0.1)).toBe(0);
+    expect(getModelingBelowFloorSurfaceOpacity("faded", 0.42, 0.1)).toBe(0.1);
+    expect(getModelingBelowFloorSurfaceOpacity("visible", 0.42, 0.1)).toBe(
+      0.42,
     );
   });
 });

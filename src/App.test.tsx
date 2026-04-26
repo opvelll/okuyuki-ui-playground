@@ -452,6 +452,9 @@ describe("App", () => {
       ),
     ).toBeInTheDocument();
     expect(
+      screen.getByLabelText(/Face Below Floor \/ 下限下の面表示/i),
+    ).toBeInTheDocument();
+    expect(
       screen.getByLabelText(
         /Line Overlay Radius Multiplier \/ ガイド円半径倍率/i,
       ),

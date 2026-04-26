@@ -676,6 +676,18 @@ export function ModelingSettingsSection({
         options={modelingBelowFloorDisplayOptions}
         value={settings.modelingLineOverlayBelowFloorDisplay}
       />
+      <SelectField
+        hint="Vertical Axis Floor Y より下に入ったモデリング面の見え方。show は従来どおり、hide は非表示、fade は薄く残します。"
+        id="modeling-face-below-floor-display"
+        label="Face Below Floor / 下限下の面表示"
+        onChange={(value) => {
+          if (isModelingBelowFloorDisplay(value)) {
+            settings.setModelingFaceBelowFloorDisplay(value);
+          }
+        }}
+        options={modelingBelowFloorDisplayOptions}
+        value={settings.modelingFaceBelowFloorDisplay}
+      />
       <NumberField
         hint="Line Overlay Radius Multiplier / ドラッグ開始位置から現在位置までの距離に掛ける倍率。1.0 でドラッグ位置ちょうど、1.15 で少し外側に出します。"
         id="modeling-line-overlay-radius-multiplier"
