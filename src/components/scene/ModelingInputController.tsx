@@ -13,6 +13,7 @@ import {
 import {
   getBoxVerticesFromDiagonal,
   getEffectiveModelingPointerGridStep,
+  getEffectiveModelingPointerSnapValue,
   getLineDirectionSnapPosition,
   getModelingPointerSnapResult,
   getRectangleDragPosition,
@@ -708,6 +709,28 @@ export function ModelingInputController({
         modelingPointerDepthPrecisionScale,
         precisionMode,
       );
+      const effectiveAxisSnapDistance = getEffectiveModelingPointerSnapValue(
+        modelingPointerAxisSnapDistance,
+        modelingPointerDepthPrecisionScale,
+        precisionMode,
+      );
+      const effectiveEdgeSnapDistance = getEffectiveModelingPointerSnapValue(
+        modelingPointerEdgeSnapDistance,
+        modelingPointerDepthPrecisionScale,
+        precisionMode,
+      );
+      const effectiveLineAngleSnapStepDeg =
+        getEffectiveModelingPointerSnapValue(
+          modelingLineAngleSnapStepDeg,
+          modelingPointerDepthPrecisionScale,
+          precisionMode,
+          1,
+        );
+      const effectiveVertexSnapDistance = getEffectiveModelingPointerSnapValue(
+        modelingPointerVertexSnapDistance,
+        modelingPointerDepthPrecisionScale,
+        precisionMode,
+      );
 
       raycaster.setFromCamera(ndc, camera);
       const nextPosition = raycaster.ray.origin
@@ -718,7 +741,7 @@ export function ModelingInputController({
           ? getLineDirectionSnapPosition(
               lineDragStartPosition,
               [nextPosition.x, nextPosition.y, nextPosition.z],
-              modelingLineAngleSnapStepDeg,
+              effectiveLineAngleSnapStepDeg,
             )
           : ([nextPosition.x, nextPosition.y, nextPosition.z] as [
               number,
@@ -831,14 +854,14 @@ export function ModelingInputController({
             clickCandidate?.button === 0
               ? getLineDragAxisSnapPositions()
               : undefined,
-          axisDistance: modelingPointerAxisSnapDistance,
+          axisDistance: effectiveAxisSnapDistance,
           axisEnabled: modelingPointerAxisSnapEnabled,
-          edgeDistance: modelingPointerEdgeSnapDistance,
+          edgeDistance: effectiveEdgeSnapDistance,
           edgeEnabled: modelingPointerEdgeSnapEnabled,
           edgeSnapTargets: getActiveEdgeTargets(moveDragVertexIds),
           gridEnabled: modelingPointerGridSnapEnabled,
           gridStep: effectiveGridStep,
-          vertexDistance: modelingPointerVertexSnapDistance,
+          vertexDistance: effectiveVertexSnapDistance,
           vertexEnabled: modelingPointerVertexSnapEnabled,
         },
       );

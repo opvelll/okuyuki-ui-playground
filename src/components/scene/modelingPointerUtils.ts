@@ -198,14 +198,25 @@ export function getEffectiveModelingPointerGridStep(
   precisionScale: number,
   precisionMode: boolean,
 ) {
-  const effectiveGridStep = precisionMode
-    ? Math.max(
-        MODELING_POINTER_PRECISION_GRID_STEP_MIN,
-        gridStep * precisionScale,
-      )
-    : gridStep;
+  return getEffectiveModelingPointerSnapValue(
+    gridStep,
+    precisionScale,
+    precisionMode,
+    MODELING_POINTER_PRECISION_GRID_STEP_MIN,
+  );
+}
 
-  return normalizeCoordinate(effectiveGridStep);
+export function getEffectiveModelingPointerSnapValue(
+  value: number,
+  precisionScale: number,
+  precisionMode: boolean,
+  minimum = 0,
+) {
+  const effectiveValue = precisionMode
+    ? Math.max(minimum, value * precisionScale)
+    : value;
+
+  return normalizeCoordinate(effectiveValue);
 }
 
 export function getLineDirectionSnapPosition(

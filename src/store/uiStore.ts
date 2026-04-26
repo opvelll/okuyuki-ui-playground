@@ -762,7 +762,7 @@ export const useUiStore = create<UiState>()(
         }),
       setModelingLineAngleSnapStepDeg: (value) =>
         set({
-          modelingLineAngleSnapStepDeg: [15, 30, 45, 90].includes(value)
+          modelingLineAngleSnapStepDeg: [15, 22.5, 30, 45, 90].includes(value)
             ? value
             : 45,
         }),

@@ -112,6 +112,7 @@ const overlayDisplayOptions = [
 
 const lineAngleSnapStepOptions = [
   { label: "15 deg", value: 15 },
+  { label: "22.5 deg", value: 22.5 },
   { label: "30 deg", value: 30 },
   { label: "45 deg", value: 45 },
   { label: "90 deg", value: 90 },

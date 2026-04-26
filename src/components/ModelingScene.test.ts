@@ -11,6 +11,7 @@ import {
   getBoxPreviewFacePositions,
   getBoxVerticesFromDiagonal,
   getEffectiveModelingPointerGridStep,
+  getEffectiveModelingPointerSnapValue,
   getLineDirectionSnapPosition,
   getModelingPointerDepthHint,
   getModelingPointerSnapResult,
@@ -260,6 +261,13 @@ describe("getSnappedModelingPointerPosition", () => {
     expect(getEffectiveModelingPointerGridStep(0.005, 0.1, true)).toBe(
       MODELING_POINTER_PRECISION_GRID_STEP_MIN,
     );
+  });
+
+  it("scales other snap values in precision mode", () => {
+    expect(getEffectiveModelingPointerSnapValue(0.45, 0.1, false)).toBe(0.45);
+    expect(getEffectiveModelingPointerSnapValue(0.45, 0.1, true)).toBe(0.045);
+    expect(getEffectiveModelingPointerSnapValue(45, 0.1, true)).toBe(4.5);
+    expect(getEffectiveModelingPointerSnapValue(15, 0.01, true, 1)).toBe(1);
   });
 
   it("constrains line drag to the nearest world axis direction", () => {

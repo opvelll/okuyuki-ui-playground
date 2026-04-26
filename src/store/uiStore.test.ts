@@ -277,6 +277,9 @@ describe("uiStore", () => {
     useUiStore.getState().setModelingLineAngleSnapStepDeg(15);
     expect(useUiStore.getState().modelingLineAngleSnapStepDeg).toBe(15);
 
+    useUiStore.getState().setModelingLineAngleSnapStepDeg(22.5);
+    expect(useUiStore.getState().modelingLineAngleSnapStepDeg).toBe(22.5);
+
     useUiStore.getState().setModelingLineAngleSnapStepDeg(22);
     expect(useUiStore.getState().modelingLineAngleSnapStepDeg).toBe(45);
   });
