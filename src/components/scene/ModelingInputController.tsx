@@ -27,6 +27,7 @@ import {
 const CAMERA_DOLLY_MIN_DISTANCE = 2.4;
 const CAMERA_DOLLY_STEP = 0.55;
 const CURSOR_DEPTH_STEP = 0.45;
+const SCREEN_EDGE_HIT_RADIUS_PX = 8;
 const SCREEN_VERTEX_HIT_RADIUS_PX = 10;
 
 export function ModelingInputController({
@@ -85,6 +86,12 @@ export function ModelingInputController({
   const modelingPointerGridSnapStep = useUiStore(
     (state) => state.modelingPointerGridSnapStep,
   );
+  const modelingPointerScreenEdgeSnapEnabled = useUiStore(
+    (state) => state.modelingPointerScreenEdgeSnapEnabled,
+  );
+  const modelingPointerScreenFaceSnapEnabled = useUiStore(
+    (state) => state.modelingPointerScreenFaceSnapEnabled,
+  );
   const modelingPointerScreenVertexSnapEnabled = useUiStore(
     (state) => state.modelingPointerScreenVertexSnapEnabled,
   );
@@ -123,6 +130,9 @@ export function ModelingInputController({
   );
   const setModelingPointerSnappedEdgeTarget = useUiStore(
     (state) => state.setModelingPointerSnappedEdgeTarget,
+  );
+  const setModelingPointerSnappedFaceTarget = useUiStore(
+    (state) => state.setModelingPointerSnappedFaceTarget,
   );
   const setModelingPointerSnappedVertexTarget = useUiStore(
     (state) => state.setModelingPointerSnappedVertexTarget,
@@ -210,6 +220,41 @@ export function ModelingInputController({
                 end: activeModel.verticesById[edge.vertexIds[1]].position,
                 start: activeModel.verticesById[edge.vertexIds[0]].position,
                 vertexIds: [...edge.vertexIds] as [string, string],
+              },
+            ];
+          })
+        : [];
+    };
+
+    const getActiveFaceTargets = (excludedVertexIds = new Set<string>()) => {
+      const activeModel = getActiveModel();
+      return activeModel
+        ? activeModel.faceOrder.flatMap((faceId) => {
+            const face = activeModel.facesById[faceId];
+
+            if (
+              face.vertexIds.some((vertexId) => excludedVertexIds.has(vertexId))
+            ) {
+              return [];
+            }
+
+            const vertices = face.vertexIds.map(
+              (vertexId) => activeModel.verticesById[vertexId],
+            );
+
+            if (vertices.some((vertex) => vertex === undefined)) {
+              return [];
+            }
+
+            return [
+              {
+                faceId,
+                positions: vertices.map((vertex) => [...vertex.position]) as [
+                  [number, number, number],
+                  [number, number, number],
+                  [number, number, number],
+                ],
+                vertexIds: [...face.vertexIds] as [string, string, string],
               },
             ];
           })
@@ -323,6 +368,208 @@ export function ModelingInputController({
       return nearestMatch;
     };
 
+    const findHoveredSurfaceAtScreenPoint = (
+      event: PointerEvent | WheelEvent,
+      options: {
+        edgeEnabled: boolean;
+        excludedVertexIds?: Set<string>;
+        faceEnabled: boolean;
+      },
+    ) => {
+      if (!options.edgeEnabled && !options.faceEnabled) {
+        return null;
+      }
+
+      const rect = element.getBoundingClientRect();
+      const pointerScreen = {
+        x: event.clientX - rect.left,
+        y: event.clientY - rect.top,
+      };
+      const viewport = {
+        height: rect.height,
+        width: rect.width,
+      };
+
+      if (options.edgeEnabled) {
+        let nearestEdgeMatch: {
+          edgeId: string;
+          position: [number, number, number];
+          projectedZ: number;
+          screenDistance: number;
+          vertexIds: [string, string];
+        } | null = null;
+
+        for (const edge of getActiveEdgeTargets(
+          options.excludedVertexIds ?? new Set<string>(),
+        )) {
+          const projectedStart = projectVertexToScreenPoint(
+            edge.start,
+            camera,
+            viewport,
+          );
+          const projectedEnd = projectVertexToScreenPoint(
+            edge.end,
+            camera,
+            viewport,
+          );
+
+          if (!projectedStart || !projectedEnd) {
+            continue;
+          }
+
+          const segmentX = projectedEnd.point[0] - projectedStart.point[0];
+          const segmentY = projectedEnd.point[1] - projectedStart.point[1];
+          const segmentLengthSquared = segmentX ** 2 + segmentY ** 2;
+
+          if (segmentLengthSquared <= 0) {
+            continue;
+          }
+
+          const t = Math.max(
+            0,
+            Math.min(
+              1,
+              ((pointerScreen.x - projectedStart.point[0]) * segmentX +
+                (pointerScreen.y - projectedStart.point[1]) * segmentY) /
+                segmentLengthSquared,
+            ),
+          );
+          const closestScreenX = projectedStart.point[0] + segmentX * t;
+          const closestScreenY = projectedStart.point[1] + segmentY * t;
+          const screenDistance = Math.hypot(
+            pointerScreen.x - closestScreenX,
+            pointerScreen.y - closestScreenY,
+          );
+
+          if (screenDistance > SCREEN_EDGE_HIT_RADIUS_PX) {
+            continue;
+          }
+
+          const start = new Vector3(...edge.start);
+          const end = new Vector3(...edge.end);
+          const position = start.lerp(end, t);
+          const projectedZ =
+            projectedStart.projectedZ +
+            (projectedEnd.projectedZ - projectedStart.projectedZ) * t;
+
+          if (
+            nearestEdgeMatch === null ||
+            screenDistance < nearestEdgeMatch.screenDistance ||
+            (Math.abs(screenDistance - nearestEdgeMatch.screenDistance) <
+              0.001 &&
+              projectedZ < nearestEdgeMatch.projectedZ)
+          ) {
+            nearestEdgeMatch = {
+              edgeId: edge.edgeId,
+              position: [position.x, position.y, position.z],
+              projectedZ,
+              screenDistance,
+              vertexIds: edge.vertexIds,
+            };
+          }
+        }
+
+        if (nearestEdgeMatch) {
+          return {
+            type: "edge" as const,
+            edgeId: nearestEdgeMatch.edgeId,
+            position: nearestEdgeMatch.position,
+            vertexIds: nearestEdgeMatch.vertexIds,
+          };
+        }
+      }
+
+      if (!options.faceEnabled) {
+        return null;
+      }
+
+      let nearestFaceMatch: {
+        faceId: string;
+        position: [number, number, number];
+        projectedZ: number;
+        vertexIds: [string, string, string];
+      } | null = null;
+
+      for (const face of getActiveFaceTargets(
+        options.excludedVertexIds ?? new Set<string>(),
+      )) {
+        const projectedVertices = face.positions.map((position) =>
+          projectVertexToScreenPoint(position, camera, viewport),
+        );
+
+        if (projectedVertices.some((projected) => projected === null)) {
+          continue;
+        }
+
+        const [a, b, c] = projectedVertices as [
+          NonNullable<(typeof projectedVertices)[number]>,
+          NonNullable<(typeof projectedVertices)[number]>,
+          NonNullable<(typeof projectedVertices)[number]>,
+        ];
+        const denominator =
+          (b.point[1] - c.point[1]) * (a.point[0] - c.point[0]) +
+          (c.point[0] - b.point[0]) * (a.point[1] - c.point[1]);
+
+        if (Math.abs(denominator) <= 1e-8) {
+          continue;
+        }
+
+        const weightA =
+          ((b.point[1] - c.point[1]) * (pointerScreen.x - c.point[0]) +
+            (c.point[0] - b.point[0]) * (pointerScreen.y - c.point[1])) /
+          denominator;
+        const weightB =
+          ((c.point[1] - a.point[1]) * (pointerScreen.x - c.point[0]) +
+            (a.point[0] - c.point[0]) * (pointerScreen.y - c.point[1])) /
+          denominator;
+        const weightC = 1 - weightA - weightB;
+        const inside =
+          weightA >= -0.001 && weightB >= -0.001 && weightC >= -0.001;
+
+        if (!inside) {
+          continue;
+        }
+
+        const intersection = raycaster.ray.intersectTriangle(
+          new Vector3(...face.positions[0]),
+          new Vector3(...face.positions[1]),
+          new Vector3(...face.positions[2]),
+          false,
+          new Vector3(),
+        );
+
+        if (!intersection) {
+          continue;
+        }
+
+        const projectedZ =
+          a.projectedZ * weightA +
+          b.projectedZ * weightB +
+          c.projectedZ * weightC;
+
+        if (
+          nearestFaceMatch === null ||
+          projectedZ < nearestFaceMatch.projectedZ
+        ) {
+          nearestFaceMatch = {
+            faceId: face.faceId,
+            position: [intersection.x, intersection.y, intersection.z],
+            projectedZ,
+            vertexIds: face.vertexIds,
+          };
+        }
+      }
+
+      return nearestFaceMatch
+        ? {
+            type: "face" as const,
+            faceId: nearestFaceMatch.faceId,
+            position: nearestFaceMatch.position,
+            vertexIds: nearestFaceMatch.vertexIds,
+          }
+        : null;
+    };
+
     const updatePointerPosition = ({
       depth = useUiStore.getState().modelingPointer.depth,
       directionSnapMode = false,
@@ -359,15 +606,19 @@ export function ModelingInputController({
               number,
             ]);
       const modelingTool = useUiStore.getState().modelingTool;
+      const moveDragVertexIds =
+        modelingTool === "move" && hasActiveMoveDrag()
+          ? getMoveDragVertexIds()
+          : new Set<string>();
       const screenVertexSnapEnabled =
         modelingTool === "move" || modelingPointerScreenVertexSnapEnabled;
-      const hoveredScreenVertex =
-        screenVertexSnapEnabled &&
+      const screenHoverSnapAllowed =
         modelingTool !== "lasso" &&
         modelingTool !== "camera" &&
-        !moveDragActive &&
-        !clickCandidate?.moved &&
-        !hasActiveMoveDrag()
+        (!moveDragActive || modelingTool === "move") &&
+        (!hasActiveMoveDrag() || modelingTool === "move");
+      const hoveredScreenVertex =
+        screenVertexSnapEnabled && screenHoverSnapAllowed
           ? findHoveredVertexAtScreenPoint({
               clientX:
                 ((ndc.x + 1) / 2) * element.getBoundingClientRect().width +
@@ -392,14 +643,63 @@ export function ModelingInputController({
         setModelingPointerSnappedAxes([false, false, false]);
         setModelingPointerSnappedAxisTargets([null, null, null]);
         setModelingPointerSnappedEdgeTarget(null);
+        setModelingPointerSnappedFaceTarget(null);
         setModelingPointerSnappedVertexTarget(hoveredScreenVertex.position);
         return;
       }
 
-      const moveDragVertexIds =
-        modelingTool === "move" && hasActiveMoveDrag()
-          ? getMoveDragVertexIds()
-          : new Set<string>();
+      const hoveredScreenSurface = screenHoverSnapAllowed
+        ? findHoveredSurfaceAtScreenPoint(
+            {
+              clientX:
+                ((ndc.x + 1) / 2) * element.getBoundingClientRect().width +
+                element.getBoundingClientRect().left,
+              clientY:
+                ((1 - ndc.y) / 2) * element.getBoundingClientRect().height +
+                element.getBoundingClientRect().top,
+            } as PointerEvent,
+            {
+              edgeEnabled: modelingPointerScreenEdgeSnapEnabled,
+              excludedVertexIds: moveDragVertexIds,
+              faceEnabled: modelingPointerScreenFaceSnapEnabled,
+            },
+          )
+        : null;
+
+      if (hoveredScreenSurface) {
+        const hoveredPosition = new Vector3(...hoveredScreenSurface.position);
+        const nextDepth = hoveredPosition
+          .sub(raycaster.ray.origin)
+          .dot(raycaster.ray.direction);
+
+        if (Number.isFinite(nextDepth)) {
+          setModelingPointerDepth(nextDepth);
+        }
+
+        setModelingPointerPosition(hoveredScreenSurface.position);
+        setModelingPointerSnappedAxes([false, false, false]);
+        setModelingPointerSnappedAxisTargets([null, null, null]);
+        setModelingPointerSnappedVertexTarget(null);
+
+        if (hoveredScreenSurface.type === "edge") {
+          setModelingPointerSnappedEdgeTarget({
+            edgeId: hoveredScreenSurface.edgeId,
+            position: hoveredScreenSurface.position,
+            vertexIds: hoveredScreenSurface.vertexIds,
+          });
+          setModelingPointerSnappedFaceTarget(null);
+          return;
+        }
+
+        setModelingPointerSnappedEdgeTarget(null);
+        setModelingPointerSnappedFaceTarget({
+          faceId: hoveredScreenSurface.faceId,
+          position: hoveredScreenSurface.position,
+          vertexIds: hoveredScreenSurface.vertexIds,
+        });
+        return;
+      }
+
       const activeVertexPositions = getActiveVertexPositions(moveDragVertexIds);
       const snapResult = getModelingPointerSnapResult(
         pointerPosition,
@@ -427,6 +727,7 @@ export function ModelingInputController({
       setModelingPointerSnappedAxes(snapResult.snappedAxes);
       setModelingPointerSnappedAxisTargets(snapResult.snappedAxisTargets);
       setModelingPointerSnappedEdgeTarget(snapResult.snappedEdgeTarget);
+      setModelingPointerSnappedFaceTarget(null);
       setModelingPointerSnappedVertexTarget(snapResult.snappedVertexTarget);
     };
 
@@ -470,7 +771,8 @@ export function ModelingInputController({
           currentPosition: [...modelingPointer.position],
           currentSnapped:
             modelingPointer.snappedVertexTarget !== null ||
-            modelingPointer.snappedEdgeTarget !== null,
+            modelingPointer.snappedEdgeTarget !== null ||
+            modelingPointer.snappedFaceTarget !== null,
           planeNormal: [planeNormal.x, planeNormal.y, planeNormal.z],
           polygonPoints: [],
           startSnapped: lineDragStartSnapped,
@@ -498,7 +800,8 @@ export function ModelingInputController({
             modelingPointer.position,
           )
             ? modelingPointer.snappedVertexTarget !== null ||
-              modelingPointer.snappedEdgeTarget !== null
+              modelingPointer.snappedEdgeTarget !== null ||
+              modelingPointer.snappedFaceTarget !== null
             : false,
           planeNormal: rectanglePreview.planeNormal,
           polygonPoints: rectanglePreview.corners,
@@ -527,7 +830,8 @@ export function ModelingInputController({
           currentPosition: [...modelingPointer.position],
           currentSnapped:
             modelingPointer.snappedVertexTarget !== null ||
-            modelingPointer.snappedEdgeTarget !== null,
+            modelingPointer.snappedEdgeTarget !== null ||
+            modelingPointer.snappedFaceTarget !== null,
           planeNormal: [planeNormal.x, planeNormal.y, planeNormal.z],
           polygonPoints: boxPreview.corners.map((corner) => [...corner]),
           startSnapped: lineDragStartSnapped,
@@ -616,6 +920,7 @@ export function ModelingInputController({
       setModelingPointerSnappedAxes([false, false, false]);
       setModelingPointerSnappedAxisTargets([null, null, null]);
       setModelingPointerSnappedEdgeTarget(null);
+      setModelingPointerSnappedFaceTarget(null);
       setModelingPointerSnappedVertexTarget(null);
     };
 
@@ -682,7 +987,8 @@ export function ModelingInputController({
           );
           lineDragStartSnapped =
             lineDragStartVertexId !== null ||
-            modelingPointer.snappedEdgeTarget !== null;
+            modelingPointer.snappedEdgeTarget !== null ||
+            modelingPointer.snappedFaceTarget !== null;
         }
       }
 
@@ -995,6 +1301,7 @@ export function ModelingInputController({
       setModelingPointerSnappedAxes([false, false, false]);
       setModelingPointerSnappedAxisTargets([null, null, null]);
       setModelingPointerSnappedEdgeTarget(null);
+      setModelingPointerSnappedFaceTarget(null);
       setModelingPointerSnappedVertexTarget(null);
       clearVertexSelection();
     };
@@ -1021,6 +1328,8 @@ export function ModelingInputController({
     modelingPointerEdgeSnapEnabled,
     modelingPointerGridSnapEnabled,
     modelingPointerGridSnapStep,
+    modelingPointerScreenEdgeSnapEnabled,
+    modelingPointerScreenFaceSnapEnabled,
     modelingPointerScreenVertexSnapEnabled,
     modelingPointerVertexSnapDistance,
     modelingPointerVertexSnapEnabled,
@@ -1039,6 +1348,7 @@ export function ModelingInputController({
     setModelingPointerSnappedAxes,
     setModelingPointerSnappedAxisTargets,
     setModelingPointerSnappedEdgeTarget,
+    setModelingPointerSnappedFaceTarget,
     setModelingPointerSnappedVertexTarget,
     clearModelingLassoSelection,
     updateVertexMoveDrag,

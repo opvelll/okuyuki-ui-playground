@@ -475,6 +475,12 @@ export function ModelingToolHeaderProperties() {
   const modelingPointerGridSnapStep = useUiStore(
     (state) => state.modelingPointerGridSnapStep,
   );
+  const modelingPointerScreenEdgeSnapEnabled = useUiStore(
+    (state) => state.modelingPointerScreenEdgeSnapEnabled,
+  );
+  const modelingPointerScreenFaceSnapEnabled = useUiStore(
+    (state) => state.modelingPointerScreenFaceSnapEnabled,
+  );
   const modelingPointerScreenVertexSnapEnabled = useUiStore(
     (state) => state.modelingPointerScreenVertexSnapEnabled,
   );
@@ -511,6 +517,12 @@ export function ModelingToolHeaderProperties() {
   const setModelingPointerGridSnapStep = useUiStore(
     (state) => state.setModelingPointerGridSnapStep,
   );
+  const setModelingPointerScreenEdgeSnapEnabled = useUiStore(
+    (state) => state.setModelingPointerScreenEdgeSnapEnabled,
+  );
+  const setModelingPointerScreenFaceSnapEnabled = useUiStore(
+    (state) => state.setModelingPointerScreenFaceSnapEnabled,
+  );
   const setModelingPointerScreenVertexSnapEnabled = useUiStore(
     (state) => state.setModelingPointerScreenVertexSnapEnabled,
   );
@@ -537,20 +549,32 @@ export function ModelingToolHeaderProperties() {
   }
 
   return (
-    <div className="absolute left-1/2 top-3 z-20 flex w-max max-w-[calc(100vw-8rem)] -translate-x-1/2 flex-nowrap items-start justify-center gap-1 overflow-x-auto px-1 pb-1">
+    <div className="absolute inset-x-3 top-3 z-30 flex flex-nowrap items-start justify-start gap-1 overflow-x-auto px-1 pb-1 md:inset-x-auto md:left-1/2 md:w-max md:max-w-[calc(100vw-8rem)] md:-translate-x-1/2 md:justify-center">
       <div className={propertyPanelClasses}>
         <ToolSettingToggle
           checked={
             modelingTool === "move" || modelingPointerScreenVertexSnapEnabled
           }
           disabled={modelingTool === "move"}
-          label="Hover Snap"
+          label="Hover Vertex"
           onChange={setModelingPointerScreenVertexSnapEnabled}
           title={
             modelingTool === "move"
               ? "Move tool always snaps the 3D pointer onto a vertex under the mouse."
               : "Toggle snapping the 3D pointer onto a vertex directly under the mouse in screen space."
           }
+        />
+        <ToolSettingToggle
+          checked={modelingPointerScreenEdgeSnapEnabled}
+          label="Hover Edge"
+          onChange={setModelingPointerScreenEdgeSnapEnabled}
+          title="Toggle snapping the 3D pointer onto an edge directly under the mouse in screen space."
+        />
+        <ToolSettingToggle
+          checked={modelingPointerScreenFaceSnapEnabled}
+          label="Hover Face"
+          onChange={setModelingPointerScreenFaceSnapEnabled}
+          title="Toggle snapping the 3D pointer onto a face directly under the mouse in screen space."
         />
         <ToolSettingToggle
           checked={modelingPointerVertexSnapEnabled}

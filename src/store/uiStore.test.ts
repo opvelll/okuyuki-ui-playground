@@ -38,6 +38,7 @@ describe("uiStore", () => {
         snappedAxes: [false, false, false],
         snappedAxisTargets: [null, null, null],
         snappedEdgeTarget: null,
+        snappedFaceTarget: null,
         snappedVertexTarget: null,
       },
       prototypeCamera: DEFAULT_PROTOTYPE_CAMERA,
@@ -231,6 +232,16 @@ describe("uiStore", () => {
 
     useUiStore.getState().setModelingPointerScreenVertexSnapEnabled(true);
     expect(useUiStore.getState().modelingPointerScreenVertexSnapEnabled).toBe(
+      true,
+    );
+
+    useUiStore.getState().setModelingPointerScreenEdgeSnapEnabled(true);
+    expect(useUiStore.getState().modelingPointerScreenEdgeSnapEnabled).toBe(
+      true,
+    );
+
+    useUiStore.getState().setModelingPointerScreenFaceSnapEnabled(true);
+    expect(useUiStore.getState().modelingPointerScreenFaceSnapEnabled).toBe(
       true,
     );
 

@@ -553,6 +553,24 @@ export function ModelingSettingsSection({
         value={settings.modelingTool}
       />
       <ToggleField
+        checked={settings.modelingPointerScreenVertexSnapEnabled}
+        id="modeling-pointer-screen-vertex-snap-enabled"
+        label="Hover Vertex Snap / 画面頂点ホバー吸着"
+        onChange={settings.setModelingPointerScreenVertexSnapEnabled}
+      />
+      <ToggleField
+        checked={settings.modelingPointerScreenEdgeSnapEnabled}
+        id="modeling-pointer-screen-edge-snap-enabled"
+        label="Hover Edge Snap / 画面辺ホバー吸着"
+        onChange={settings.setModelingPointerScreenEdgeSnapEnabled}
+      />
+      <ToggleField
+        checked={settings.modelingPointerScreenFaceSnapEnabled}
+        id="modeling-pointer-screen-face-snap-enabled"
+        label="Hover Face Snap / 画面面ホバー吸着"
+        onChange={settings.setModelingPointerScreenFaceSnapEnabled}
+      />
+      <ToggleField
         checked={settings.modelingPointerVertexSnapEnabled}
         id="modeling-pointer-vertex-snap-enabled"
         label="Pointer Vertex Snap / 頂点吸着"

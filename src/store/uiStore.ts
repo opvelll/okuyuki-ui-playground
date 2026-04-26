@@ -62,6 +62,11 @@ export type ModelingPointerState = {
     position: [number, number, number];
     vertexIds: [string, string];
   } | null;
+  snappedFaceTarget: {
+    faceId: string;
+    position: [number, number, number];
+    vertexIds: [string, string, string];
+  } | null;
   hovered: boolean;
   plane: ModelingPointerPlane;
   position: [number, number, number];
@@ -134,6 +139,8 @@ type PersistedUiState = {
   modelingPointerGridSnapEnabled: boolean;
   modelingPointerGridSnapStep: number;
   modelingPointerPanelRadius: number;
+  modelingPointerScreenEdgeSnapEnabled: boolean;
+  modelingPointerScreenFaceSnapEnabled: boolean;
   modelingPointerScreenVertexSnapEnabled: boolean;
   modelingPointerVertexSnapDistance: number;
   modelingPointerVertexSnapEnabled: boolean;
@@ -222,6 +229,8 @@ export type UiState = PersistedUiState & {
   setModelingPointerGridSnapEnabled: (value: boolean) => void;
   setModelingPointerGridSnapStep: (value: number) => void;
   setModelingPointerPanelRadius: (value: number) => void;
+  setModelingPointerScreenEdgeSnapEnabled: (value: boolean) => void;
+  setModelingPointerScreenFaceSnapEnabled: (value: boolean) => void;
   setModelingPointerScreenVertexSnapEnabled: (value: boolean) => void;
   setModelingPointerVertexSnapDistance: (value: number) => void;
   setModelingPointerVertexSnapEnabled: (value: boolean) => void;
@@ -276,6 +285,9 @@ export type UiState = PersistedUiState & {
   ) => void;
   setModelingPointerSnappedEdgeTarget: (
     target: ModelingPointerState["snappedEdgeTarget"],
+  ) => void;
+  setModelingPointerSnappedFaceTarget: (
+    target: ModelingPointerState["snappedFaceTarget"],
   ) => void;
   setModelingPointerSnappedVertexTarget: (
     target: ModelingPointerState["snappedVertexTarget"],
@@ -378,6 +390,8 @@ export const createDefaultPersistedUiState = (): PersistedUiState => ({
   modelingPointerGridSnapEnabled: false,
   modelingPointerGridSnapStep: 0.05,
   modelingPointerPanelRadius: 0.72,
+  modelingPointerScreenEdgeSnapEnabled: false,
+  modelingPointerScreenFaceSnapEnabled: false,
   modelingPointerScreenVertexSnapEnabled: false,
   modelingPointerVertexSnapDistance: 0.45,
   modelingPointerVertexSnapEnabled: true,
@@ -450,6 +464,8 @@ const createInitialUiState = (): Omit<
   | "setModelingPointerGridSnapEnabled"
   | "setModelingPointerGridSnapStep"
   | "setModelingPointerPanelRadius"
+  | "setModelingPointerScreenEdgeSnapEnabled"
+  | "setModelingPointerScreenFaceSnapEnabled"
   | "setModelingPointerScreenVertexSnapEnabled"
   | "setModelingPointerVertexSnapDistance"
   | "setModelingPointerVertexSnapEnabled"
@@ -497,6 +513,7 @@ const createInitialUiState = (): Omit<
   | "setModelingPointerSnappedAxes"
   | "setModelingPointerSnappedAxisTargets"
   | "setModelingPointerSnappedEdgeTarget"
+  | "setModelingPointerSnappedFaceTarget"
   | "setModelingPointerSnappedVertexTarget"
   | "setModelingLinePreview"
   | "clearModelingLinePreview"
@@ -524,6 +541,7 @@ const createInitialUiState = (): Omit<
     snappedAxes: [false, false, false],
     snappedAxisTargets: [null, null, null],
     snappedEdgeTarget: null,
+    snappedFaceTarget: null,
     snappedVertexTarget: null,
   },
   prototypeCamera: DEFAULT_PROTOTYPE_CAMERA,
@@ -680,6 +698,14 @@ export const useUiStore = create<UiState>()(
       setModelingPointerPanelRadius: (value) =>
         set({
           modelingPointerPanelRadius: Math.max(0.2, Math.min(value, 8)),
+        }),
+      setModelingPointerScreenEdgeSnapEnabled: (value) =>
+        set({
+          modelingPointerScreenEdgeSnapEnabled: value,
+        }),
+      setModelingPointerScreenFaceSnapEnabled: (value) =>
+        set({
+          modelingPointerScreenFaceSnapEnabled: value,
         }),
       setModelingPointerScreenVertexSnapEnabled: (value) =>
         set({
@@ -851,6 +877,13 @@ export const useUiStore = create<UiState>()(
             snappedEdgeTarget,
           },
         })),
+      setModelingPointerSnappedFaceTarget: (snappedFaceTarget) =>
+        set((state) => ({
+          modelingPointer: {
+            ...state.modelingPointer,
+            snappedFaceTarget,
+          },
+        })),
       setModelingPointerSnappedVertexTarget: (snappedVertexTarget) =>
         set((state) => ({
           modelingPointer: {
@@ -947,6 +980,10 @@ export const useUiStore = create<UiState>()(
         modelingPointerGridSnapEnabled: state.modelingPointerGridSnapEnabled,
         modelingPointerGridSnapStep: state.modelingPointerGridSnapStep,
         modelingPointerPanelRadius: state.modelingPointerPanelRadius,
+        modelingPointerScreenEdgeSnapEnabled:
+          state.modelingPointerScreenEdgeSnapEnabled,
+        modelingPointerScreenFaceSnapEnabled:
+          state.modelingPointerScreenFaceSnapEnabled,
         modelingPointerScreenVertexSnapEnabled:
           state.modelingPointerScreenVertexSnapEnabled,
         modelingPointerVertexSnapDistance:

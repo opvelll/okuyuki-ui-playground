@@ -93,6 +93,7 @@ describe("App", () => {
         snappedAxes: [false, false, false],
         snappedAxisTargets: [null, null, null],
         snappedEdgeTarget: null,
+        snappedFaceTarget: null,
         snappedVertexTarget: null,
       },
       prototypeCamera: DEFAULT_PROTOTYPE_CAMERA,
@@ -498,7 +499,9 @@ describe("App", () => {
     expect(screen.getByLabelText(/^Vertex Snap$/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/^Axis Snap$/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/^Grid Snap$/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/^Hover Snap$/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Hover Vertex$/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Hover Edge$/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Hover Face$/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/^Angle Step$/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Overlay/i)).toBeInTheDocument();
 
@@ -538,8 +541,10 @@ describe("App", () => {
     expect(screen.getByLabelText(/^Vertex Snap$/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/^Axis Snap$/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/^Grid Snap$/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/^Hover Snap$/i)).toBeChecked();
-    expect(screen.getByLabelText(/^Hover Snap$/i)).toBeDisabled();
+    expect(screen.getByLabelText(/^Hover Vertex$/i)).toBeChecked();
+    expect(screen.getByLabelText(/^Hover Vertex$/i)).toBeDisabled();
+    expect(screen.getByLabelText(/^Hover Edge$/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Hover Face$/i)).toBeInTheDocument();
     expect(screen.queryByLabelText(/Snap Distance/i)).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/Overlay/i)).not.toBeInTheDocument();
   });
