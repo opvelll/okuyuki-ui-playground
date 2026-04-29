@@ -1,5 +1,7 @@
 import type { ModelingModel, ModelingSnapshot } from "../store/modelingStore";
+import type { ModelingObjExportFaceMode } from "../store/uiStore";
 import type { Vector3Tuple } from "../types/scene";
+import { triangulateFaceVertexIds } from "./modelingFaceGeometry";
 
 function sanitizeObjectName(name: string) {
   const normalized = name.trim().replace(/\s+/g, "_");
@@ -43,7 +45,11 @@ function transformPosition(model: ModelingModel, position: Vector3Tuple) {
   ] satisfies Vector3Tuple;
 }
 
-export function exportModelingSnapshotToObj(snapshot: ModelingSnapshot) {
+export function exportModelingSnapshotToObj(
+  snapshot: ModelingSnapshot,
+  options: { faceMode?: ModelingObjExportFaceMode } = {},
+) {
+  const faceMode = options.faceMode ?? "polygon";
   const lines = [
     "# Exported from naname_ui",
     "# Units are scene units. Vertex coordinates include each model root transform.",
@@ -67,11 +73,20 @@ export function exportModelingSnapshotToObj(snapshot: ModelingSnapshot) {
 
     for (const faceId of model.faceOrder) {
       const face = model.facesById[faceId];
-      const indices = face?.vertexIds.map((vertexId) =>
-        vertexIndexById.get(vertexId),
-      );
-      if (indices?.every((index) => index !== undefined)) {
-        lines.push(`f ${indices.join(" ")}`);
+      const faceVertexIdsList =
+        faceMode === "triangulated"
+          ? triangulateFaceVertexIds(face?.vertexIds ?? [])
+          : face
+            ? [face.vertexIds]
+            : [];
+
+      for (const faceVertexIds of faceVertexIdsList) {
+        const indices = faceVertexIds.map((vertexId) =>
+          vertexIndexById.get(vertexId),
+        );
+        if (indices.every((index) => index !== undefined)) {
+          lines.push(`f ${indices.join(" ")}`);
+        }
       }
     }
 

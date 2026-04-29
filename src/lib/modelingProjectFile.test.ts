@@ -59,6 +59,69 @@ describe("modelingProjectFile", () => {
     });
   });
 
+  it("parses polygon faces", () => {
+    const quadSnapshot: ModelingSnapshot = {
+      ...snapshot,
+      modelsById: {
+        "model-1": {
+          ...snapshot.modelsById["model-1"],
+          faceOrder: ["face-1"],
+          facesById: {
+            "face-1": {
+              id: "face-1",
+              vertexIds: [
+                "vertex-1",
+                "vertex-2",
+                "vertex-3",
+                "vertex-4",
+                "vertex-5",
+              ],
+            },
+          },
+          vertexOrder: [
+            "vertex-1",
+            "vertex-2",
+            "vertex-3",
+            "vertex-4",
+            "vertex-5",
+          ],
+          verticesById: {
+            ...snapshot.modelsById["model-1"].verticesById,
+            "vertex-4": { id: "vertex-4", position: [1, 1, 0] },
+            "vertex-5": { id: "vertex-5", position: [0.5, 1.5, 0] },
+          },
+        },
+      },
+    };
+
+    const result = parseModelingProjectFile(
+      serializeModelingProjectFile(quadSnapshot, {
+        autoNameIndex: 4,
+        savedAt: "2026-04-26T00:00:00.000Z",
+      }),
+    );
+
+    expect(result).toMatchObject({
+      snapshot: {
+        modelsById: {
+          "model-1": {
+            facesById: {
+              "face-1": {
+                vertexIds: [
+                  "vertex-1",
+                  "vertex-2",
+                  "vertex-3",
+                  "vertex-4",
+                  "vertex-5",
+                ],
+              },
+            },
+          },
+        },
+      },
+    });
+  });
+
   it("rejects unsupported files", () => {
     const result = parseModelingProjectFile(
       JSON.stringify({ format: "other", formatVersion: 1 }),

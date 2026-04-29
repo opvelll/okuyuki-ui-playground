@@ -21,6 +21,9 @@ import {
 } from "../lib/modelingProjectFile";
 import { useModelingStore } from "../store/modelingStore";
 import {
+  type ModelingFaceDisplayMode,
+  type ModelingGeneratedFaceMode,
+  type ModelingObjExportFaceMode,
   type ModelingRectangleMode,
   type MoveOverlayDisplayMode,
   getEffectiveModelingTool,
@@ -127,6 +130,30 @@ const rectangleModeOptions = [
 ] as const satisfies ReadonlyArray<{
   label: string;
   value: ModelingRectangleMode;
+}>;
+
+const generatedFaceModeOptions = [
+  { label: "Quad", value: "quad" },
+  { label: "Triangles", value: "triangles" },
+] as const satisfies ReadonlyArray<{
+  label: string;
+  value: ModelingGeneratedFaceMode;
+}>;
+
+const faceDisplayModeOptions = [
+  { label: "Poly", value: "polygon" },
+  { label: "Tri", value: "triangulated" },
+] as const satisfies ReadonlyArray<{
+  label: string;
+  value: ModelingFaceDisplayMode;
+}>;
+
+const objExportFaceModeOptions = [
+  { label: "OBJ Poly", value: "polygon" },
+  { label: "OBJ Tri", value: "triangulated" },
+] as const satisfies ReadonlyArray<{
+  label: string;
+  value: ModelingObjExportFaceMode;
 }>;
 
 const fieldClasses =
@@ -324,6 +351,12 @@ export function ModelingToolToolbar() {
   const currentFileBaseName = getSafeFileBaseName(
     currentModel?.name ?? "okuyuki-model",
   );
+  const modelingObjExportFaceMode = useUiStore(
+    (state) => state.modelingObjExportFaceMode,
+  );
+  const setModelingObjExportFaceMode = useUiStore(
+    (state) => state.setModelingObjExportFaceMode,
+  );
   const projectSnapshot = {
     currentModelId,
     modelsById,
@@ -345,7 +378,9 @@ export function ModelingToolToolbar() {
   const handleExportObj = () => {
     downloadTextFile(
       `${currentFileBaseName}.obj`,
-      exportModelingSnapshotToObj(projectSnapshot),
+      exportModelingSnapshotToObj(projectSnapshot, {
+        faceMode: modelingObjExportFaceMode,
+      }),
       "model/obj",
     );
     setProjectFileStatus("Exported OBJ file.");
@@ -571,6 +606,26 @@ export function ModelingToolToolbar() {
             <span>Export</span>
           </button>
         </div>
+        <label className="grid gap-1 border-t border-white/8 px-3 py-2 text-[0.56rem] font-bold uppercase tracking-[0.16em] text-slate-400">
+          OBJ Faces
+          <select
+            aria-label="OBJ face export mode"
+            className={fieldClasses}
+            onChange={(event) =>
+              setModelingObjExportFaceMode(
+                event.target.value as ModelingObjExportFaceMode,
+              )
+            }
+            title="Choose whether OBJ export writes polygon faces as-is or triangulates them."
+            value={modelingObjExportFaceMode}
+          >
+            {objExportFaceModeOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
         <input
           accept=".okuyuki.json,application/json"
           aria-label="Modeling project file"
@@ -615,6 +670,10 @@ export function ModelingToolHeaderProperties() {
   const modelingRectangleMode = useUiStore(
     (state) => state.modelingRectangleMode,
   );
+  const modelingRectangleFaceMode = useUiStore(
+    (state) => state.modelingRectangleFaceMode,
+  );
+  const modelingBoxFaceMode = useUiStore((state) => state.modelingBoxFaceMode);
   const modelingPointerAxisSnapEnabled = useUiStore(
     (state) => state.modelingPointerAxisSnapEnabled,
   );
@@ -659,6 +718,12 @@ export function ModelingToolHeaderProperties() {
   );
   const setModelingRectangleMode = useUiStore(
     (state) => state.setModelingRectangleMode,
+  );
+  const setModelingRectangleFaceMode = useUiStore(
+    (state) => state.setModelingRectangleFaceMode,
+  );
+  const setModelingBoxFaceMode = useUiStore(
+    (state) => state.setModelingBoxFaceMode,
   );
   const setModelingPointerAxisSnapEnabled = useUiStore(
     (state) => state.setModelingPointerAxisSnapEnabled,
@@ -857,6 +922,17 @@ export function ModelingToolHeaderProperties() {
             widthClass="w-30"
           />
           <ToolSettingSelectField
+            id="rectangle-face-mode"
+            label="Face"
+            onChange={(value) =>
+              setModelingRectangleFaceMode(value as ModelingGeneratedFaceMode)
+            }
+            options={generatedFaceModeOptions}
+            title="Choose whether generated rectangle surfaces are saved as one quad face or two triangle faces."
+            value={modelingRectangleFaceMode}
+            widthClass="w-20"
+          />
+          <ToolSettingSelectField
             id="rectangle-overlay-display"
             label="Overlay"
             onChange={(value) =>
@@ -872,6 +948,17 @@ export function ModelingToolHeaderProperties() {
       {modelingTool === "box" ? (
         <div className={propertyPanelClasses}>
           <ToolSettingSelectField
+            id="box-face-mode"
+            label="Face"
+            onChange={(value) =>
+              setModelingBoxFaceMode(value as ModelingGeneratedFaceMode)
+            }
+            options={generatedFaceModeOptions}
+            title="Choose whether generated box surfaces are saved as six quad faces or twelve triangle faces."
+            value={modelingBoxFaceMode}
+            widthClass="w-20"
+          />
+          <ToolSettingSelectField
             id="box-overlay-display"
             label="Overlay"
             onChange={(value) =>
@@ -884,6 +971,43 @@ export function ModelingToolHeaderProperties() {
           />
         </div>
       ) : null}
+    </div>
+  );
+}
+
+export function ModelingFaceDisplayControls() {
+  const faceDisplayMode = useUiStore((state) => state.modelingFaceDisplayMode);
+  const setFaceDisplayMode = useUiStore(
+    (state) => state.setModelingFaceDisplayMode,
+  );
+
+  return (
+    <div className="absolute right-3 top-20 z-30 grid w-36 grid-cols-2 border border-white/12 bg-slate-950/84 text-slate-100 shadow-[0_14px_28px_rgba(3,10,20,0.26)] backdrop-blur md:right-4 md:top-16 md:w-72">
+      {faceDisplayModeOptions.map((option) => {
+        const active = faceDisplayMode === option.value;
+
+        return (
+          <button
+            aria-label={`Show modeling faces as ${option.label}`}
+            aria-pressed={active}
+            className={`h-9 px-2 text-[0.62rem] font-bold uppercase tracking-[0.14em] transition ${
+              active
+                ? "bg-sky-300/16 text-slate-50"
+                : "text-slate-300 hover:bg-white/[0.05]"
+            }`}
+            key={option.value}
+            onClick={() => setFaceDisplayMode(option.value)}
+            title={
+              option.value === "polygon"
+                ? "Show polygon topology."
+                : "Show the triangulated topology used for mesh drawing."
+            }
+            type="button"
+          >
+            {option.label}
+          </button>
+        );
+      })}
     </div>
   );
 }

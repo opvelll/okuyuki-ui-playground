@@ -3,8 +3,9 @@ import { type RefObject, useEffect } from "react";
 import { Raycaster, Vector2, Vector3 } from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { isEditableTarget } from "../../lib/isEditableTarget";
+import { triangulateFaceItems } from "../../lib/modelingFaceGeometry";
 import { compareVector3Tuple } from "../../lib/vector3Tuple";
-import { useModelingStore } from "../../store/modelingStore";
+import { type ModelingFace, useModelingStore } from "../../store/modelingStore";
 import {
   DEFAULT_PEN_STROKE_PARAMS,
   getEffectiveModelingTool,
@@ -30,6 +31,26 @@ const CAMERA_DOLLY_STEP = 0.55;
 const CURSOR_DEPTH_STEP = 0.45;
 const SCREEN_EDGE_HIT_RADIUS_PX = 8;
 const SCREEN_VERTEX_HIT_RADIUS_PX = 10;
+
+function getFaceCenter(face: {
+  positions: Array<[number, number, number]>;
+}): [number, number, number] {
+  const sum = face.positions.reduce(
+    (total, position) =>
+      [
+        total[0] + position[0],
+        total[1] + position[1],
+        total[2] + position[2],
+      ] as [number, number, number],
+    [0, 0, 0] as [number, number, number],
+  );
+
+  return [
+    sum[0] / face.positions.length,
+    sum[1] / face.positions.length,
+    sum[2] / face.positions.length,
+  ];
+}
 
 export function ModelingInputController({
   controlsRef,
@@ -119,6 +140,10 @@ export function ModelingInputController({
   const modelingRectangleMode = useUiStore(
     (state) => state.modelingRectangleMode,
   );
+  const modelingRectangleFaceMode = useUiStore(
+    (state) => state.modelingRectangleFaceMode,
+  );
+  const modelingBoxFaceMode = useUiStore((state) => state.modelingBoxFaceMode);
   const setModelingPointerDepth = useUiStore(
     (state) => state.setModelingPointerDepth,
   );
@@ -265,8 +290,9 @@ export function ModelingInputController({
                   [number, number, number],
                   [number, number, number],
                   [number, number, number],
+                  ...[number, number, number][],
                 ],
-                vertexIds: [...face.vertexIds] as [string, string, string],
+                vertexIds: [...face.vertexIds] as ModelingFace["vertexIds"],
               },
             ];
           })
@@ -280,18 +306,6 @@ export function ModelingInputController({
       (edge.start[0] + edge.end[0]) / 2,
       (edge.start[1] + edge.end[1]) / 2,
       (edge.start[2] + edge.end[2]) / 2,
-    ];
-
-    const getFaceCenter = (face: {
-      positions: [
-        [number, number, number],
-        [number, number, number],
-        [number, number, number],
-      ];
-    }): [number, number, number] => [
-      (face.positions[0][0] + face.positions[1][0] + face.positions[2][0]) / 3,
-      (face.positions[0][1] + face.positions[1][1] + face.positions[2][1]) / 3,
-      (face.positions[0][2] + face.positions[1][2] + face.positions[2][2]) / 3,
     ];
 
     const getMoveDragVertexIds = () => {
@@ -608,76 +622,78 @@ export function ModelingInputController({
         faceId: string;
         position: [number, number, number];
         projectedZ: number;
-        vertexIds: [string, string, string];
+        vertexIds: ModelingFace["vertexIds"];
       } | null = null;
 
       for (const face of getActiveFaceTargets(
         options.excludedVertexIds ?? new Set<string>(),
       )) {
-        const projectedVertices = face.positions.map((position) =>
-          projectVertexToScreenPoint(position, camera, viewport),
-        );
+        for (const trianglePositions of triangulateFaceItems(face.positions)) {
+          const projectedVertices = trianglePositions.map((position) =>
+            projectVertexToScreenPoint(position, camera, viewport),
+          );
 
-        if (projectedVertices.some((projected) => projected === null)) {
-          continue;
-        }
+          if (projectedVertices.some((projected) => projected === null)) {
+            continue;
+          }
 
-        const [a, b, c] = projectedVertices as [
-          NonNullable<(typeof projectedVertices)[number]>,
-          NonNullable<(typeof projectedVertices)[number]>,
-          NonNullable<(typeof projectedVertices)[number]>,
-        ];
-        const denominator =
-          (b.point[1] - c.point[1]) * (a.point[0] - c.point[0]) +
-          (c.point[0] - b.point[0]) * (a.point[1] - c.point[1]);
+          const [a, b, c] = projectedVertices as [
+            NonNullable<(typeof projectedVertices)[number]>,
+            NonNullable<(typeof projectedVertices)[number]>,
+            NonNullable<(typeof projectedVertices)[number]>,
+          ];
+          const denominator =
+            (b.point[1] - c.point[1]) * (a.point[0] - c.point[0]) +
+            (c.point[0] - b.point[0]) * (a.point[1] - c.point[1]);
 
-        if (Math.abs(denominator) <= 1e-8) {
-          continue;
-        }
+          if (Math.abs(denominator) <= 1e-8) {
+            continue;
+          }
 
-        const weightA =
-          ((b.point[1] - c.point[1]) * (pointerScreen.x - c.point[0]) +
-            (c.point[0] - b.point[0]) * (pointerScreen.y - c.point[1])) /
-          denominator;
-        const weightB =
-          ((c.point[1] - a.point[1]) * (pointerScreen.x - c.point[0]) +
-            (a.point[0] - c.point[0]) * (pointerScreen.y - c.point[1])) /
-          denominator;
-        const weightC = 1 - weightA - weightB;
-        const inside =
-          weightA >= -0.001 && weightB >= -0.001 && weightC >= -0.001;
+          const weightA =
+            ((b.point[1] - c.point[1]) * (pointerScreen.x - c.point[0]) +
+              (c.point[0] - b.point[0]) * (pointerScreen.y - c.point[1])) /
+            denominator;
+          const weightB =
+            ((c.point[1] - a.point[1]) * (pointerScreen.x - c.point[0]) +
+              (a.point[0] - c.point[0]) * (pointerScreen.y - c.point[1])) /
+            denominator;
+          const weightC = 1 - weightA - weightB;
+          const inside =
+            weightA >= -0.001 && weightB >= -0.001 && weightC >= -0.001;
 
-        if (!inside) {
-          continue;
-        }
+          if (!inside) {
+            continue;
+          }
 
-        const intersection = raycaster.ray.intersectTriangle(
-          new Vector3(...face.positions[0]),
-          new Vector3(...face.positions[1]),
-          new Vector3(...face.positions[2]),
-          false,
-          new Vector3(),
-        );
+          const intersection = raycaster.ray.intersectTriangle(
+            new Vector3(...trianglePositions[0]),
+            new Vector3(...trianglePositions[1]),
+            new Vector3(...trianglePositions[2]),
+            false,
+            new Vector3(),
+          );
 
-        if (!intersection) {
-          continue;
-        }
+          if (!intersection) {
+            continue;
+          }
 
-        const projectedZ =
-          a.projectedZ * weightA +
-          b.projectedZ * weightB +
-          c.projectedZ * weightC;
+          const projectedZ =
+            a.projectedZ * weightA +
+            b.projectedZ * weightB +
+            c.projectedZ * weightC;
 
-        if (
-          nearestFaceMatch === null ||
-          projectedZ < nearestFaceMatch.projectedZ
-        ) {
-          nearestFaceMatch = {
-            faceId: face.faceId,
-            position: [intersection.x, intersection.y, intersection.z],
-            projectedZ,
-            vertexIds: face.vertexIds,
-          };
+          if (
+            nearestFaceMatch === null ||
+            projectedZ < nearestFaceMatch.projectedZ
+          ) {
+            nearestFaceMatch = {
+              faceId: face.faceId,
+              position: [intersection.x, intersection.y, intersection.z],
+              projectedZ,
+              vertexIds: face.vertexIds,
+            };
+          }
         }
       }
 
@@ -1306,6 +1322,7 @@ export function ModelingInputController({
                     ? modelingPointer.snappedEdgeTarget
                     : null,
                 endVertexId: lineDragEndVertexId,
+                faceMode: modelingRectangleFaceMode,
                 mode: modelingRectangleMode,
                 startEdgeTarget:
                   lineDragStartVertexId === null
@@ -1327,6 +1344,7 @@ export function ModelingInputController({
               {
                 endEdgeTarget: modelingPointer.snappedEdgeTarget,
                 endVertexId: lineDragEndVertexId,
+                faceMode: modelingBoxFaceMode,
                 startEdgeTarget:
                   lineDragStartVertexId === null
                     ? lineDragStartEdgeTarget
@@ -1532,6 +1550,8 @@ export function ModelingInputController({
     modelingLassoSelectFacesEnabled,
     modelingLassoSelectVerticesEnabled,
     modelingLineAngleSnapStepDeg,
+    modelingBoxFaceMode,
+    modelingRectangleFaceMode,
     modelingRectangleMode,
     selectModelingElements,
     setActivePenStroke,

@@ -120,7 +120,7 @@ function parseModel(value: unknown): ModelingModel | null {
       !isRecord(face) ||
       face.id !== faceId ||
       !Array.isArray(face.vertexIds) ||
-      face.vertexIds.length !== 3 ||
+      face.vertexIds.length < 3 ||
       !face.vertexIds.every(
         (vertexId) =>
           typeof vertexId === "string" && verticesById[vertexId] !== undefined,
@@ -130,7 +130,7 @@ function parseModel(value: unknown): ModelingModel | null {
     }
     facesById[faceId] = {
       id: faceId,
-      vertexIds: [face.vertexIds[0], face.vertexIds[1], face.vertexIds[2]],
+      vertexIds: [...face.vertexIds],
     };
   }
 

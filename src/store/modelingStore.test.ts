@@ -217,6 +217,34 @@ describe("modelingStore", () => {
     expect(currentModel.faceOrder).toHaveLength(1);
   });
 
+  it("creates polygon faces from more than three selected vertices in selection order", () => {
+    const vertexA = useModelingStore.getState().addVertex([0, 0, 0]);
+    const vertexB = useModelingStore.getState().addVertex([1, 0, 0]);
+    const vertexC = useModelingStore.getState().addVertex([1, 1, 0]);
+    const vertexD = useModelingStore.getState().addVertex([0, 1, 0]);
+
+    useModelingStore.getState().selectVertex(vertexA?.id ?? "", false);
+    useModelingStore.getState().selectVertex(vertexB?.id ?? "", true);
+    useModelingStore.getState().selectVertex(vertexC?.id ?? "", true);
+    useModelingStore.getState().selectVertex(vertexD?.id ?? "", true);
+
+    expect(useModelingStore.getState().createFaceFromSelectedVertices()).toBe(
+      true,
+    );
+
+    const state = useModelingStore.getState();
+    const currentModel = state.modelsById[state.currentModelId];
+    const face = currentModel.facesById[currentModel.faceOrder[0]];
+
+    expect(currentModel.edgeOrder).toHaveLength(4);
+    expect(face.vertexIds).toEqual([
+      vertexA?.id,
+      vertexB?.id,
+      vertexC?.id,
+      vertexD?.id,
+    ]);
+  });
+
   it("selects edges and faces separately from vertex move selection", () => {
     const vertexA = useModelingStore.getState().addVertex([0, 0, 0]);
     const vertexB = useModelingStore.getState().addVertex([1, 0, 0]);
@@ -250,7 +278,7 @@ describe("modelingStore", () => {
     expect(useModelingStore.getState().selectedFaceIds).toEqual([]);
   });
 
-  it("creates a rectangle from a dragged diagonal as two triangle faces", () => {
+  it("creates a rectangle from a dragged diagonal as one quad face by default", () => {
     expect(
       useModelingStore
         .getState()
@@ -271,14 +299,34 @@ describe("modelingStore", () => {
       [2, 0, 3],
       [0, 0, 3],
     ]);
-    expect(currentModel.edgeOrder).toHaveLength(5);
-    expect(currentModel.faceOrder).toHaveLength(2);
+    expect(currentModel.edgeOrder).toHaveLength(4);
+    expect(currentModel.faceOrder).toHaveLength(1);
+    expect(currentModel.facesById[currentModel.faceOrder[0]].vertexIds).toEqual(
+      ["vertex-1", "vertex-2", "vertex-3", "vertex-4"],
+    );
     expect(state.selectedVertexIds).toEqual([
       "vertex-1",
       "vertex-2",
       "vertex-3",
       "vertex-4",
     ]);
+  });
+
+  it("can create a rectangle from a dragged diagonal as two triangle faces", () => {
+    expect(
+      useModelingStore
+        .getState()
+        .createRectangleFromDiagonal([0, 0, 0], [2, 1, 3], {
+          faceMode: "triangles",
+          mode: "flat-xz",
+        }),
+    ).toBe(true);
+
+    const state = useModelingStore.getState();
+    const currentModel = state.modelsById[state.currentModelId];
+
+    expect(currentModel.edgeOrder).toHaveLength(5);
+    expect(currentModel.faceOrder).toHaveLength(2);
   });
 
   it("creates an upright-up-fixed rectangle from the diagonal", () => {
@@ -302,6 +350,7 @@ describe("modelingStore", () => {
       [1, 2, 3],
       [4, 2, 8],
       [4, 6, 8],
+      [1, 6, 3],
     ]);
   });
 
@@ -326,6 +375,7 @@ describe("modelingStore", () => {
       [1, 2, 3],
       [1, 6, 8],
       [5, 6, 8],
+      [5, 2, 3],
     ]);
   });
 
@@ -350,6 +400,7 @@ describe("modelingStore", () => {
       [1, 2, 3],
       [5, 6, 3],
       [5, 6, 9],
+      [1, 2, 9],
     ]);
   });
 
@@ -374,10 +425,11 @@ describe("modelingStore", () => {
       [1, 2, 3],
       [4.605551, 4, 6],
       [1, 6, 9],
+      [-2.605551, 4, 6],
     ]);
   });
 
-  it("creates a box from a dragged diagonal as triangles on each face", () => {
+  it("creates a box from a dragged diagonal as quad faces by default", () => {
     expect(
       useModelingStore.getState().createBoxFromDiagonal([4, 6, 8], [1, 2, 3]),
     ).toBe(true);
@@ -399,7 +451,10 @@ describe("modelingStore", () => {
       [1, 6, 8],
     ]);
     expect(currentModel.edgeOrder).toHaveLength(12);
-    expect(currentModel.faceOrder).toHaveLength(12);
+    expect(currentModel.faceOrder).toHaveLength(6);
+    expect(currentModel.facesById[currentModel.faceOrder[0]].vertexIds).toEqual(
+      ["vertex-1", "vertex-2", "vertex-3", "vertex-4"],
+    );
     expect(state.selectedVertexIds).toEqual([
       "vertex-1",
       "vertex-2",
@@ -410,6 +465,20 @@ describe("modelingStore", () => {
       "vertex-7",
       "vertex-8",
     ]);
+  });
+
+  it("can create a box from a dragged diagonal as triangles on each face", () => {
+    expect(
+      useModelingStore.getState().createBoxFromDiagonal([4, 6, 8], [1, 2, 3], {
+        faceMode: "triangles",
+      }),
+    ).toBe(true);
+
+    const state = useModelingStore.getState();
+    const currentModel = state.modelsById[state.currentModelId];
+
+    expect(currentModel.edgeOrder).toHaveLength(12);
+    expect(currentModel.faceOrder).toHaveLength(12);
   });
 
   it("deletes selected vertices and removes dependent geometry that references them", () => {

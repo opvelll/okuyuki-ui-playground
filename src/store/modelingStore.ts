@@ -10,7 +10,10 @@ import {
 } from "../components/scene/penStrokeProcessing";
 import { compareVector3Tuple } from "../lib/vector3Tuple";
 import type { Vector3Tuple } from "../types/scene";
-import type { ModelingRectangleMode } from "./uiStore";
+import type {
+  ModelingGeneratedFaceMode,
+  ModelingRectangleMode,
+} from "./uiStore";
 
 export type ModelingVertex = {
   id: string;
@@ -24,7 +27,7 @@ export type ModelingEdge = {
 
 export type ModelingFace = {
   id: string;
-  vertexIds: [string, string, string];
+  vertexIds: string[];
 };
 
 export type ModelingModel = {
@@ -97,6 +100,7 @@ type ModelingState = ModelingSnapshot & {
     endPosition: Vector3Tuple,
     options: {
       mode: ModelingRectangleMode;
+      faceMode?: ModelingGeneratedFaceMode;
       endEdgeTarget?: {
         edgeId: string;
         position: Vector3Tuple;
@@ -115,6 +119,7 @@ type ModelingState = ModelingSnapshot & {
     startPosition: Vector3Tuple,
     endPosition: Vector3Tuple,
     options?: {
+      faceMode?: ModelingGeneratedFaceMode;
       endEdgeTarget?: {
         edgeId: string;
         position: Vector3Tuple;
@@ -231,7 +236,7 @@ function cloneModel(model: ModelingModel): ModelingModel {
         faceId,
         {
           ...face,
-          vertexIds: [...face.vertexIds] as [string, string, string],
+          vertexIds: [...face.vertexIds] as ModelingFace["vertexIds"],
         },
       ]),
     ),
@@ -321,8 +326,18 @@ function getEdgeKey(vertexIds: [string, string]) {
   return [...vertexIds].sort().join(":");
 }
 
-function getFaceKey(vertexIds: [string, string, string]) {
-  return [...vertexIds].sort().join(":");
+function getFaceKey(vertexIds: string[]) {
+  return vertexIds.join(":");
+}
+
+function getCyclicFaceKeys(vertexIds: string[]) {
+  return vertexIds.flatMap((_, startIndex) => {
+    const rotated = vertexIds.map(
+      (_vertexId, offset) =>
+        vertexIds[(startIndex + offset) % vertexIds.length],
+    );
+    return [getFaceKey(rotated), getFaceKey([...rotated].reverse())];
+  });
 }
 
 function hasEdge(model: ModelingModel, vertexIds: [string, string]) {
@@ -333,11 +348,11 @@ function hasEdge(model: ModelingModel, vertexIds: [string, string]) {
   );
 }
 
-function hasFace(model: ModelingModel, vertexIds: [string, string, string]) {
-  const faceKey = getFaceKey(vertexIds);
+function hasFace(model: ModelingModel, vertexIds: ModelingFace["vertexIds"]) {
+  const faceKeys = new Set(getCyclicFaceKeys(vertexIds));
 
-  return model.faceOrder.some(
-    (faceId) => getFaceKey(model.facesById[faceId].vertexIds) === faceKey,
+  return model.faceOrder.some((faceId) =>
+    faceKeys.has(getFaceKey(model.facesById[faceId].vertexIds)),
   );
 }
 
@@ -585,9 +600,12 @@ function ensureEdgeInModel(model: ModelingModel, vertexIds: [string, string]) {
 
 function ensureFaceInModel(
   model: ModelingModel,
-  vertexIds: [string, string, string],
+  vertexIds: ModelingFace["vertexIds"],
 ) {
-  if (new Set(vertexIds).size !== 3 || hasFace(model, vertexIds)) {
+  if (
+    new Set(vertexIds).size !== vertexIds.length ||
+    hasFace(model, vertexIds)
+  ) {
     return false;
   }
 
@@ -957,25 +975,38 @@ export const useModelingStore = create<ModelingState>()(
           [corner1VertexId, endVertexId],
           [endVertexId, corner3VertexId],
           [corner3VertexId, startVertexId],
-          [startVertexId, endVertexId],
         ];
+
+        if (options.faceMode === "triangles") {
+          edgeVertexIdsList.push([startVertexId, endVertexId]);
+        }
 
         for (const edgeVertexIds of edgeVertexIdsList) {
           changed = ensureEdgeInModel(nextModel, edgeVertexIds) || changed;
         }
 
-        changed =
-          ensureFaceInModel(nextModel, [
-            startVertexId,
-            corner1VertexId,
-            endVertexId,
-          ]) || changed;
-        changed =
-          ensureFaceInModel(nextModel, [
-            startVertexId,
-            endVertexId,
-            corner3VertexId,
-          ]) || changed;
+        if (options.faceMode === "triangles") {
+          changed =
+            ensureFaceInModel(nextModel, [
+              startVertexId,
+              corner1VertexId,
+              endVertexId,
+            ]) || changed;
+          changed =
+            ensureFaceInModel(nextModel, [
+              startVertexId,
+              endVertexId,
+              corner3VertexId,
+            ]) || changed;
+        } else {
+          changed =
+            ensureFaceInModel(nextModel, [
+              startVertexId,
+              corner1VertexId,
+              endVertexId,
+              corner3VertexId,
+            ]) || changed;
+        }
 
         if (!changed) {
           return false;
@@ -1109,7 +1140,7 @@ export const useModelingStore = create<ModelingState>()(
       },
       createFaceFromSelectedVertices: () => {
         const state = get();
-        if (state.selectedVertexIds.length !== 3) {
+        if (state.selectedVertexIds.length < 3) {
           return false;
         }
 
@@ -1118,23 +1149,22 @@ export const useModelingStore = create<ModelingState>()(
           return false;
         }
 
-        const faceVertexIds = [
-          state.selectedVertexIds[0],
-          state.selectedVertexIds[1],
-          state.selectedVertexIds[2],
-        ] as [string, string, string];
+        const faceVertexIds = [...state.selectedVertexIds];
         const uniqueVertexCount = new Set(faceVertexIds).size;
 
-        if (uniqueVertexCount !== 3 || hasFace(currentModel, faceVertexIds)) {
+        if (
+          uniqueVertexCount !== faceVertexIds.length ||
+          hasFace(currentModel, faceVertexIds)
+        ) {
           return false;
         }
 
         const nextModel = cloneModel(currentModel);
-        const requiredEdges = [
-          [faceVertexIds[0], faceVertexIds[1]],
-          [faceVertexIds[1], faceVertexIds[2]],
-          [faceVertexIds[2], faceVertexIds[0]],
-        ] as [string, string][];
+        const requiredEdges = faceVertexIds.map((vertexId, index) => {
+          const nextVertexId =
+            faceVertexIds[(index + 1) % faceVertexIds.length];
+          return [vertexId, nextVertexId] as [string, string];
+        });
 
         for (const edgeVertexIds of requiredEdges) {
           if (hasEdge(nextModel, edgeVertexIds)) {
@@ -1257,68 +1287,108 @@ export const useModelingStore = create<ModelingState>()(
           changed = ensureEdgeInModel(nextModel, edgeVertexIds) || changed;
         }
 
-        const faceVertexIdsList: [string, string, string][] = [
-          [
-            cornerIndexToVertexId[0],
-            cornerIndexToVertexId[1],
-            cornerIndexToVertexId[2],
-          ],
-          [
-            cornerIndexToVertexId[0],
-            cornerIndexToVertexId[2],
-            cornerIndexToVertexId[3],
-          ],
-          [
-            cornerIndexToVertexId[4],
-            cornerIndexToVertexId[6],
-            cornerIndexToVertexId[5],
-          ],
-          [
-            cornerIndexToVertexId[4],
-            cornerIndexToVertexId[7],
-            cornerIndexToVertexId[6],
-          ],
-          [
-            cornerIndexToVertexId[0],
-            cornerIndexToVertexId[5],
-            cornerIndexToVertexId[1],
-          ],
-          [
-            cornerIndexToVertexId[0],
-            cornerIndexToVertexId[4],
-            cornerIndexToVertexId[5],
-          ],
-          [
-            cornerIndexToVertexId[3],
-            cornerIndexToVertexId[2],
-            cornerIndexToVertexId[6],
-          ],
-          [
-            cornerIndexToVertexId[3],
-            cornerIndexToVertexId[6],
-            cornerIndexToVertexId[7],
-          ],
-          [
-            cornerIndexToVertexId[0],
-            cornerIndexToVertexId[3],
-            cornerIndexToVertexId[7],
-          ],
-          [
-            cornerIndexToVertexId[0],
-            cornerIndexToVertexId[7],
-            cornerIndexToVertexId[4],
-          ],
-          [
-            cornerIndexToVertexId[1],
-            cornerIndexToVertexId[5],
-            cornerIndexToVertexId[6],
-          ],
-          [
-            cornerIndexToVertexId[1],
-            cornerIndexToVertexId[6],
-            cornerIndexToVertexId[2],
-          ],
-        ];
+        const faceVertexIdsList: ModelingFace["vertexIds"][] =
+          options.faceMode === "triangles"
+            ? [
+                [
+                  cornerIndexToVertexId[0],
+                  cornerIndexToVertexId[1],
+                  cornerIndexToVertexId[2],
+                ],
+                [
+                  cornerIndexToVertexId[0],
+                  cornerIndexToVertexId[2],
+                  cornerIndexToVertexId[3],
+                ],
+                [
+                  cornerIndexToVertexId[4],
+                  cornerIndexToVertexId[6],
+                  cornerIndexToVertexId[5],
+                ],
+                [
+                  cornerIndexToVertexId[4],
+                  cornerIndexToVertexId[7],
+                  cornerIndexToVertexId[6],
+                ],
+                [
+                  cornerIndexToVertexId[0],
+                  cornerIndexToVertexId[5],
+                  cornerIndexToVertexId[1],
+                ],
+                [
+                  cornerIndexToVertexId[0],
+                  cornerIndexToVertexId[4],
+                  cornerIndexToVertexId[5],
+                ],
+                [
+                  cornerIndexToVertexId[3],
+                  cornerIndexToVertexId[2],
+                  cornerIndexToVertexId[6],
+                ],
+                [
+                  cornerIndexToVertexId[3],
+                  cornerIndexToVertexId[6],
+                  cornerIndexToVertexId[7],
+                ],
+                [
+                  cornerIndexToVertexId[0],
+                  cornerIndexToVertexId[3],
+                  cornerIndexToVertexId[7],
+                ],
+                [
+                  cornerIndexToVertexId[0],
+                  cornerIndexToVertexId[7],
+                  cornerIndexToVertexId[4],
+                ],
+                [
+                  cornerIndexToVertexId[1],
+                  cornerIndexToVertexId[5],
+                  cornerIndexToVertexId[6],
+                ],
+                [
+                  cornerIndexToVertexId[1],
+                  cornerIndexToVertexId[6],
+                  cornerIndexToVertexId[2],
+                ],
+              ]
+            : [
+                [
+                  cornerIndexToVertexId[0],
+                  cornerIndexToVertexId[1],
+                  cornerIndexToVertexId[2],
+                  cornerIndexToVertexId[3],
+                ],
+                [
+                  cornerIndexToVertexId[4],
+                  cornerIndexToVertexId[7],
+                  cornerIndexToVertexId[6],
+                  cornerIndexToVertexId[5],
+                ],
+                [
+                  cornerIndexToVertexId[0],
+                  cornerIndexToVertexId[4],
+                  cornerIndexToVertexId[5],
+                  cornerIndexToVertexId[1],
+                ],
+                [
+                  cornerIndexToVertexId[3],
+                  cornerIndexToVertexId[2],
+                  cornerIndexToVertexId[6],
+                  cornerIndexToVertexId[7],
+                ],
+                [
+                  cornerIndexToVertexId[0],
+                  cornerIndexToVertexId[3],
+                  cornerIndexToVertexId[7],
+                  cornerIndexToVertexId[4],
+                ],
+                [
+                  cornerIndexToVertexId[1],
+                  cornerIndexToVertexId[5],
+                  cornerIndexToVertexId[6],
+                  cornerIndexToVertexId[2],
+                ],
+              ];
 
         for (const faceVertexIds of faceVertexIdsList) {
           changed = ensureFaceInModel(nextModel, faceVertexIds) || changed;

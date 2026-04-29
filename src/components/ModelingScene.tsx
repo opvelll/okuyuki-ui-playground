@@ -25,6 +25,10 @@ import {
   Vector3,
 } from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
+import {
+  getTriangulatedInternalEdges,
+  triangulateFaceVertexIds,
+} from "../lib/modelingFaceGeometry";
 import { useModelingStore } from "../store/modelingStore";
 import type {
   ModelingBelowFloorDisplay,
@@ -61,6 +65,26 @@ const MODELING_LINE_PREVIEW_COLORS = {
   "screen-horizontal": "#facc15",
   "screen-vertical": "#fb923c",
 } as const;
+
+function getFaceCenterPosition(
+  positions: Array<[number, number, number]>,
+): [number, number, number] {
+  const sum = positions.reduce(
+    (total, position) =>
+      [
+        total[0] + position[0],
+        total[1] + position[1],
+        total[2] + position[2],
+      ] as [number, number, number],
+    [0, 0, 0] as [number, number, number],
+  );
+
+  return [
+    sum[0] / positions.length,
+    sum[1] / positions.length,
+    sum[2] / positions.length,
+  ];
+}
 const MODELING_LINE_OVERLAY_FILL_OPACITY = 0.18;
 const MODELING_LINE_OVERLAY_BELOW_FLOOR_OPACITY = 0.045;
 const MODELING_LINE_OVERLAY_GHOST_OPACITY = 0.13;
@@ -1128,6 +1152,7 @@ function ModelingMesh() {
   const verticalAxisFloorY = useUiStore(
     (state) => state.modelingPointerVerticalAxisFloorY,
   );
+  const faceDisplayMode = useUiStore((state) => state.modelingFaceDisplayMode);
   const activeModel = modelsById[currentModelId];
   const selectedVertexSet = useMemo(
     () => new Set(selectedVertexIds),
@@ -1193,8 +1218,11 @@ function ModelingMesh() {
       }
 
       const face = activeModel.facesById[faceId];
-      return face.vertexIds.flatMap(
-        (vertexId) => activeModel.verticesById[vertexId].position,
+      return triangulateFaceVertexIds(face.vertexIds).flatMap(
+        (triangleVertexIds) =>
+          triangleVertexIds.flatMap(
+            (vertexId) => activeModel.verticesById[vertexId].position,
+          ),
       );
     });
 
@@ -1214,8 +1242,11 @@ function ModelingMesh() {
       }
 
       const face = activeModel.facesById[faceId];
-      return face.vertexIds.flatMap(
-        (vertexId) => activeModel.verticesById[vertexId].position,
+      return triangulateFaceVertexIds(face.vertexIds).flatMap(
+        (triangleVertexIds) =>
+          triangleVertexIds.flatMap(
+            (vertexId) => activeModel.verticesById[vertexId].position,
+          ),
       );
     });
 
@@ -1223,6 +1254,29 @@ function ModelingMesh() {
     geometry.computeVertexNormals();
     return geometry;
   }, [activeModel, selectedFaceIds.length, selectedFaceSet]);
+  const triangulatedEdgeGeometry = useMemo(() => {
+    const geometry = new BufferGeometry();
+    if (
+      !activeModel ||
+      faceDisplayMode !== "triangulated" ||
+      activeModel.faceOrder.length === 0
+    ) {
+      return geometry;
+    }
+
+    const positions = activeModel.faceOrder.flatMap((faceId) => {
+      const face = activeModel.facesById[faceId];
+      return getTriangulatedInternalEdges(face.vertexIds).flatMap(
+        ([startVertexId, endVertexId]) => [
+          ...activeModel.verticesById[startVertexId].position,
+          ...activeModel.verticesById[endVertexId].position,
+        ],
+      );
+    });
+
+    geometry.setAttribute("position", new Float32BufferAttribute(positions, 3));
+    return geometry;
+  }, [activeModel, faceDisplayMode]);
   const faceCenterGeometry = useMemo(() => {
     const geometry = new BufferGeometry();
     if (!activeModel || !modelingLassoSelectFacesEnabled) {
@@ -1243,20 +1297,7 @@ function ModelingMesh() {
         return [];
       }
 
-      return [
-        (vertices[0].position[0] +
-          vertices[1].position[0] +
-          vertices[2].position[0]) /
-          3,
-        (vertices[0].position[1] +
-          vertices[1].position[1] +
-          vertices[2].position[1]) /
-          3,
-        (vertices[0].position[2] +
-          vertices[1].position[2] +
-          vertices[2].position[2]) /
-          3,
-      ];
+      return getFaceCenterPosition(vertices.map((vertex) => vertex.position));
     });
 
     geometry.setAttribute("position", new Float32BufferAttribute(positions, 3));
@@ -1286,20 +1327,7 @@ function ModelingMesh() {
         return [];
       }
 
-      return [
-        (vertices[0].position[0] +
-          vertices[1].position[0] +
-          vertices[2].position[0]) /
-          3,
-        (vertices[0].position[1] +
-          vertices[1].position[1] +
-          vertices[2].position[1]) /
-          3,
-        (vertices[0].position[2] +
-          vertices[1].position[2] +
-          vertices[2].position[2]) /
-          3,
-      ];
+      return getFaceCenterPosition(vertices.map((vertex) => vertex.position));
     });
 
     geometry.setAttribute("position", new Float32BufferAttribute(positions, 3));
@@ -1399,6 +1427,7 @@ function ModelingMesh() {
       edgeGeometry.dispose();
       faceCenterGeometry.dispose();
       faceGeometry.dispose();
+      triangulatedEdgeGeometry.dispose();
       selectedEdgeGeometry.dispose();
       selectedFaceCenterGeometry.dispose();
       selectedFaceGeometry.dispose();
@@ -1420,6 +1449,7 @@ function ModelingMesh() {
     selectedFaceGeometry,
     selectedVertexGeometry,
     selectedVertexMaterial,
+    triangulatedEdgeGeometry,
     vertexGeometry,
     vertexMaterial,
   ]);
@@ -1532,6 +1562,12 @@ function ModelingMesh() {
             <lineBasicMaterial color={MODELING_SELECTION_COLOR} />
           </lineSegments>
         </>
+      ) : null}
+      {faceDisplayMode === "triangulated" &&
+      activeModel.faceOrder.length > 0 ? (
+        <lineSegments geometry={triangulatedEdgeGeometry} renderOrder={4}>
+          <lineBasicMaterial color="#fde68a" transparent opacity={0.72} />
+        </lineSegments>
       ) : null}
       {modelingLassoSelectFacesEnabled ? (
         <>

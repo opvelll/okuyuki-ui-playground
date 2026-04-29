@@ -133,7 +133,9 @@ function RotationEditor({
 }
 
 export function ModelingInspectorWindow() {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(
+    () => typeof window === "undefined" || window.innerWidth >= 768,
+  );
   const currentModelId = useModelingStore((state) => state.currentModelId);
   const modelsById = useModelingStore((state) => state.modelsById);
   const selectedEdgeIds = useModelingStore((state) => state.selectedEdgeIds);
@@ -177,7 +179,7 @@ export function ModelingInspectorWindow() {
 
   return (
     <aside
-      className={`absolute right-3 top-3 z-20 max-h-[calc(100%-1.5rem)] border border-white/12 bg-slate-950/84 text-slate-100 shadow-[0_14px_28px_rgba(3,10,20,0.26)] backdrop-blur transition md:right-4 md:top-4 ${
+      className={`absolute right-3 top-32 z-20 max-h-[calc(100%-8.75rem)] border border-white/12 bg-slate-950/84 text-slate-100 shadow-[0_14px_28px_rgba(3,10,20,0.26)] backdrop-blur transition md:right-4 md:top-28 ${
         open ? "w-72" : "w-11"
       }`}
     >

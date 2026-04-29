@@ -6,6 +6,7 @@ import { ModelingInspectorWindow } from "./components/ModelingInspectorWindow";
 import { ModelingSceneFallback } from "./components/ModelingSceneFallback";
 import { ModelingToolHotkeys } from "./components/ModelingToolHotkeys";
 import {
+  ModelingFaceDisplayControls,
   ModelingToolHeaderProperties,
   ModelingToolToolbar,
 } from "./components/ModelingToolToolbar";
@@ -126,6 +127,7 @@ export default function App() {
         </Suspense>
         <Toolbar />
         {HeaderProperties ? <HeaderProperties /> : null}
+        {currentScreen === "modeling" ? <ModelingFaceDisplayControls /> : null}
         {currentScreen === "modeling" ? <ModelingInspectorWindow /> : null}
         {currentScreen === "modeling" ? <PenStrokeWindow /> : null}
         <SettingsWindow />
