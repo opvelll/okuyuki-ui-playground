@@ -36,6 +36,7 @@ import type {
 } from "../store/uiStore";
 import { getEffectiveModelingTool, useUiStore } from "../store/uiStore";
 import { ModelingInputController } from "./scene/ModelingInputController";
+import { ModelingRotateController } from "./scene/ModelingRotateController";
 import { calculateDragPlaneOverlayGeometry } from "./scene/dragPlaneOverlay";
 import {
   type ModelingPointerDepthHint,
@@ -447,6 +448,7 @@ function ModelingPointer() {
   if (
     !hovered ||
     modelingTool === "lasso" ||
+    modelingTool === "rotate" ||
     (effectiveTool === "camera" && !modelingPointerVisibleInCameraTool)
   ) {
     return null;
@@ -598,6 +600,7 @@ function ModelingPointerDepthHintController({
       !hovered ||
       modelingTool === "lasso" ||
       modelingTool === "move" ||
+      modelingTool === "rotate" ||
       modelingPointerScreenVertexSnapEnabled ||
       vertexPositions.length === 0 ||
       (effectiveTool === "camera" && !modelingPointerVisibleInCameraTool);
@@ -1730,6 +1733,7 @@ export function ModelingScene() {
         <ModelingPointer />
         <ModelingPointerDepthHintController setDepthHint={setDepthHint} />
         <ModelingLinePreviewOverlay />
+        <ModelingRotateController controlsRef={controlsRef} />
         <ModelingInputController controlsRef={controlsRef} />
         <ModelingCameraController controlsRef={controlsRef} />
         <OrbitControls

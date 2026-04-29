@@ -9,6 +9,7 @@ import {
   PenLine,
   Plus,
   Redo2,
+  Rotate3D,
   Save,
   Square,
   Undo2,
@@ -54,6 +55,11 @@ const pointerSubtools = [
     tool: "move",
   },
   {
+    description: "drag a sphere gizmo to rotate selected vertices",
+    label: "Rotate",
+    tool: "rotate",
+  },
+  {
     description: "place new vertex",
     label: "Vertex",
     tool: "vertex",
@@ -86,6 +92,9 @@ const pointerSubtoolIcons: Record<
 > = {
   move: () => (
     <Move aria-hidden="true" className="h-3.5 w-3.5" strokeWidth={2} />
+  ),
+  rotate: () => (
+    <Rotate3D aria-hidden="true" className="h-3.5 w-3.5" strokeWidth={2} />
   ),
   vertex: () => (
     <Plus aria-hidden="true" className="h-3.5 w-3.5" strokeWidth={2.3} />
@@ -342,6 +351,7 @@ export function ModelingToolToolbar() {
   const selectionToolActive = modelingTool === "lasso";
   const pointerToolActive =
     modelingTool === "move" ||
+    modelingTool === "rotate" ||
     modelingTool === "vertex" ||
     modelingTool === "line" ||
     modelingTool === "pen" ||
@@ -797,7 +807,7 @@ export function ModelingToolHeaderProperties() {
             title="Toggle lasso selection of face center dots."
           />
         </div>
-      ) : (
+      ) : modelingTool === "rotate" ? null : (
         <div className={propertyPanelClasses}>
           <ToolSettingToggle
             checked={

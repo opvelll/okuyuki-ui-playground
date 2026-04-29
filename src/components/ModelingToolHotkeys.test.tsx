@@ -60,4 +60,14 @@ describe("ModelingToolHotkeys", () => {
       vertexC?.id,
     ]);
   });
+
+  it("switches move and rotate tools with M and R", () => {
+    render(<ModelingToolHotkeys />);
+
+    fireEvent.keyDown(window, { code: "KeyM" });
+    expect(useUiStore.getState().modelingTool).toBe("move");
+
+    fireEvent.keyDown(window, { code: "KeyR" });
+    expect(useUiStore.getState().modelingTool).toBe("rotate");
+  });
 });

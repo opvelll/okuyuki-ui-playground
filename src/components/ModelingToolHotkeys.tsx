@@ -11,6 +11,7 @@ export function ModelingToolHotkeys() {
   const clearActivePenStroke = useUiStore(
     (state) => state.clearActivePenStroke,
   );
+  const setModelingTool = useUiStore((state) => state.setModelingTool);
   const connectSelectedVerticesAsEdge = useModelingStore(
     (state) => state.connectSelectedVerticesAsEdge,
   );
@@ -68,6 +69,20 @@ export function ModelingToolHotkeys() {
         return;
       }
 
+      if (event.code === "KeyM") {
+        event.preventDefault();
+        clearActivePenStroke();
+        setModelingTool("move");
+        return;
+      }
+
+      if (event.code === "KeyR") {
+        event.preventDefault();
+        clearActivePenStroke();
+        setModelingTool("rotate");
+        return;
+      }
+
       if (event.code === "KeyF") {
         event.preventDefault();
         clearActivePenStroke();
@@ -112,6 +127,7 @@ export function ModelingToolHotkeys() {
     modelingTool,
     redo,
     selectVertices,
+    setModelingTool,
     setModelingCameraOverride,
     undo,
   ]);

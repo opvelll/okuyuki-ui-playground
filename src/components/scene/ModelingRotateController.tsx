@@ -1,25 +1,29 @@
-import { Line } from "@react-three/drei";
 import { type ThreeEvent, useThree } from "@react-three/fiber";
-import { type RefObject, useCallback, useEffect, useMemo, useRef } from "react";
 import {
-  BufferGeometry,
-  Color,
-  Euler,
-  Float32BufferAttribute,
+  type RefObject,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import {
   MathUtils,
-  OrthographicCamera,
+  type OrthographicCamera,
   type PerspectiveCamera,
   Quaternion,
   Vector3,
 } from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
-import { useSceneStore } from "../../store/sceneStore";
+import { useModelingStore } from "../../store/modelingStore";
+import { useUiStore } from "../../store/uiStore";
 import {
-  type InteractionMode,
-  type RotateTwistAxis,
-  useUiStore,
-} from "../../store/uiStore";
-import type { SceneObject } from "../../types/scene";
+  MIN_ROTATE_UI_RADIUS_PX,
+  RotateGizmo,
+  getPrincipalAxisVector,
+  getTwistAxisVector,
+  getViewportWorldHeightAtDistance,
+} from "./ObjectRotateController";
 import {
   type ArcballSnapRingAxis,
   createArcballQuaternion,
@@ -29,214 +33,72 @@ import {
 } from "./objectRotateArcball";
 import { snapAngleToStep, snapAxisRotationQuaternion } from "./rotateSnap";
 
-export const MIN_ROTATE_UI_RADIUS_PX = 8;
-const ARC_SAMPLE_MIN = 24;
-const FULL_CIRCLE_SEGMENTS = 72;
-const WORLD_UP = new Vector3(0, 1, 0);
-const WORLD_RIGHT = new Vector3(1, 0, 0);
-const WORLD_FORWARD = new Vector3(0, 0, 1);
-
-type RotateSession = {
+type ModelingRotateSession = {
   arcballCenterClientX: number;
   arcballCenterClientY: number;
   arcballRadiusPx: number;
-  objectId: string;
+  center: Vector3;
   pointerId: number;
   snapRingAxis: ArcballSnapRingAxis | null;
   startArcballVecCamera: Vector3;
-  startObjectQuat: Quaternion;
+  startVertexPositionsById: Record<string, Vector3>;
   twistAngleRad: number;
+  vertexIds: string[];
 };
 
-const tupleToEuler = (rotation: SceneObject["rotation"]) =>
-  new Euler(rotation[0], rotation[1], rotation[2], "XYZ");
-
-const quaternionToRotationTuple = (quaternion: Quaternion) => {
-  const euler = new Euler().setFromQuaternion(quaternion, "XYZ");
-  return [euler.x, euler.y, euler.z] as SceneObject["rotation"];
-};
-
-export const getTwistAxisVector = (axis: RotateTwistAxis) => {
-  if (axis === "+x") {
-    return WORLD_RIGHT;
-  }
-  if (axis === "+z") {
-    return WORLD_FORWARD;
-  }
-  return WORLD_UP;
-};
-
-export const getPrincipalAxisVector = (axis: ArcballSnapRingAxis) => {
-  if (axis === "x") {
-    return WORLD_RIGHT;
-  }
-  if (axis === "z") {
-    return WORLD_FORWARD;
-  }
-  return WORLD_UP;
-};
-
-export const getViewportWorldHeightAtDistance = (
-  camera: PerspectiveCamera | OrthographicCamera,
-  distance: number,
-) => {
-  if (camera instanceof OrthographicCamera) {
-    return (camera.top - camera.bottom) / camera.zoom;
-  }
-
-  return 2 * distance * Math.tan(MathUtils.degToRad(camera.fov) / 2);
-};
-
-function RotateArc({
-  opacity,
-  points,
-}: {
-  opacity: number;
-  points: Vector3[] | null;
-}) {
-  if (!points) {
+function getSelectedVertexCenter(
+  vertexIds: string[],
+  vertexPositionsById: Record<string, Vector3>,
+) {
+  if (vertexIds.length === 0) {
     return null;
   }
 
-  return (
-    <Line
-      color="#ffffff"
-      lineWidth={2}
-      opacity={Math.min(0.82 + opacity * 0.12, 1)}
-      points={points}
-      transparent
-    />
-  );
-}
+  const center = new Vector3();
+  let count = 0;
 
-export function RotateGizmo({
-  active,
-  arcPoints,
-  center,
-  ringColor,
-  sphereColor,
-  onPointerDown,
-  opacity,
-  radiusWorld,
-}: {
-  active: boolean;
-  arcPoints: Vector3[] | null;
-  center: Vector3;
-  ringColor: string;
-  sphereColor: string;
-  onPointerDown: (event: ThreeEvent<PointerEvent>) => void;
-  opacity: number;
-  radiusWorld: number;
-}) {
-  const ringGeometry = useMemo(() => {
-    const points = [];
-
-    for (let index = 0; index <= FULL_CIRCLE_SEGMENTS; index += 1) {
-      const angle = (index / FULL_CIRCLE_SEGMENTS) * Math.PI * 2;
-      points.push(
-        Math.cos(angle) * radiusWorld,
-        Math.sin(angle) * radiusWorld,
-        0,
-      );
+  for (const vertexId of vertexIds) {
+    const position = vertexPositionsById[vertexId];
+    if (!position) {
+      continue;
     }
 
-    const geometry = new BufferGeometry();
-    geometry.setAttribute("position", new Float32BufferAttribute(points, 3));
+    center.add(position);
+    count += 1;
+  }
 
-    return geometry;
-  }, [radiusWorld]);
-
-  const ringBaseColor = new Color(ringColor);
-  const sphereBaseColor = new Color(sphereColor);
-  const activeBoost = active ? 1.16 : 1;
-  const primaryColor = `#${ringBaseColor
-    .clone()
-    .multiplyScalar(Math.max(opacity * activeBoost, 1))
-    .getHexString()}`;
-  const secondaryColor = `#${ringBaseColor
-    .clone()
-    .multiplyScalar(Math.max(opacity * 0.82 * activeBoost, 1))
-    .getHexString()}`;
-  const shellColor = `#${sphereBaseColor
-    .clone()
-    .multiplyScalar(Math.max(opacity * 0.92 * activeBoost, 1))
-    .getHexString()}`;
-
-  useEffect(
-    () => () => {
-      ringGeometry.dispose();
-    },
-    [ringGeometry],
-  );
-
-  return (
-    <group position={center}>
-      <lineLoop geometry={ringGeometry}>
-        <lineBasicMaterial
-          color={primaryColor}
-          transparent
-          opacity={Math.min(
-            (active ? 0.94 : 0.72) * Math.max(opacity, 0.35),
-            1,
-          )}
-        />
-      </lineLoop>
-      <lineLoop geometry={ringGeometry} rotation={[Math.PI / 2, 0, 0]}>
-        <lineBasicMaterial
-          color={secondaryColor}
-          transparent
-          opacity={Math.min(
-            (active ? 0.78 : 0.56) * Math.max(opacity, 0.35),
-            1,
-          )}
-        />
-      </lineLoop>
-      <lineLoop geometry={ringGeometry} rotation={[0, Math.PI / 2, 0]}>
-        <lineBasicMaterial
-          color={secondaryColor}
-          transparent
-          opacity={Math.min(
-            (active ? 0.78 : 0.56) * Math.max(opacity, 0.35),
-            1,
-          )}
-        />
-      </lineLoop>
-      <mesh onPointerDown={onPointerDown}>
-        <sphereGeometry args={[radiusWorld, 48, 48]} />
-        <meshBasicMaterial
-          color={shellColor}
-          depthWrite={false}
-          opacity={Math.min(
-            (active ? 0.22 : 0.14) * Math.max(opacity, 0.35),
-            0.4,
-          )}
-          toneMapped={false}
-          transparent
-        />
-      </mesh>
-      <RotateArc opacity={opacity} points={arcPoints} />
-    </group>
-  );
+  return count > 0 ? center.multiplyScalar(1 / count) : null;
 }
 
-export function ObjectRotateController({
+export function ModelingRotateController({
   controlsRef,
-  interactionMode,
 }: {
   controlsRef: RefObject<OrbitControlsImpl | null>;
-  interactionMode: InteractionMode;
 }) {
   const camera = useThree((state) => state.camera);
   const gl = useThree((state) => state.gl);
-  const selectedObjectId = useUiStore((state) => state.selectedObjectId);
-  const interactionState = useUiStore((state) => state.interactionState);
+  const currentModelId = useModelingStore((state) => state.currentModelId);
+  const modelsById = useModelingStore((state) => state.modelsById);
+  const selectedVertexIds = useModelingStore(
+    (state) => state.selectedVertexIds,
+  );
+  const beginVertexRotateDrag = useModelingStore(
+    (state) => state.beginVertexRotateDrag,
+  );
+  const cancelVertexRotateDrag = useModelingStore(
+    (state) => state.cancelVertexRotateDrag,
+  );
+  const commitVertexRotateDrag = useModelingStore(
+    (state) => state.commitVertexRotateDrag,
+  );
+  const updateVertexRotateDrag = useModelingStore(
+    (state) => state.updateVertexRotateDrag,
+  );
+  const modelingTool = useUiStore((state) => state.modelingTool);
   const rotateUiOpacity = useUiStore((state) => state.rotateUiOpacity);
   const rotateUiRadiusPx = useUiStore((state) => state.rotateUiRadiusPx);
   const rotateArcballSensitivity = useUiStore(
     (state) => state.rotateArcballSensitivity,
-  );
-  const rotateDragReleaseBehavior = useUiStore(
-    (state) => state.rotateDragReleaseBehavior,
   );
   const rotateAngleSnapStepDeg = useUiStore(
     (state) => state.rotateAngleSnapStepDeg,
@@ -247,31 +109,27 @@ export function ObjectRotateController({
   const rotateGizmoSphereColor = useUiStore(
     (state) => state.rotateGizmoSphereColor,
   );
-  const objectsById = useSceneStore((state) => state.objectsById);
-  const setInteractionState = useUiStore((state) => state.setInteractionState);
-  const clearSelection = useUiStore((state) => state.clearSelection);
-  const updateObjectRotation = useSceneStore(
-    (state) => state.updateObjectRotation,
-  );
-  const rotateSessionRef = useRef<RotateSession | null>(null);
+  const rotateSessionRef = useRef<ModelingRotateSession | null>(null);
   const latestPointerRef = useRef({ clientX: 0, clientY: 0 });
+  const [dragVersion, setDragVersion] = useState(0);
+  const activeModel = modelsById[currentModelId];
+  const selectedVertexPositionsById = useMemo(() => {
+    if (!activeModel) {
+      return {};
+    }
 
-  const selectedObject = selectedObjectId
-    ? (objectsById[selectedObjectId] ?? null)
-    : null;
-
+    return Object.fromEntries(
+      selectedVertexIds.flatMap((vertexId) => {
+        const vertex = activeModel.verticesById[vertexId];
+        return vertex ? [[vertexId, new Vector3(...vertex.position)]] : [];
+      }),
+    ) as Record<string, Vector3>;
+  }, [activeModel, selectedVertexIds]);
   const pivot = useMemo(
     () =>
-      selectedObject
-        ? new Vector3(
-            selectedObject.position[0],
-            selectedObject.position[1],
-            selectedObject.position[2],
-          )
-        : null,
-    [selectedObject],
+      getSelectedVertexCenter(selectedVertexIds, selectedVertexPositionsById),
+    [selectedVertexIds, selectedVertexPositionsById],
   );
-
   const radiusWorld = useMemo(() => {
     if (!pivot) {
       return 0;
@@ -319,19 +177,18 @@ export function ObjectRotateController({
         (projectedPivot.x + 1) * 0.5 * bounds.width + bounds.left;
       const centerClientY =
         (1 - projectedPivot.y) * 0.5 * bounds.height + bounds.top;
-      const vector = mapPointerToArcballVector(
-        clientX,
-        clientY,
-        centerClientX,
-        centerClientY,
-        radiusPx,
-      );
 
       return {
         centerClientX,
         centerClientY,
         radiusPx,
-        vector,
+        vector: mapPointerToArcballVector(
+          clientX,
+          clientY,
+          centerClientX,
+          centerClientY,
+          radiusPx,
+        ),
       };
     },
     [camera, gl, pivot, radiusWorld, rotateUiRadiusPx],
@@ -339,7 +196,7 @@ export function ObjectRotateController({
 
   const applyRotationFromSession = useCallback(
     (
-      rotateSession: RotateSession,
+      rotateSession: ModelingRotateSession,
       clientX: number,
       clientY: number,
       snapToRing: boolean,
@@ -385,35 +242,49 @@ export function ObjectRotateController({
               rotateArcballSensitivity,
             );
           })();
-      const orientationAfterSwing = swingQuaternion
-        .clone()
-        .multiply(rotateSession.startObjectQuat);
-      const twistAxisWorld = getTwistAxisVector(rotateTwistAxis)
-        .clone()
-        .applyQuaternion(orientationAfterSwing)
-        .normalize();
       const twistAngleRad = snapToAngle
         ? snapAngleToStep(rotateSession.twistAngleRad, snapAngleStepRad)
         : rotateSession.twistAngleRad;
       const twistQuaternion = new Quaternion().setFromAxisAngle(
-        twistAxisWorld,
+        getTwistAxisVector(rotateTwistAxis),
         twistAngleRad,
       );
-      const targetQuaternion = twistQuaternion
-        .multiply(swingQuaternion)
-        .multiply(rotateSession.startObjectQuat.clone())
-        .normalize();
+      const targetQuaternion = twistQuaternion.multiply(swingQuaternion);
+      const nextPositions = Object.fromEntries(
+        rotateSession.vertexIds.flatMap((vertexId) => {
+          const startPosition =
+            rotateSession.startVertexPositionsById[vertexId];
+          if (!startPosition) {
+            return [];
+          }
 
-      updateObjectRotation(
-        rotateSession.objectId,
-        quaternionToRotationTuple(targetQuaternion),
+          const nextPosition = startPosition
+            .clone()
+            .sub(rotateSession.center)
+            .applyQuaternion(targetQuaternion)
+            .add(rotateSession.center);
+
+          return [
+            [
+              vertexId,
+              [nextPosition.x, nextPosition.y, nextPosition.z] as [
+                number,
+                number,
+                number,
+              ],
+            ],
+          ];
+        }),
       );
+
+      updateVertexRotateDrag(nextPositions);
+      setDragVersion((version) => version + 1);
     },
     [
       camera.quaternion,
       rotateAngleSnapStepDeg,
       rotateArcballSensitivity,
-      updateObjectRotation,
+      updateVertexRotateDrag,
     ],
   );
 
@@ -430,55 +301,40 @@ export function ObjectRotateController({
       // ignore pointer-capture races during teardown
     }
     setControlsEnabled(true);
-    if (rotateDragReleaseBehavior === "clear-selection") {
-      clearSelection();
-      return;
-    }
-
-    setInteractionState(selectedObjectId ? "active" : "idle");
-  }, [
-    clearSelection,
-    gl,
-    rotateDragReleaseBehavior,
-    selectedObjectId,
-    setControlsEnabled,
-    setInteractionState,
-  ]);
+    commitVertexRotateDrag();
+  }, [commitVertexRotateDrag, gl, setControlsEnabled]);
 
   const handleGizmoPointerDown = useCallback(
     (event: ThreeEvent<PointerEvent>) => {
       if (
-        interactionMode !== "rotate" ||
+        modelingTool !== "rotate" ||
         event.button !== 0 ||
-        !selectedObject ||
-        !pivot
+        !pivot ||
+        selectedVertexIds.length === 0
       ) {
         return;
       }
 
       event.stopPropagation();
-
       const arcballPointerState = computeArcballPointerState(
         event.nativeEvent.clientX,
         event.nativeEvent.clientY,
       );
-      if (!arcballPointerState) {
+      if (!arcballPointerState || !beginVertexRotateDrag(selectedVertexIds)) {
         return;
       }
 
-      const startObjectQuat = new Quaternion().setFromEuler(
-        tupleToEuler(selectedObject.rotation),
-      );
       rotateSessionRef.current = {
         arcballCenterClientX: arcballPointerState.centerClientX,
         arcballCenterClientY: arcballPointerState.centerClientY,
         arcballRadiusPx: arcballPointerState.radiusPx,
-        objectId: selectedObject.id,
+        center: pivot.clone(),
         pointerId: event.pointerId,
         snapRingAxis: null,
         startArcballVecCamera: arcballPointerState.vector,
-        startObjectQuat,
+        startVertexPositionsById: selectedVertexPositionsById,
         twistAngleRad: 0,
+        vertexIds: [...selectedVertexIds],
       };
       latestPointerRef.current = {
         clientX: event.nativeEvent.clientX,
@@ -486,99 +342,48 @@ export function ObjectRotateController({
       };
       gl.domElement.setPointerCapture(event.pointerId);
       setControlsEnabled(false);
-      setInteractionState("dragging");
     },
     [
+      beginVertexRotateDrag,
       computeArcballPointerState,
       gl,
-      interactionMode,
+      modelingTool,
       pivot,
-      selectedObject,
+      selectedVertexIds,
+      selectedVertexPositionsById,
       setControlsEnabled,
-      setInteractionState,
     ],
   );
 
   const handleWheelTwist = useCallback(
     (event: WheelEvent) => {
-      const currentObjectId = selectedObjectId;
-      if (interactionMode !== "rotate" || !currentObjectId) {
-        return;
-      }
-
-      const currentObject =
-        useSceneStore.getState().objectsById[currentObjectId];
-      if (!currentObject) {
-        return;
-      }
-
       const rotateSession = rotateSessionRef.current;
-      if (!rotateSession) {
-        if (!computeArcballPointerState(event.clientX, event.clientY)) {
-          return;
-        }
+      if (modelingTool !== "rotate" || !rotateSession) {
+        return;
       }
 
       event.preventDefault();
-
-      const {
-        rotateTwistAxis,
-        rotateWheelDirection,
-        rotateWheelRotateStepDeg,
-      } = useUiStore.getState();
-      const directionMultiplier = rotateWheelDirection === "reverse" ? -1 : 1;
+      const { rotateWheelDirection, rotateWheelRotateStepDeg } =
+        useUiStore.getState();
       const wheelSteps = Math.sign(-event.deltaY);
       if (wheelSteps === 0) {
         return;
       }
 
-      const angleDelta =
+      const directionMultiplier = rotateWheelDirection === "reverse" ? -1 : 1;
+      rotateSession.twistAngleRad +=
         MathUtils.degToRad(rotateWheelRotateStepDeg) *
         wheelSteps *
         directionMultiplier;
-      const snapAngleStepRad = MathUtils.degToRad(rotateAngleSnapStepDeg);
-
-      if (rotateSession) {
-        rotateSession.twistAngleRad += angleDelta;
-        applyRotationFromSession(
-          rotateSession,
-          latestPointerRef.current.clientX,
-          latestPointerRef.current.clientY,
-          event.ctrlKey,
-          event.ctrlKey && event.shiftKey,
-        );
-        return;
-      }
-
-      const currentQuaternion = new Quaternion().setFromEuler(
-        tupleToEuler(currentObject.rotation),
-      );
-      const twistAxisWorld = getTwistAxisVector(rotateTwistAxis)
-        .clone()
-        .applyQuaternion(currentQuaternion)
-        .normalize();
-      const twistAngle =
-        event.ctrlKey && event.shiftKey
-          ? snapAngleToStep(angleDelta, snapAngleStepRad)
-          : angleDelta;
-      const nextQuaternion = new Quaternion()
-        .setFromAxisAngle(twistAxisWorld, twistAngle)
-        .multiply(currentQuaternion)
-        .normalize();
-
-      updateObjectRotation(
-        currentObjectId,
-        quaternionToRotationTuple(nextQuaternion),
+      applyRotationFromSession(
+        rotateSession,
+        latestPointerRef.current.clientX,
+        latestPointerRef.current.clientY,
+        event.ctrlKey,
+        event.ctrlKey && event.shiftKey,
       );
     },
-    [
-      applyRotationFromSession,
-      computeArcballPointerState,
-      interactionMode,
-      rotateAngleSnapStepDeg,
-      selectedObjectId,
-      updateObjectRotation,
-    ],
+    [applyRotationFromSession, modelingTool],
   );
 
   useEffect(() => {
@@ -651,7 +456,7 @@ export function ObjectRotateController({
       }
       rotateSessionRef.current = null;
       setControlsEnabled(true);
-      useUiStore.getState().clearSelection();
+      cancelVertexRotateDrag();
     };
 
     window.addEventListener("pointermove", handlePointerMove);
@@ -671,6 +476,7 @@ export function ObjectRotateController({
     };
   }, [
     applyRotationFromSession,
+    cancelVertexRotateDrag,
     finishDrag,
     gl,
     handleWheelTwist,
@@ -681,26 +487,23 @@ export function ObjectRotateController({
     () => () => {
       rotateSessionRef.current = null;
       setControlsEnabled(true);
+      cancelVertexRotateDrag();
     },
-    [setControlsEnabled],
+    [cancelVertexRotateDrag, setControlsEnabled],
   );
 
   useEffect(() => {
-    if (interactionMode === "rotate" || !rotateSessionRef.current) {
+    if (modelingTool === "rotate" || !rotateSessionRef.current) {
       return;
     }
 
     finishDrag();
-  }, [finishDrag, interactionMode]);
+  }, [finishDrag, modelingTool]);
 
-  const arcPoints = useMemo(() => {
+  const arcPoints = (() => {
+    void dragVersion;
     const rotateSession = rotateSessionRef.current;
-    if (
-      !rotateSession ||
-      !pivot ||
-      radiusWorld <= 0 ||
-      interactionState !== "dragging"
-    ) {
+    if (!rotateSession || radiusWorld <= 0) {
       return null;
     }
 
@@ -723,29 +526,8 @@ export function ObjectRotateController({
     const snapAxisWorld = snapRingAxis
       ? getPrincipalAxisVector(snapRingAxis)
       : null;
-    const projectToSnapRing = (vector: Vector3) => {
-      if (!snapAxisWorld) {
-        return vector.clone().normalize();
-      }
-
-      const projected = vector
-        .clone()
-        .sub(snapAxisWorld.clone().multiplyScalar(vector.dot(snapAxisWorld)));
-
-      if (projected.lengthSq() > 0.000001) {
-        return projected.normalize();
-      }
-
-      if (snapRingAxis === "x") {
-        return new Vector3(0, 1, 0);
-      }
-      if (snapRingAxis === "y") {
-        return new Vector3(1, 0, 0);
-      }
-      return new Vector3(1, 0, 0);
-    };
-    const displayStartVecWorld = projectToSnapRing(startArcballVecWorld);
-    const displayCurrentVecWorld = projectToSnapRing(currentArcballVecWorld);
+    const displayStartVecWorld = startArcballVecWorld;
+    const displayCurrentVecWorld = currentArcballVecWorld;
     const signedAngle = snapAxisWorld
       ? Math.atan2(
           snapAxisWorld.dot(
@@ -767,10 +549,7 @@ export function ObjectRotateController({
             1,
           ),
         );
-    const sampleCount = Math.max(
-      ARC_SAMPLE_MIN,
-      Math.ceil((angle / Math.PI) * 64),
-    );
+    const sampleCount = Math.max(24, Math.ceil((angle / Math.PI) * 64));
     const points: Vector3[] = [];
 
     for (let index = 0; index <= sampleCount; index += 1) {
@@ -790,15 +569,15 @@ export function ObjectRotateController({
     }
 
     return points;
-  }, [camera, interactionState, pivot, radiusWorld]);
+  })();
 
-  if (interactionMode !== "rotate") {
+  if (modelingTool !== "rotate" || !pivot || radiusWorld <= 0) {
     return null;
   }
 
-  return selectedObject && pivot && radiusWorld > 0 ? (
+  return (
     <RotateGizmo
-      active={interactionState === "dragging"}
+      active={rotateSessionRef.current !== null}
       arcPoints={arcPoints}
       center={pivot}
       onPointerDown={handleGizmoPointerDown}
@@ -807,5 +586,5 @@ export function ObjectRotateController({
       ringColor={rotateGizmoRingColor}
       sphereColor={rotateGizmoSphereColor}
     />
-  ) : null;
+  );
 }

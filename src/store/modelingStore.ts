@@ -58,6 +58,10 @@ type ModelingState = ModelingSnapshot & {
     snapshot: ModelingSnapshot;
     vertexIds: string[];
   } | null;
+  activeVertexRotateDrag: {
+    snapshot: ModelingSnapshot;
+    vertexIds: string[];
+  } | null;
   autoNameIndex: number;
   createEdgeFromPositions: (
     startPosition: Vector3Tuple,
@@ -147,8 +151,11 @@ type ModelingState = ModelingSnapshot & {
     anchorVertexId: string,
     vertexIds?: string[],
   ) => boolean;
+  beginVertexRotateDrag: (vertexIds?: string[]) => boolean;
   cancelVertexMoveDrag: () => void;
+  cancelVertexRotateDrag: () => void;
   commitVertexMoveDrag: () => boolean;
+  commitVertexRotateDrag: () => boolean;
   redo: () => void;
   renameCurrentModel: (name: string) => void;
   replaceModelingProject: (
@@ -185,6 +192,9 @@ type ModelingState = ModelingSnapshot & {
   ) => boolean;
   updateVertexPosition: (vertexId: string, position: Vector3Tuple) => void;
   updateVertexMoveDrag: (targetPosition: Vector3Tuple) => boolean;
+  updateVertexRotateDrag: (
+    vertexPositionsById: Record<string, Vector3Tuple>,
+  ) => boolean;
 };
 
 const DEFAULT_MODEL_NAME_PREFIX = "Model";
@@ -305,6 +315,7 @@ function createInitialState() {
   const snapshot = createInitialSnapshot();
   return {
     activeVertexMoveDrag: null,
+    activeVertexRotateDrag: null,
     ...cloneSnapshot(snapshot),
     autoNameIndex: 1,
     history: [cloneSnapshot(snapshot)],
@@ -807,6 +818,47 @@ export const useModelingStore = create<ModelingState>()(
 
         return true;
       },
+      beginVertexRotateDrag: (vertexIds) => {
+        const state = get();
+        const currentModel = state.modelsById[state.currentModelId];
+
+        if (!currentModel) {
+          return false;
+        }
+
+        const normalizedVertexIds = (
+          vertexIds?.length ? vertexIds : state.selectedVertexIds
+        ).filter((vertexId, index, list) => {
+          return (
+            currentModel.verticesById[vertexId] !== undefined &&
+            list.indexOf(vertexId) === index
+          );
+        });
+
+        if (normalizedVertexIds.length === 0) {
+          return false;
+        }
+
+        set({
+          activeVertexRotateDrag: {
+            snapshot: cloneSnapshot({
+              currentModelId: state.currentModelId,
+              modelsById: state.modelsById,
+              selectedEdgeIds: state.selectedEdgeIds,
+              selectedFaceIds: state.selectedFaceIds,
+              selectedRoot: state.selectedRoot,
+              selectedVertexIds: state.selectedVertexIds,
+            }),
+            vertexIds: normalizedVertexIds,
+          },
+          selectedEdgeIds: [],
+          selectedFaceIds: [],
+          selectedRoot: false,
+          selectedVertexIds: [...normalizedVertexIds],
+        });
+
+        return true;
+      },
       cancelVertexMoveDrag: () =>
         set((state) => {
           if (!state.activeVertexMoveDrag) {
@@ -816,6 +868,17 @@ export const useModelingStore = create<ModelingState>()(
           return {
             activeVertexMoveDrag: null,
             ...cloneSnapshot(state.activeVertexMoveDrag.snapshot),
+          };
+        }),
+      cancelVertexRotateDrag: () =>
+        set((state) => {
+          if (!state.activeVertexRotateDrag) {
+            return state;
+          }
+
+          return {
+            activeVertexRotateDrag: null,
+            ...cloneSnapshot(state.activeVertexRotateDrag.snapshot),
           };
         }),
       createEdgeFromPositions: (
@@ -1593,6 +1656,58 @@ export const useModelingStore = create<ModelingState>()(
 
         return true;
       },
+      commitVertexRotateDrag: () => {
+        const state = get();
+        if (!state.activeVertexRotateDrag) {
+          return false;
+        }
+
+        const currentModel = state.modelsById[state.currentModelId];
+        const baselineModel =
+          state.activeVertexRotateDrag.snapshot.modelsById[
+            state.currentModelId
+          ];
+
+        if (!currentModel || !baselineModel) {
+          set({ activeVertexRotateDrag: null });
+          return false;
+        }
+
+        const changed = state.activeVertexRotateDrag.vertexIds.some(
+          (vertexId) => {
+            const currentVertex = currentModel.verticesById[vertexId];
+            const baselineVertex = baselineModel.verticesById[vertexId];
+
+            return (
+              currentVertex &&
+              baselineVertex &&
+              !compareVector3Tuple(
+                currentVertex.position,
+                baselineVertex.position,
+              )
+            );
+          },
+        );
+
+        if (!changed) {
+          set({ activeVertexRotateDrag: null });
+          return false;
+        }
+
+        set({
+          activeVertexRotateDrag: null,
+          ...commitSnapshot(state, {
+            currentModelId: state.currentModelId,
+            modelsById: state.modelsById,
+            selectedEdgeIds: [],
+            selectedFaceIds: [],
+            selectedRoot: false,
+            selectedVertexIds: state.selectedVertexIds,
+          }),
+        });
+
+        return true;
+      },
       redo: () =>
         set((state) => {
           if (state.historyIndex >= state.history.length - 1) {
@@ -1604,6 +1719,7 @@ export const useModelingStore = create<ModelingState>()(
           );
           return {
             activeVertexMoveDrag: null,
+            activeVertexRotateDrag: null,
             ...nextSnapshot,
             history: state.history,
             historyIndex: state.historyIndex + 1,
@@ -1638,6 +1754,7 @@ export const useModelingStore = create<ModelingState>()(
           return {
             ...clonedSnapshot,
             activeVertexMoveDrag: null,
+            activeVertexRotateDrag: null,
             autoNameIndex: options?.autoNameIndex ?? state.autoNameIndex,
             history: [cloneSnapshot(clonedSnapshot)],
             historyIndex: 0,
@@ -1887,6 +2004,7 @@ export const useModelingStore = create<ModelingState>()(
           );
           return {
             activeVertexMoveDrag: null,
+            activeVertexRotateDrag: null,
             ...nextSnapshot,
             history: state.history,
             historyIndex: state.historyIndex - 1,
@@ -2045,6 +2163,7 @@ export const useModelingStore = create<ModelingState>()(
         set({
           ...clonedSnapshot,
           activeVertexMoveDrag: null,
+          activeVertexRotateDrag: null,
           history: nextHistory,
           historyIndex,
         });
@@ -2100,6 +2219,53 @@ export const useModelingStore = create<ModelingState>()(
 
         return true;
       },
+      updateVertexRotateDrag: (vertexPositionsById) => {
+        const state = get();
+        const drag = state.activeVertexRotateDrag;
+
+        if (!drag) {
+          return false;
+        }
+
+        const baselineModel =
+          drag.snapshot.modelsById[drag.snapshot.currentModelId];
+
+        if (!baselineModel) {
+          return false;
+        }
+
+        const nextModel = cloneModel(baselineModel);
+        let changed = false;
+
+        for (const vertexId of drag.vertexIds) {
+          const baselineVertex = baselineModel.verticesById[vertexId];
+          const nextVertex = nextModel.verticesById[vertexId];
+          const nextPosition = vertexPositionsById[vertexId];
+
+          if (!baselineVertex || !nextVertex || !nextPosition) {
+            continue;
+          }
+
+          nextVertex.position = [...nextPosition];
+          changed =
+            !compareVector3Tuple(baselineVertex.position, nextPosition) ||
+            changed;
+        }
+
+        if (!changed) {
+          return false;
+        }
+
+        set({
+          modelsById: {
+            ...state.modelsById,
+            [baselineModel.id]: nextModel,
+          },
+          selectedRoot: false,
+        });
+
+        return true;
+      },
     }),
     {
       merge: (persistedState, currentState) => {
@@ -2121,6 +2287,7 @@ export const useModelingStore = create<ModelingState>()(
           ...currentState,
           ...snapshot,
           activeVertexMoveDrag: null,
+          activeVertexRotateDrag: null,
           autoNameIndex: persisted.autoNameIndex ?? currentState.autoNameIndex,
           history: [cloneSnapshot(snapshot)],
           historyIndex: 0,

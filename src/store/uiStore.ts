@@ -10,6 +10,7 @@ export type AppScreen = "prototype" | "modeling";
 export type ModelingTool =
   | "lasso"
   | "move"
+  | "rotate"
   | "vertex"
   | "line"
   | "pen"

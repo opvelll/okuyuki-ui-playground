@@ -198,6 +198,44 @@ describe("modelingStore", () => {
     expect(state.selectedVertexIds).toEqual([vertexA?.id, vertexB?.id]);
   });
 
+  it("rotates selected vertices as one undoable drag", () => {
+    const vertexA = useModelingStore.getState().addVertex([0, 0, 0]);
+    const vertexB = useModelingStore.getState().addVertex([2, 0, 0]);
+
+    useModelingStore
+      .getState()
+      .selectVertices([vertexA?.id ?? "", vertexB?.id ?? ""], false);
+
+    expect(useModelingStore.getState().beginVertexRotateDrag()).toBe(true);
+    expect(
+      useModelingStore.getState().updateVertexRotateDrag({
+        [vertexA?.id ?? ""]: [1, 0, 1],
+        [vertexB?.id ?? ""]: [1, 0, -1],
+      }),
+    ).toBe(true);
+    expect(useModelingStore.getState().commitVertexRotateDrag()).toBe(true);
+
+    let state = useModelingStore.getState();
+    let currentModel = state.modelsById[state.currentModelId];
+    expect(currentModel.verticesById[vertexA?.id ?? ""].position).toEqual([
+      1, 0, 1,
+    ]);
+    expect(currentModel.verticesById[vertexB?.id ?? ""].position).toEqual([
+      1, 0, -1,
+    ]);
+
+    useModelingStore.getState().undo();
+
+    state = useModelingStore.getState();
+    currentModel = state.modelsById[state.currentModelId];
+    expect(currentModel.verticesById[vertexA?.id ?? ""].position).toEqual([
+      0, 0, 0,
+    ]);
+    expect(currentModel.verticesById[vertexB?.id ?? ""].position).toEqual([
+      2, 0, 0,
+    ]);
+  });
+
   it("creates triangle faces and the required edges from three selected vertices", () => {
     const vertexA = useModelingStore.getState().addVertex([0, 0, 0]);
     const vertexB = useModelingStore.getState().addVertex([1, 0, 0]);

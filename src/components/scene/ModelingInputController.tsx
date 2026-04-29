@@ -774,6 +774,7 @@ export function ModelingInputController({
         modelingTool === "move" || modelingPointerScreenVertexSnapEnabled;
       const screenHoverSnapAllowed =
         modelingTool !== "lasso" &&
+        modelingTool !== "rotate" &&
         modelingTool !== "camera" &&
         (!moveDragActive || modelingTool === "move") &&
         (!hasActiveMoveDrag() || modelingTool === "move");
