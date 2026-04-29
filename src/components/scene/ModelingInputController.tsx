@@ -365,6 +365,7 @@ export function ModelingInputController({
 
     const findHoveredVertexAtScreenPoint = (
       event: PointerEvent | WheelEvent,
+      options: { excludedVertexIds?: Set<string> } = {},
     ) => {
       const rect = element.getBoundingClientRect();
       let nearestMatch: {
@@ -374,7 +375,7 @@ export function ModelingInputController({
         screenDistance: number;
       } | null = null;
 
-      for (const vertex of getActiveVertices()) {
+      for (const vertex of getActiveVertices(options.excludedVertexIds)) {
         const projectedVertex = projectVertexToScreenPoint(
           vertex.position,
           camera,
@@ -778,14 +779,17 @@ export function ModelingInputController({
         (!hasActiveMoveDrag() || modelingTool === "move");
       const hoveredScreenVertex =
         screenVertexSnapEnabled && screenHoverSnapAllowed
-          ? findHoveredVertexAtScreenPoint({
-              clientX:
-                ((ndc.x + 1) / 2) * element.getBoundingClientRect().width +
-                element.getBoundingClientRect().left,
-              clientY:
-                ((1 - ndc.y) / 2) * element.getBoundingClientRect().height +
-                element.getBoundingClientRect().top,
-            } as PointerEvent)
+          ? findHoveredVertexAtScreenPoint(
+              {
+                clientX:
+                  ((ndc.x + 1) / 2) * element.getBoundingClientRect().width +
+                  element.getBoundingClientRect().left,
+                clientY:
+                  ((1 - ndc.y) / 2) * element.getBoundingClientRect().height +
+                  element.getBoundingClientRect().top,
+              } as PointerEvent,
+              { excludedVertexIds: moveDragVertexIds },
+            )
           : null;
 
       if (hoveredScreenVertex) {

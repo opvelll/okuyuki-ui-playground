@@ -1,11 +1,73 @@
-import { expect, test } from "@playwright/test";
+import { type Page, expect, test } from "@playwright/test";
 
-async function expandSettings(page: Parameters<typeof test>[0]["page"]) {
+const MODELING_CAMERA_CENTER_DEPTH_8_VERTEX = [3.743596, 3.35512, 3.998838];
+
+async function expandSettings(page: Page) {
   await page.getByRole("button", { name: /Open settings/i }).click();
 }
 
-async function expandGeneralColors(page: Parameters<typeof test>[0]["page"]) {
+async function expandGeneralColors(page: Page) {
   await page.getByRole("button", { name: /Expand color settings/i }).click();
+}
+
+function parseHudValue(hudText: string, label: string) {
+  return hudText.match(new RegExp(`${label}\\n([^\\n]+)`))?.[1]?.trim() ?? "";
+}
+
+async function getModelingHud(page: Page) {
+  return page.locator("aside").last().innerText();
+}
+
+async function seedSingleModelingVertex(page: Page) {
+  await page.addInitScript(
+    ({ vertexPosition }) => {
+      localStorage.clear();
+      localStorage.setItem(
+        "naname-ui-settings",
+        JSON.stringify({
+          state: {
+            currentScreen: "modeling",
+            modelingTool: "move",
+          },
+          version: 4,
+        }),
+      );
+      localStorage.setItem(
+        "naname-ui-modeling-store",
+        JSON.stringify({
+          state: {
+            autoNameIndex: 1,
+            currentModelId: "model-1",
+            modelsById: {
+              "model-1": {
+                edgeOrder: [],
+                edgesById: {},
+                faceOrder: [],
+                facesById: {},
+                id: "model-1",
+                name: "Model 001",
+                rootPosition: [0, 0, 0],
+                rootRotation: [0, 0, 0],
+                vertexOrder: ["vertex-1"],
+                verticesById: {
+                  "vertex-1": {
+                    id: "vertex-1",
+                    position: vertexPosition,
+                  },
+                },
+              },
+            },
+            selectedEdgeIds: [],
+            selectedFaceIds: [],
+            selectedRoot: false,
+            selectedVertexIds: [],
+          },
+          version: 1,
+        }),
+      );
+    },
+    { vertexPosition: MODELING_CAMERA_CENTER_DEPTH_8_VERTEX },
+  );
 }
 
 test("shows the 3d prototype screen", async ({ page }) => {
@@ -153,4 +215,48 @@ test("switches to the modeling screen", async ({ page }) => {
   await expect(
     page.getByRole("button", { name: /Switch to Camera Move tool/i }),
   ).toHaveAttribute("aria-pressed", "false");
+});
+
+test("moves modeling vertex depth with the wheel while dragging", async ({
+  page,
+}) => {
+  await seedSingleModelingVertex(page);
+  await page.goto("/");
+
+  await expect(page.getByText(/Move tool:/i)).toBeVisible();
+  const canvas = page.locator("canvas").first();
+  await expect(canvas).toBeVisible();
+  await page.waitForFunction(() => {
+    const canvasElement = document.querySelector("canvas");
+    const rect = canvasElement?.getBoundingClientRect();
+    return rect && rect.width > 100 && rect.height > 100;
+  });
+
+  const canvasBox = await canvas.boundingBox();
+  expect(canvasBox).not.toBeNull();
+  const startX = Math.round((canvasBox?.x ?? 0) + (canvasBox?.width ?? 0) / 2);
+  const startY = Math.round((canvasBox?.y ?? 0) + (canvasBox?.height ?? 0) / 2);
+
+  await page.mouse.move(startX, startY);
+  await expect
+    .poll(async () => parseHudValue(await getModelingHud(page), "snap"))
+    .toBe("vertex");
+
+  await page.mouse.down();
+  await page.mouse.move(startX + 18, startY + 8, { steps: 8 });
+  const draggedDepth = Number(
+    parseHudValue(await getModelingHud(page), "depth"),
+  );
+
+  await page.mouse.wheel(0, -120);
+  await expect
+    .poll(async () =>
+      Number(parseHudValue(await getModelingHud(page), "depth")),
+    )
+    .toBeGreaterThan(draggedDepth);
+  await expect
+    .poll(async () => parseHudValue(await getModelingHud(page), "snap"))
+    .not.toBe("vertex");
+
+  await page.mouse.up();
 });
