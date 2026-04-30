@@ -158,23 +158,23 @@ function getModelingFaceMaterialDisplay(
 ) {
   return faceOpacityMode === "opaque"
     ? {
-      depthWrite: true,
-      markerDepthTest: true,
-      metalness: 0,
-      opacity: 1,
-      roughness: 0.52,
-      selectedOpacity: 1,
-      transparent: false,
-    }
+        depthWrite: true,
+        markerDepthTest: true,
+        metalness: 0,
+        opacity: 1,
+        roughness: 0.52,
+        selectedOpacity: 1,
+        transparent: false,
+      }
     : {
-      depthWrite: false,
-      markerDepthTest: false,
-      metalness: 0,
-      opacity: MODELING_FACE_OPACITY,
-      roughness: 0.78,
-      selectedOpacity: MODELING_SELECTED_FACE_OPACITY,
-      transparent: true,
-    };
+        depthWrite: false,
+        markerDepthTest: false,
+        metalness: 0,
+        opacity: MODELING_FACE_OPACITY,
+        roughness: 0.78,
+        selectedOpacity: MODELING_SELECTED_FACE_OPACITY,
+        transparent: true,
+      };
 }
 
 function createUnitCircleLinePoints(segments: number) {
@@ -525,7 +525,7 @@ function ModelingPointer() {
             />
           </mesh>
           {horizontalPanelBelowFloorOpacity > 0 &&
-            faceBelowFloorDisplay !== "visible" ? (
+          faceBelowFloorDisplay !== "visible" ? (
             <mesh
               geometry={panelGeometry}
               position={[0, 0.001, 0]}
@@ -561,7 +561,7 @@ function ModelingPointer() {
             />
           </mesh>
           {verticalPanelBelowFloorOpacity > 0 &&
-            faceBelowFloorDisplay !== "visible" ? (
+          faceBelowFloorDisplay !== "visible" ? (
             <mesh geometry={panelGeometry} renderOrder={9}>
               <meshBasicMaterial
                 clippingPlanes={belowFloorClippingPlanes}
@@ -610,8 +610,8 @@ function ModelingPointerDepthHintController({
     () =>
       activeModel
         ? activeModel.vertexOrder.map(
-          (vertexId) => activeModel.verticesById[vertexId].position,
-        )
+            (vertexId) => activeModel.verticesById[vertexId].position,
+          )
         : [],
     [activeModel],
   );
@@ -651,11 +651,11 @@ function ModelingPointerDepthHintController({
     );
     const nextSignature = nextHint
       ? [
-        nextHint.pointerScreenPosition.x.toFixed(1),
-        nextHint.pointerScreenPosition.y.toFixed(1),
-        nextHint.nearCount,
-        nextHint.farCount,
-      ].join(":")
+          nextHint.pointerScreenPosition.x.toFixed(1),
+          nextHint.pointerScreenPosition.y.toFixed(1),
+          nextHint.nearCount,
+          nextHint.farCount,
+        ].join(":")
       : null;
 
     if (nextSignature === lastSignatureRef.current) {
@@ -943,7 +943,7 @@ function ModelingLinePreviewOverlay() {
                 ringSegmentPositions={ringSegmentPositions}
               />
               {geometry.belowFloorOpacity > 0 &&
-                modelingLineOverlayBelowFloorDisplay !== "visible" ? (
+              modelingLineOverlayBelowFloorDisplay !== "visible" ? (
                 <>
                   <mesh renderOrder={5}>
                     <circleGeometry
@@ -1009,7 +1009,7 @@ function ModelingLinePreviewOverlay() {
             />
           </mesh>
           {boxPreviewBelowFloorOpacity > 0 &&
-            modelingFaceBelowFloorDisplay !== "visible" ? (
+          modelingFaceBelowFloorDisplay !== "visible" ? (
             <mesh renderOrder={4}>
               <bufferGeometry>
                 <bufferAttribute
@@ -1050,18 +1050,18 @@ function ModelingLinePreviewOverlay() {
       ) : null}
       {showBoxWireframe
         ? modelingLinePreview.wireframeEdges.map(([startPoint, endPoint]) => (
-          <Line
-            color={MODELING_LINE_PREVIEW_DEFAULT_LINE_COLOR}
-            depthTest={false}
-            depthWrite={false}
-            key={`${startPoint.join(":")}-${endPoint.join(":")}`}
-            lineWidth={1.4}
-            opacity={0.88}
-            points={[new Vector3(...startPoint), new Vector3(...endPoint)]}
-            renderOrder={12}
-            transparent
-          />
-        ))
+            <Line
+              color={MODELING_LINE_PREVIEW_DEFAULT_LINE_COLOR}
+              depthTest={false}
+              depthWrite={false}
+              key={`${startPoint.join(":")}-${endPoint.join(":")}`}
+              lineWidth={1.4}
+              opacity={0.88}
+              points={[new Vector3(...startPoint), new Vector3(...endPoint)]}
+              renderOrder={12}
+              transparent
+            />
+          ))
         : null}
       <Line
         color={
@@ -1606,7 +1606,7 @@ function ModelingMesh() {
         </>
       ) : null}
       {faceDisplayMode === "triangulated" &&
-        activeModel.faceOrder.length > 0 ? (
+      activeModel.faceOrder.length > 0 ? (
         <lineSegments geometry={triangulatedEdgeGeometry} renderOrder={4}>
           <lineBasicMaterial color="#fde68a" transparent opacity={0.72} />
         </lineSegments>
@@ -1796,9 +1796,10 @@ export function ModelingScene() {
         <div
           className="pointer-events-none absolute left-0 top-0 z-10 flex items-center gap-2 text-[11px] font-medium tracking-[0.08em] text-slate-50/72"
           style={{
-            transform: `translate(${depthHint.pointerScreenPosition.x + MODELING_POINTER_DEPTH_HINT_OFFSET_X_PX}px, ${depthHint.pointerScreenPosition.y +
+            transform: `translate(${depthHint.pointerScreenPosition.x + MODELING_POINTER_DEPTH_HINT_OFFSET_X_PX}px, ${
+              depthHint.pointerScreenPosition.y +
               MODELING_POINTER_DEPTH_HINT_OFFSET_Y_PX
-              }px)`,
+            }px)`,
           }}
         >
           {depthHint.nearCount > 0 ? (

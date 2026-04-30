@@ -70,6 +70,99 @@ async function seedSingleModelingVertex(page: Page) {
   );
 }
 
+async function seedMoveSelectionFixture(
+  page: Page,
+  selectedVertexIds: string[],
+) {
+  await page.addInitScript(
+    ({ selectedVertexIds, vertexPosition }) => {
+      localStorage.clear();
+      localStorage.setItem(
+        "naname-ui-settings",
+        JSON.stringify({
+          state: {
+            currentScreen: "modeling",
+            modelingTool: "move",
+          },
+          version: 4,
+        }),
+      );
+      localStorage.setItem(
+        "naname-ui-modeling-store",
+        JSON.stringify({
+          state: {
+            autoNameIndex: 1,
+            currentModelId: "model-1",
+            modelsById: {
+              "model-1": {
+                edgeOrder: [],
+                edgesById: {},
+                faceOrder: [],
+                facesById: {},
+                id: "model-1",
+                name: "Model 001",
+                rootPosition: [0, 0, 0],
+                rootRotation: [0, 0, 0],
+                vertexOrder: ["vertex-1", "vertex-2"],
+                verticesById: {
+                  "vertex-1": {
+                    id: "vertex-1",
+                    position: vertexPosition,
+                  },
+                  "vertex-2": {
+                    id: "vertex-2",
+                    position: [40, 40, 40],
+                  },
+                },
+              },
+            },
+            selectedEdgeIds: [],
+            selectedFaceIds: [],
+            selectedRoot: false,
+            selectedVertexIds,
+          },
+          version: 1,
+        }),
+      );
+    },
+    {
+      selectedVertexIds,
+      vertexPosition: MODELING_CAMERA_CENTER_DEPTH_8_VERTEX,
+    },
+  );
+}
+
+async function movePointerToCenterVertex(page: Page) {
+  const canvas = page.locator("canvas").first();
+  await expect(canvas).toBeVisible();
+  await page.waitForFunction(() => {
+    const canvasElement = document.querySelector("canvas");
+    const rect = canvasElement?.getBoundingClientRect();
+    return rect && rect.width > 100 && rect.height > 100;
+  });
+
+  const canvasBox = await canvas.boundingBox();
+  expect(canvasBox).not.toBeNull();
+  const startX = Math.round((canvasBox?.x ?? 0) + (canvasBox?.width ?? 0) / 2);
+  const startY = Math.round((canvasBox?.y ?? 0) + (canvasBox?.height ?? 0) / 2);
+
+  await page.mouse.move(startX, startY);
+  await expect
+    .poll(async () => parseHudValue(await getModelingHud(page), "snap"))
+    .toBe("vertex");
+
+  return { startX, startY };
+}
+
+async function getPersistedSelectedVertexIds(page: Page) {
+  return page.evaluate(() => {
+    const persistedState = localStorage.getItem("naname-ui-modeling-store");
+    return persistedState
+      ? (JSON.parse(persistedState).state.selectedVertexIds as string[])
+      : [];
+  });
+}
+
 test("shows the 3d prototype screen", async ({ page }) => {
   await page.goto("/");
 
@@ -259,4 +352,36 @@ test("moves modeling vertex depth with the wheel while dragging", async ({
     .not.toBe("vertex");
 
   await page.mouse.up();
+});
+
+test("replaces modeling move vertex selection on a plain click", async ({
+  page,
+}) => {
+  await seedMoveSelectionFixture(page, ["vertex-2"]);
+  await page.goto("/");
+
+  await movePointerToCenterVertex(page);
+  await page.mouse.down();
+  await page.mouse.up();
+
+  await expect
+    .poll(async () => getPersistedSelectedVertexIds(page))
+    .toEqual(["vertex-1"]);
+});
+
+test("adds to modeling move vertex selection on a shift click", async ({
+  page,
+}) => {
+  await seedMoveSelectionFixture(page, ["vertex-2"]);
+  await page.goto("/");
+
+  await movePointerToCenterVertex(page);
+  await page.keyboard.down("Shift");
+  await page.mouse.down();
+  await page.mouse.up();
+  await page.keyboard.up("Shift");
+
+  await expect
+    .poll(async () => getPersistedSelectedVertexIds(page))
+    .toEqual(["vertex-2", "vertex-1"]);
 });

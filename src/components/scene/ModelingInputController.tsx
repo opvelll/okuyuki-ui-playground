@@ -1119,15 +1119,16 @@ export function ModelingInputController({
           if (hoveredVertexId) {
             const currentSelectedVertexIds =
               useModelingStore.getState().selectedVertexIds;
-            const nextSelectedVertexIds = currentSelectedVertexIds.includes(
-              hoveredVertexId,
-            )
-              ? [...currentSelectedVertexIds]
-              : [...currentSelectedVertexIds, hoveredVertexId];
+            const appendToSelection = event.shiftKey;
+            const nextSelectedVertexIds = appendToSelection
+              ? currentSelectedVertexIds.includes(hoveredVertexId)
+                ? [...currentSelectedVertexIds]
+                : [...currentSelectedVertexIds, hoveredVertexId]
+              : [hoveredVertexId];
 
-            if (!currentSelectedVertexIds.includes(hoveredVertexId)) {
-              useModelingStore.getState().selectVertex(hoveredVertexId, true);
-            }
+            useModelingStore
+              .getState()
+              .selectVertex(hoveredVertexId, appendToSelection);
 
             beginVertexMoveDrag(hoveredVertexId, nextSelectedVertexIds);
           }

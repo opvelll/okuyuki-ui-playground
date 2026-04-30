@@ -250,7 +250,7 @@ export function SceneStatusHud() {
         : modelingTool === "lasso"
           ? "Lasso tool: drag a screen-space loop to select enabled vertices, edges, or face center dots, hold Shift to add to the current selection, press Delete to remove selected elements, press E for an edge, press F for a face, and hold Space for temporary camera control."
           : modelingTool === "move"
-            ? "Move tool: hover a vertex to lock the 3D pointer onto it, click to keep that vertex selected or add it to the current selection, and drag to move the selected vertices together with the pointer."
+            ? "Move tool: hover a vertex to lock the 3D pointer onto it, click to select that vertex, hold Shift while clicking to add it to the current selection, and drag to move the selected vertices together with the pointer."
             : modelingTool === "rotate"
               ? "Rotate tool: select one or more vertices, then drag the sphere gizmo to rotate them around their average center. Press M for Move or R for Rotate."
               : modelingTool === "vertex"
