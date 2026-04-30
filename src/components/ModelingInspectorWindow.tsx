@@ -1,6 +1,7 @@
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Eye, EyeOff } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useModelingStore } from "../store/modelingStore";
+import { useUiStore } from "../store/uiStore";
 import type { Vector3Tuple } from "../types/scene";
 
 const axisLabels = ["X", "Y", "Z"] as const;
@@ -159,8 +160,18 @@ export function ModelingInspectorWindow() {
   const updateVertexPosition = useModelingStore(
     (state) => state.updateVertexPosition,
   );
+  const modelingFaceOpacityMode = useUiStore(
+    (state) => state.modelingFaceOpacityMode,
+  );
+  const setModelingFaceOpacityMode = useUiStore(
+    (state) => state.setModelingFaceOpacityMode,
+  );
   const activeModel = modelsById[currentModelId];
   const [nameDraft, setNameDraft] = useState(activeModel?.name ?? "");
+  const faceOpacityToggleLabel =
+    modelingFaceOpacityMode === "transparent"
+      ? "Switch faces to opaque"
+      : "Switch faces to transparent";
 
   useEffect(() => {
     setNameDraft(activeModel?.name ?? "");
@@ -183,26 +194,61 @@ export function ModelingInspectorWindow() {
         open ? "w-72" : "w-11"
       }`}
     >
-      <button
-        aria-expanded={open}
-        aria-label={
-          open ? "Collapse object inspector" : "Expand object inspector"
-        }
-        className="flex h-11 w-full items-center justify-center border-b border-white/8 text-slate-200 transition hover:bg-white/[0.05]"
-        onClick={() => setOpen(!open)}
-        title={open ? "Collapse object inspector" : "Expand object inspector"}
-        type="button"
-      >
+      <div className="grid h-11 grid-cols-[1fr_2.75rem] border-b border-white/8">
         {open ? (
-          <ChevronRight
-            aria-hidden="true"
-            className="h-4 w-4"
-            strokeWidth={2}
-          />
-        ) : (
-          <ChevronLeft aria-hidden="true" className="h-4 w-4" strokeWidth={2} />
-        )}
-      </button>
+          <button
+            aria-label={faceOpacityToggleLabel}
+            aria-pressed={modelingFaceOpacityMode === "opaque"}
+            className="flex min-w-0 items-center justify-center gap-2 px-3 text-[0.68rem] font-bold uppercase tracking-[0.14em] text-slate-200 transition hover:bg-white/[0.05]"
+            onClick={() =>
+              setModelingFaceOpacityMode(
+                modelingFaceOpacityMode === "transparent"
+                  ? "opaque"
+                  : "transparent",
+              )
+            }
+            title={faceOpacityToggleLabel}
+            type="button"
+          >
+            {modelingFaceOpacityMode === "transparent" ? (
+              <Eye aria-hidden="true" className="h-4 w-4" strokeWidth={2} />
+            ) : (
+              <EyeOff aria-hidden="true" className="h-4 w-4" strokeWidth={2} />
+            )}
+            <span>
+              {modelingFaceOpacityMode === "transparent"
+                ? "Transparent"
+                : "Opaque"}
+            </span>
+          </button>
+        ) : null}
+        <button
+          aria-expanded={open}
+          aria-label={
+            open ? "Collapse object inspector" : "Expand object inspector"
+          }
+          className={`flex h-full items-center justify-center text-slate-200 transition hover:bg-white/[0.05] ${
+            open ? "border-l border-white/8" : "col-span-2 w-full"
+          }`}
+          onClick={() => setOpen(!open)}
+          title={open ? "Collapse object inspector" : "Expand object inspector"}
+          type="button"
+        >
+          {open ? (
+            <ChevronRight
+              aria-hidden="true"
+              className="h-4 w-4"
+              strokeWidth={2}
+            />
+          ) : (
+            <ChevronLeft
+              aria-hidden="true"
+              className="h-4 w-4"
+              strokeWidth={2}
+            />
+          )}
+        </button>
+      </div>
       {open ? (
         <div className="grid max-h-[calc(100vh-8.5rem)] gap-4 overflow-y-auto px-3 py-3">
           <label className="grid gap-1.5">

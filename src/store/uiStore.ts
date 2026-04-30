@@ -50,6 +50,7 @@ export type ModelingRectangleMode =
   | "upright-left-square";
 export type ModelingGeneratedFaceMode = "quad" | "triangles";
 export type ModelingFaceDisplayMode = "polygon" | "triangulated";
+export type ModelingFaceOpacityMode = "transparent" | "opaque";
 export type ModelingObjExportFaceMode = "polygon" | "triangulated";
 export type ModelingBelowFloorDisplay = "visible" | "hidden" | "faded";
 export type ModelingPointerAxisBelowFloorDisplay = "hidden" | "faded";
@@ -154,6 +155,7 @@ type PersistedUiState = {
   modelingLineOverlayDisplayMode: MoveOverlayDisplayMode;
   modelingLineOverlayBelowFloorDisplay: ModelingBelowFloorDisplay;
   modelingFaceBelowFloorDisplay: ModelingBelowFloorDisplay;
+  modelingFaceOpacityMode: ModelingFaceOpacityMode;
   modelingLineOverlayRadiusMultiplier: number;
   modelingLineAngleSnapStepDeg: number;
   modelingRectangleFaceMode: ModelingGeneratedFaceMode;
@@ -260,6 +262,7 @@ export type UiState = PersistedUiState & {
   setModelingRectangleMode: (value: ModelingRectangleMode) => void;
   setModelingBoxFaceMode: (value: ModelingGeneratedFaceMode) => void;
   setModelingFaceDisplayMode: (value: ModelingFaceDisplayMode) => void;
+  setModelingFaceOpacityMode: (value: ModelingFaceOpacityMode) => void;
   setModelingObjExportFaceMode: (value: ModelingObjExportFaceMode) => void;
   setModelingPointerVerticalAxisFloorY: (value: number) => void;
   setModelingPointerAxisBelowFloorDisplay: (
@@ -421,6 +424,7 @@ export const createDefaultPersistedUiState = (): PersistedUiState => ({
   modelingLineOverlayDisplayMode: "mode-1",
   modelingLineOverlayBelowFloorDisplay: "faded",
   modelingFaceBelowFloorDisplay: "faded",
+  modelingFaceOpacityMode: "transparent",
   modelingLineOverlayRadiusMultiplier: 1,
   modelingLineAngleSnapStepDeg: 45,
   modelingRectangleFaceMode: "quad",
@@ -509,6 +513,7 @@ const createInitialUiState = (): Omit<
   | "setModelingRectangleMode"
   | "setModelingBoxFaceMode"
   | "setModelingFaceDisplayMode"
+  | "setModelingFaceOpacityMode"
   | "setModelingObjExportFaceMode"
   | "setModelingPointerVerticalAxisFloorY"
   | "setModelingPointerAxisBelowFloorDisplay"
@@ -802,6 +807,10 @@ export const useUiStore = create<UiState>()(
         set({
           modelingFaceDisplayMode: value,
         }),
+      setModelingFaceOpacityMode: (value) =>
+        set({
+          modelingFaceOpacityMode: value,
+        }),
       setModelingObjExportFaceMode: (value) =>
         set({
           modelingObjExportFaceMode: value,
@@ -1006,6 +1015,7 @@ export const useUiStore = create<UiState>()(
           modelingLassoSelectVerticesEnabled: true,
           modelingFaceBelowFloorDisplay: "faded",
           modelingFaceDisplayMode: "polygon",
+          modelingFaceOpacityMode: "transparent",
           modelingObjExportFaceMode: "polygon",
           modelingRectangleFaceMode: "quad",
           modelingBoxFaceMode: "quad",
@@ -1081,6 +1091,7 @@ export const useUiStore = create<UiState>()(
         modelingRectangleMode: state.modelingRectangleMode,
         modelingBoxFaceMode: state.modelingBoxFaceMode,
         modelingFaceDisplayMode: state.modelingFaceDisplayMode,
+        modelingFaceOpacityMode: state.modelingFaceOpacityMode,
         modelingObjExportFaceMode: state.modelingObjExportFaceMode,
         modelingPointerVerticalAxisFloorY:
           state.modelingPointerVerticalAxisFloorY,

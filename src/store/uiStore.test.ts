@@ -291,18 +291,21 @@ describe("uiStore", () => {
     expect(useUiStore.getState().modelingRectangleFaceMode).toBe("quad");
     expect(useUiStore.getState().modelingBoxFaceMode).toBe("quad");
     expect(useUiStore.getState().modelingFaceDisplayMode).toBe("polygon");
+    expect(useUiStore.getState().modelingFaceOpacityMode).toBe("transparent");
     expect(useUiStore.getState().modelingObjExportFaceMode).toBe("polygon");
 
     useUiStore.getState().setModelingRectangleMode("flat-xz");
     useUiStore.getState().setModelingRectangleFaceMode("triangles");
     useUiStore.getState().setModelingBoxFaceMode("triangles");
     useUiStore.getState().setModelingFaceDisplayMode("triangulated");
+    useUiStore.getState().setModelingFaceOpacityMode("opaque");
     useUiStore.getState().setModelingObjExportFaceMode("triangulated");
 
     expect(useUiStore.getState().modelingRectangleMode).toBe("flat-xz");
     expect(useUiStore.getState().modelingRectangleFaceMode).toBe("triangles");
     expect(useUiStore.getState().modelingBoxFaceMode).toBe("triangles");
     expect(useUiStore.getState().modelingFaceDisplayMode).toBe("triangulated");
+    expect(useUiStore.getState().modelingFaceOpacityMode).toBe("opaque");
     expect(useUiStore.getState().modelingObjExportFaceMode).toBe(
       "triangulated",
     );

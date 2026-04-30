@@ -32,6 +32,7 @@ import {
 import { useModelingStore } from "../store/modelingStore";
 import type {
   ModelingBelowFloorDisplay,
+  ModelingFaceOpacityMode,
   MoveOverlayOrientationMode,
 } from "../store/uiStore";
 import { getEffectiveModelingTool, useUiStore } from "../store/uiStore";
@@ -93,7 +94,9 @@ const MODELING_POINTER_PANEL_OPACITY = 0.3;
 const MODELING_POINTER_PANEL_BELOW_FLOOR_OPACITY = 0.075;
 const MODELING_VERTICAL_POINTER_PANEL_OPACITY = 0.28;
 const MODELING_VERTICAL_POINTER_PANEL_BELOW_FLOOR_OPACITY = 0.07;
+const MODELING_FACE_COLOR = "#627b92";
 const MODELING_FACE_OPACITY = 0.42;
+const MODELING_SELECTED_FACE_OPACITY = 0.58;
 const MODELING_FACE_BELOW_FLOOR_OPACITY = 0.1;
 const MODELING_BOX_PREVIEW_FACE_OPACITY = 0.28;
 const MODELING_BOX_PREVIEW_FACE_BELOW_FLOOR_OPACITY = 0.07;
@@ -148,6 +151,30 @@ export function getModelingBelowFloorSurfaceOpacity(
     default:
       return visibleOpacity;
   }
+}
+
+function getModelingFaceMaterialDisplay(
+  faceOpacityMode: ModelingFaceOpacityMode,
+) {
+  return faceOpacityMode === "opaque"
+    ? {
+      depthWrite: true,
+      markerDepthTest: true,
+      metalness: 0,
+      opacity: 1,
+      roughness: 0.52,
+      selectedOpacity: 1,
+      transparent: false,
+    }
+    : {
+      depthWrite: false,
+      markerDepthTest: false,
+      metalness: 0,
+      opacity: MODELING_FACE_OPACITY,
+      roughness: 0.78,
+      selectedOpacity: MODELING_SELECTED_FACE_OPACITY,
+      transparent: true,
+    };
 }
 
 function createUnitCircleLinePoints(segments: number) {
@@ -498,7 +525,7 @@ function ModelingPointer() {
             />
           </mesh>
           {horizontalPanelBelowFloorOpacity > 0 &&
-          faceBelowFloorDisplay !== "visible" ? (
+            faceBelowFloorDisplay !== "visible" ? (
             <mesh
               geometry={panelGeometry}
               position={[0, 0.001, 0]}
@@ -534,7 +561,7 @@ function ModelingPointer() {
             />
           </mesh>
           {verticalPanelBelowFloorOpacity > 0 &&
-          faceBelowFloorDisplay !== "visible" ? (
+            faceBelowFloorDisplay !== "visible" ? (
             <mesh geometry={panelGeometry} renderOrder={9}>
               <meshBasicMaterial
                 clippingPlanes={belowFloorClippingPlanes}
@@ -583,8 +610,8 @@ function ModelingPointerDepthHintController({
     () =>
       activeModel
         ? activeModel.vertexOrder.map(
-            (vertexId) => activeModel.verticesById[vertexId].position,
-          )
+          (vertexId) => activeModel.verticesById[vertexId].position,
+        )
         : [],
     [activeModel],
   );
@@ -624,11 +651,11 @@ function ModelingPointerDepthHintController({
     );
     const nextSignature = nextHint
       ? [
-          nextHint.pointerScreenPosition.x.toFixed(1),
-          nextHint.pointerScreenPosition.y.toFixed(1),
-          nextHint.nearCount,
-          nextHint.farCount,
-        ].join(":")
+        nextHint.pointerScreenPosition.x.toFixed(1),
+        nextHint.pointerScreenPosition.y.toFixed(1),
+        nextHint.nearCount,
+        nextHint.farCount,
+      ].join(":")
       : null;
 
     if (nextSignature === lastSignatureRef.current) {
@@ -916,7 +943,7 @@ function ModelingLinePreviewOverlay() {
                 ringSegmentPositions={ringSegmentPositions}
               />
               {geometry.belowFloorOpacity > 0 &&
-              modelingLineOverlayBelowFloorDisplay !== "visible" ? (
+                modelingLineOverlayBelowFloorDisplay !== "visible" ? (
                 <>
                   <mesh renderOrder={5}>
                     <circleGeometry
@@ -982,7 +1009,7 @@ function ModelingLinePreviewOverlay() {
             />
           </mesh>
           {boxPreviewBelowFloorOpacity > 0 &&
-          modelingFaceBelowFloorDisplay !== "visible" ? (
+            modelingFaceBelowFloorDisplay !== "visible" ? (
             <mesh renderOrder={4}>
               <bufferGeometry>
                 <bufferAttribute
@@ -1023,18 +1050,18 @@ function ModelingLinePreviewOverlay() {
       ) : null}
       {showBoxWireframe
         ? modelingLinePreview.wireframeEdges.map(([startPoint, endPoint]) => (
-            <Line
-              color={MODELING_LINE_PREVIEW_DEFAULT_LINE_COLOR}
-              depthTest={false}
-              depthWrite={false}
-              key={`${startPoint.join(":")}-${endPoint.join(":")}`}
-              lineWidth={1.4}
-              opacity={0.88}
-              points={[new Vector3(...startPoint), new Vector3(...endPoint)]}
-              renderOrder={12}
-              transparent
-            />
-          ))
+          <Line
+            color={MODELING_LINE_PREVIEW_DEFAULT_LINE_COLOR}
+            depthTest={false}
+            depthWrite={false}
+            key={`${startPoint.join(":")}-${endPoint.join(":")}`}
+            lineWidth={1.4}
+            opacity={0.88}
+            points={[new Vector3(...startPoint), new Vector3(...endPoint)]}
+            renderOrder={12}
+            transparent
+          />
+        ))
         : null}
       <Line
         color={
@@ -1149,6 +1176,7 @@ function ModelingMesh() {
   const faceBelowFloorDisplay = useUiStore(
     (state) => state.modelingFaceBelowFloorDisplay,
   );
+  const faceOpacityMode = useUiStore((state) => state.modelingFaceOpacityMode);
   const modelingLassoSelectFacesEnabled = useUiStore(
     (state) => state.modelingLassoSelectFacesEnabled,
   );
@@ -1156,6 +1184,7 @@ function ModelingMesh() {
     (state) => state.modelingPointerVerticalAxisFloorY,
   );
   const faceDisplayMode = useUiStore((state) => state.modelingFaceDisplayMode);
+  const faceMaterialDisplay = getModelingFaceMaterialDisplay(faceOpacityMode);
   const activeModel = modelsById[currentModelId];
   const selectedVertexSet = useMemo(
     () => new Set(selectedVertexIds),
@@ -1377,39 +1406,41 @@ function ModelingMesh() {
     () =>
       new PointsMaterial({
         color: "#000000",
+        depthTest: faceMaterialDisplay.markerDepthTest,
         size: MODEL_VERTEX_PIXEL_SIZE,
         sizeAttenuation: false,
       }),
-    [],
+    [faceMaterialDisplay.markerDepthTest],
   );
   const selectedVertexMaterial = useMemo(
     () =>
       new PointsMaterial({
         color: MODELING_SELECTION_COLOR,
+        depthTest: faceMaterialDisplay.markerDepthTest,
         size: MODEL_VERTEX_PIXEL_SIZE,
         sizeAttenuation: false,
       }),
-    [],
+    [faceMaterialDisplay.markerDepthTest],
   );
   const faceCenterMaterial = useMemo(
     () =>
       new PointsMaterial({
         color: "#000000",
-        depthTest: false,
+        depthTest: faceMaterialDisplay.markerDepthTest,
         size: MODEL_FACE_CENTER_PIXEL_SIZE,
         sizeAttenuation: false,
       }),
-    [],
+    [faceMaterialDisplay.markerDepthTest],
   );
   const selectedFaceCenterMaterial = useMemo(
     () =>
       new PointsMaterial({
         color: MODELING_SELECTION_COLOR,
-        depthTest: false,
+        depthTest: faceMaterialDisplay.markerDepthTest,
         size: MODEL_FACE_CENTER_PIXEL_SIZE,
         sizeAttenuation: false,
       }),
-    [],
+    [faceMaterialDisplay.markerDepthTest],
   );
   const aboveFloorClippingPlanes = useMemo(
     () => [new Plane(new Vector3(0, 1, 0), -verticalAxisFloorY)],
@@ -1421,7 +1452,7 @@ function ModelingMesh() {
   );
   const faceBelowFloorOpacity = getModelingBelowFloorSurfaceOpacity(
     faceBelowFloorDisplay,
-    MODELING_FACE_OPACITY,
+    faceMaterialDisplay.opacity,
     MODELING_FACE_BELOW_FLOOR_OPACITY,
   );
 
@@ -1477,7 +1508,7 @@ function ModelingMesh() {
           </bufferGeometry>
           <pointsMaterial
             color={MODELING_SELECTION_COLOR}
-            depthTest={false}
+            depthTest={faceMaterialDisplay.markerDepthTest}
             size={8}
             sizeAttenuation={false}
           />
@@ -1499,7 +1530,7 @@ function ModelingMesh() {
         </bufferGeometry>
         <pointsMaterial
           color="#ef4444"
-          depthTest={false}
+          depthTest={faceMaterialDisplay.markerDepthTest}
           size={5}
           sizeAttenuation={false}
         />
@@ -1513,10 +1544,13 @@ function ModelingMesh() {
                   ? []
                   : aboveFloorClippingPlanes
               }
-              color="#2563eb"
-              opacity={MODELING_FACE_OPACITY}
+              color={MODELING_FACE_COLOR}
+              depthWrite={faceMaterialDisplay.depthWrite}
+              metalness={faceMaterialDisplay.metalness}
+              opacity={faceMaterialDisplay.opacity}
+              roughness={faceMaterialDisplay.roughness}
               side={DoubleSide}
-              transparent
+              transparent={faceMaterialDisplay.transparent}
             />
           </mesh>
           <mesh geometry={selectedFaceGeometry} renderOrder={3}>
@@ -1527,9 +1561,12 @@ function ModelingMesh() {
                   : aboveFloorClippingPlanes
               }
               color={MODELING_SELECTION_COLOR}
-              opacity={0.58}
+              depthWrite={faceMaterialDisplay.depthWrite}
+              metalness={faceMaterialDisplay.metalness}
+              opacity={faceMaterialDisplay.selectedOpacity}
+              roughness={faceMaterialDisplay.roughness}
               side={DoubleSide}
-              transparent
+              transparent={faceMaterialDisplay.transparent}
             />
           </mesh>
           {faceBelowFloorOpacity > 0 && faceBelowFloorDisplay !== "visible" ? (
@@ -1537,8 +1574,9 @@ function ModelingMesh() {
               <mesh geometry={faceGeometry} renderOrder={3}>
                 <meshStandardMaterial
                   clippingPlanes={belowFloorClippingPlanes}
-                  color="#2563eb"
+                  color={MODELING_FACE_COLOR}
                   opacity={faceBelowFloorOpacity}
+                  roughness={faceMaterialDisplay.roughness}
                   side={DoubleSide}
                   transparent
                 />
@@ -1548,6 +1586,7 @@ function ModelingMesh() {
                   clippingPlanes={belowFloorClippingPlanes}
                   color={MODELING_SELECTION_COLOR}
                   opacity={Math.max(faceBelowFloorOpacity, 0.18)}
+                  roughness={faceMaterialDisplay.roughness}
                   side={DoubleSide}
                   transparent
                 />
@@ -1567,7 +1606,7 @@ function ModelingMesh() {
         </>
       ) : null}
       {faceDisplayMode === "triangulated" &&
-      activeModel.faceOrder.length > 0 ? (
+        activeModel.faceOrder.length > 0 ? (
         <lineSegments geometry={triangulatedEdgeGeometry} renderOrder={4}>
           <lineBasicMaterial color="#fde68a" transparent opacity={0.72} />
         </lineSegments>
@@ -1702,15 +1741,15 @@ export function ModelingScene() {
         shadows
       >
         <color attach="background" args={["#74808d"]} />
-        <ambientLight intensity={0.96} />
+        <ambientLight intensity={0.54} />
         <hemisphereLight
-          args={["#e8edf3", "#47515f", 1.14]}
+          args={["#e8edf3", "#47515f", 0.72]}
           position={[0, 12, 0]}
         />
         <directionalLight
           castShadow
           color="#eef3f8"
-          intensity={1.8}
+          intensity={3.05}
           position={[10, 14, 6]}
           shadow-mapSize-height={2048}
           shadow-mapSize-width={2048}
@@ -1757,10 +1796,9 @@ export function ModelingScene() {
         <div
           className="pointer-events-none absolute left-0 top-0 z-10 flex items-center gap-2 text-[11px] font-medium tracking-[0.08em] text-slate-50/72"
           style={{
-            transform: `translate(${depthHint.pointerScreenPosition.x + MODELING_POINTER_DEPTH_HINT_OFFSET_X_PX}px, ${
-              depthHint.pointerScreenPosition.y +
+            transform: `translate(${depthHint.pointerScreenPosition.x + MODELING_POINTER_DEPTH_HINT_OFFSET_X_PX}px, ${depthHint.pointerScreenPosition.y +
               MODELING_POINTER_DEPTH_HINT_OFFSET_Y_PX
-            }px)`,
+              }px)`,
           }}
         >
           {depthHint.nearCount > 0 ? (
