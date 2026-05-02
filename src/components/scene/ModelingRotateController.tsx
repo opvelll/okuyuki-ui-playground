@@ -91,10 +91,14 @@ export function ModelingRotateController({
   const commitVertexRotateDrag = useModelingStore(
     (state) => state.commitVertexRotateDrag,
   );
+  const clearVertexSelection = useModelingStore(
+    (state) => state.clearVertexSelection,
+  );
   const updateVertexRotateDrag = useModelingStore(
     (state) => state.updateVertexRotateDrag,
   );
   const modelingTool = useUiStore((state) => state.modelingTool);
+  const setModelingTool = useUiStore((state) => state.setModelingTool);
   const rotateUiOpacity = useUiStore((state) => state.rotateUiOpacity);
   const rotateUiRadiusPx = useUiStore((state) => state.rotateUiRadiusPx);
   const rotateArcballSensitivity = useUiStore(
@@ -192,6 +196,20 @@ export function ModelingRotateController({
       };
     },
     [camera, gl, pivot, radiusWorld, rotateUiRadiusPx],
+  );
+
+  const isPointerInsideGizmoBounds = useCallback(
+    (clientX: number, clientY: number) => {
+      const arcballPointerState = computeArcballPointerState(clientX, clientY);
+      if (!arcballPointerState) {
+        return false;
+      }
+
+      const deltaX = clientX - arcballPointerState.centerClientX;
+      const deltaY = clientY - arcballPointerState.centerClientY;
+      return Math.hypot(deltaX, deltaY) <= arcballPointerState.radiusPx;
+    },
+    [computeArcballPointerState],
   );
 
   const applyRotationFromSession = useCallback(
@@ -387,6 +405,26 @@ export function ModelingRotateController({
   );
 
   useEffect(() => {
+    const handlePointerDown = (event: PointerEvent) => {
+      const clickedVisibleGizmoBounds =
+        selectedVertexIds.length >= 2 &&
+        isPointerInsideGizmoBounds(event.clientX, event.clientY);
+
+      if (
+        modelingTool !== "rotate" ||
+        event.button !== 0 ||
+        rotateSessionRef.current ||
+        clickedVisibleGizmoBounds
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      clearVertexSelection();
+      setModelingTool("lasso");
+    };
+
     const handlePointerMove = (event: PointerEvent) => {
       latestPointerRef.current = {
         clientX: event.clientX,
@@ -459,6 +497,7 @@ export function ModelingRotateController({
       cancelVertexRotateDrag();
     };
 
+    gl.domElement.addEventListener("pointerdown", handlePointerDown);
     window.addEventListener("pointermove", handlePointerMove);
     window.addEventListener("pointerup", handlePointerUp);
     window.addEventListener("pointercancel", handlePointerCancel);
@@ -467,6 +506,7 @@ export function ModelingRotateController({
     window.addEventListener("wheel", handleWheelTwist, { passive: false });
 
     return () => {
+      gl.domElement.removeEventListener("pointerdown", handlePointerDown);
       window.removeEventListener("pointermove", handlePointerMove);
       window.removeEventListener("pointerup", handlePointerUp);
       window.removeEventListener("pointercancel", handlePointerCancel);
@@ -477,9 +517,14 @@ export function ModelingRotateController({
   }, [
     applyRotationFromSession,
     cancelVertexRotateDrag,
+    clearVertexSelection,
     finishDrag,
     gl,
     handleWheelTwist,
+    isPointerInsideGizmoBounds,
+    modelingTool,
+    selectedVertexIds.length,
+    setModelingTool,
     setControlsEnabled,
   ]);
 
@@ -571,7 +616,12 @@ export function ModelingRotateController({
     return points;
   })();
 
-  if (modelingTool !== "rotate" || !pivot || radiusWorld <= 0) {
+  if (
+    modelingTool !== "rotate" ||
+    selectedVertexIds.length < 2 ||
+    !pivot ||
+    radiusWorld <= 0
+  ) {
     return null;
   }
 
