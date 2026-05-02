@@ -55,11 +55,6 @@ const pointerSubtools = [
     tool: "move",
   },
   {
-    description: "drag a sphere gizmo to rotate selected vertices",
-    label: "Rotate",
-    tool: "rotate",
-  },
-  {
     description: "place new vertex",
     label: "Vertex",
     tool: "vertex",
@@ -86,15 +81,18 @@ const pointerSubtools = [
   },
 ] as const;
 
+const rotateTool = {
+  description: "drag a sphere gizmo to rotate selected vertices",
+  label: "Rotate",
+  tool: "rotate",
+} as const;
+
 const pointerSubtoolIcons: Record<
   (typeof pointerSubtools)[number]["tool"],
   () => ReactNode
 > = {
   move: () => (
     <Move aria-hidden="true" className="h-3.5 w-3.5" strokeWidth={2} />
-  ),
-  rotate: () => (
-    <Rotate3D aria-hidden="true" className="h-3.5 w-3.5" strokeWidth={2} />
   ),
   vertex: () => (
     <Plus aria-hidden="true" className="h-3.5 w-3.5" strokeWidth={2.3} />
@@ -348,10 +346,10 @@ export function ModelingToolToolbar() {
   });
   const canRedo = historyIndex < history.length - 1;
   const canUndo = historyIndex > 0;
+  const rotateToolActive = modelingTool === rotateTool.tool;
   const selectionToolActive = modelingTool === "lasso";
   const pointerToolActive =
     modelingTool === "move" ||
-    modelingTool === "rotate" ||
     modelingTool === "vertex" ||
     modelingTool === "line" ||
     modelingTool === "pen" ||
@@ -555,6 +553,27 @@ export function ModelingToolToolbar() {
             })}
           </div>
         </div>
+        <button
+          aria-label={`Switch to ${rotateTool.label} tool`}
+          aria-pressed={rotateToolActive}
+          className={`grid grid-cols-[auto_1fr] items-center gap-2 border-b border-white/8 px-3 py-1.5 text-left text-[0.74rem] transition ${
+            rotateToolActive
+              ? "bg-sky-300/10 text-slate-50"
+              : "text-slate-300 hover:bg-white/[0.04]"
+          }`}
+          onClick={() => setModelingTool(rotateTool.tool)}
+          title={rotateTool.description}
+          type="button"
+        >
+          <span className="inline-flex h-6 w-6 items-center justify-center text-sky-200">
+            <Rotate3D
+              aria-hidden="true"
+              className="h-3.5 w-3.5"
+              strokeWidth={2}
+            />
+          </span>
+          <span className="min-w-0 font-semibold">{rotateTool.label}</span>
+        </button>
         <button
           aria-label="Switch to Camera Move tool"
           aria-pressed={effectiveTool === "camera"}

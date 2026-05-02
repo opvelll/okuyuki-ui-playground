@@ -1706,7 +1706,9 @@ export function ModelingScene() {
     modelingTool,
   });
   const hideNativeCursor =
-    effectiveTool === "pointer" && isModelingPointerTool(modelingTool);
+    effectiveTool === "pointer" &&
+    modelingTool !== "rotate" &&
+    isModelingPointerTool(modelingTool);
 
   useEffect(() => {
     if (modelingLassoSelectionPhase !== "settled") {
