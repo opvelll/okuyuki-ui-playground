@@ -353,7 +353,7 @@ export function isModelingPointerTool(tool: ModelingTool) {
   );
 }
 
-export const UI_STORE_PERSIST_KEY = "naname-ui-settings";
+export const UI_STORE_PERSIST_KEY = "naname-prototype-ui-settings";
 
 export const DEFAULT_PROTOTYPE_CAMERA: CameraSnapshot = {
   position: [6.4, 4.5, 7.8],

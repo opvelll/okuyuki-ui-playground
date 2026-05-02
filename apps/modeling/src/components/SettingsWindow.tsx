@@ -4,8 +4,6 @@ import { useUiStore } from "../store/uiStore";
 import {
   GeneralSettingsSection,
   ModelingSettingsSection,
-  MoveUiSettingsSection,
-  PhysicsSettingsSection,
   RotateUiSettingsSection,
 } from "./settings/SettingsSections";
 import { parseNumberInput, settingsMenuItems } from "./settings/settingsSchema";
@@ -15,6 +13,12 @@ const overlayClasses =
 const backdropClasses = "absolute inset-0 bg-slate-950/58 backdrop-blur-sm";
 const panelClasses =
   "relative z-10 flex min-h-[28rem] max-h-[calc(100vh-2rem)] w-full max-w-5xl flex-col overflow-hidden border border-white/12 bg-slate-950/92 shadow-[0_24px_60px_rgba(3,10,20,0.4)] md:h-[44rem] md:max-h-[min(44rem,calc(100vh-2rem))]";
+const modelingSettingsMenuItems = settingsMenuItems.filter(
+  (menuItem) =>
+    menuItem.key === "general" ||
+    menuItem.key === "rotate-ui" ||
+    menuItem.key === "modeling-ui",
+);
 
 export function SettingsWindow() {
   const [generalColorsOpen, setGeneralColorsOpen] = useState(false);
@@ -72,7 +76,7 @@ export function SettingsWindow() {
               Workspace controls
             </h2>
             <p className="mt-1 text-[0.74rem] leading-5 text-slate-300/72">
-              Prototype / Modeling 共通の挙動と表示をここで調整します。
+              Modeling workspace の挙動と表示をここで調整します。
             </p>
           </div>
           <button
@@ -89,7 +93,7 @@ export function SettingsWindow() {
             aria-label="Settings sections"
             className="grid gap-2 md:content-start"
           >
-            {settingsMenuItems.map((menuItem) => {
+            {modelingSettingsMenuItems.map((menuItem) => {
               const active = menuItem.key === settings.selectedSettingsMenu;
 
               return (
@@ -116,18 +120,6 @@ export function SettingsWindow() {
                 generalColorsOpen={generalColorsOpen}
                 handleNumberChange={handleNumberChange}
                 setGeneralColorsOpen={setGeneralColorsOpen}
-                settings={settings}
-              />
-            ) : null}
-            {settings.selectedSettingsMenu === "physics" ? (
-              <PhysicsSettingsSection
-                handleNumberChange={handleNumberChange}
-                settings={settings}
-              />
-            ) : null}
-            {settings.selectedSettingsMenu === "move-ui" ? (
-              <MoveUiSettingsSection
-                handleNumberChange={handleNumberChange}
                 settings={settings}
               />
             ) : null}
