@@ -341,6 +341,18 @@ export function getEffectiveModelingTool(
     : "pointer";
 }
 
+export function isModelingPointerTool(tool: ModelingTool) {
+  return (
+    tool === "move" ||
+    tool === "rotate" ||
+    tool === "vertex" ||
+    tool === "line" ||
+    tool === "pen" ||
+    tool === "rectangle" ||
+    tool === "box"
+  );
+}
+
 export const UI_STORE_PERSIST_KEY = "naname-ui-settings";
 
 export const DEFAULT_PROTOTYPE_CAMERA: CameraSnapshot = {

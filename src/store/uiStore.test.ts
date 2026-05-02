@@ -2,7 +2,9 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   DEFAULT_MODELING_CAMERA,
   DEFAULT_PROTOTYPE_CAMERA,
+  type ModelingTool,
   createDefaultPersistedUiState,
+  isModelingPointerTool,
   useUiStore,
 } from "./uiStore";
 
@@ -344,5 +346,21 @@ describe("uiStore", () => {
       phase: "idle",
       points: [],
     });
+  });
+
+  it("identifies modeling tools that use the 3D pointer", () => {
+    const pointerTools: ModelingTool[] = [
+      "move",
+      "rotate",
+      "vertex",
+      "line",
+      "pen",
+      "rectangle",
+      "box",
+    ];
+
+    expect(pointerTools.every(isModelingPointerTool)).toBe(true);
+    expect(isModelingPointerTool("lasso")).toBe(false);
+    expect(isModelingPointerTool("camera")).toBe(false);
   });
 });

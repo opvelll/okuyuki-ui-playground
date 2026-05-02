@@ -35,7 +35,11 @@ import type {
   ModelingFaceOpacityMode,
   MoveOverlayOrientationMode,
 } from "../store/uiStore";
-import { getEffectiveModelingTool, useUiStore } from "../store/uiStore";
+import {
+  getEffectiveModelingTool,
+  isModelingPointerTool,
+  useUiStore,
+} from "../store/uiStore";
 import { ModelingInputController } from "./scene/ModelingInputController";
 import { ModelingRotateController } from "./scene/ModelingRotateController";
 import { calculateDragPlaneOverlayGeometry } from "./scene/dragPlaneOverlay";
@@ -1701,6 +1705,8 @@ export function ModelingScene() {
     modelingCameraOverride,
     modelingTool,
   });
+  const hideNativeCursor =
+    effectiveTool === "pointer" && isModelingPointerTool(modelingTool);
 
   useEffect(() => {
     if (modelingLassoSelectionPhase !== "settled") {
@@ -1734,6 +1740,7 @@ export function ModelingScene() {
     >
       <Canvas
         camera={{ fov: 42, position: [8.8, 6.4, 9.4] }}
+        className={hideNativeCursor ? "cursor-none" : undefined}
         dpr={[1, 1.8]}
         onCreated={({ gl }) => {
           gl.localClippingEnabled = true;
