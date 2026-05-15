@@ -89,6 +89,13 @@ pnpm install
 pnpm run dev
 ```
 
+Windows ネイティブの PowerShell / cmd で e2e を実行する場合は、Windows 用の Playwright ブラウザを別途インストールしてください。WSL2 側でインストールした Linux 用ブラウザは共有されません。
+
+```bash
+pnpm run e2e:install
+pnpm run e2e
+```
+
 ## スクリプト
 
 - `pnpm run dev`: 開発サーバー起動

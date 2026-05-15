@@ -6,7 +6,7 @@ import { useUiStore } from "../../store/uiStore";
 import {
   type DragPlaneOverlayState,
   calculateDragPlaneOverlayGeometry,
-} from "./dragPlaneOverlay";
+} from "./dragPlaneOverlayGeometry";
 import { calculateAxisMagnetLinePoints } from "./moveDragModifiers";
 
 const DEFAULT_PLANE_NORMAL = new Vector3(0, 0, 1);

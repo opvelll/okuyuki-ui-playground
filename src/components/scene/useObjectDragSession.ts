@@ -19,7 +19,7 @@ import type { SceneObject, Vector3Tuple } from "../../types/scene";
 import {
   type DragPlaneOverlayState,
   calculateDragPlaneOverlayGeometry,
-} from "./dragPlaneOverlay";
+} from "./dragPlaneOverlayGeometry";
 import { applyScreenDepthDragModifiers } from "./moveDragModifiers";
 
 const OVERLAY_ORIENTATION_SHORTCUTS = {
