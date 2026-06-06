@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -394,6 +394,43 @@ describe("App", () => {
     expect(screen.getByLabelText(/Always Snap \/ 常時スナップ/i)).toHaveValue(
       "axis-magnet",
     );
+  });
+
+  it("switches move snap modes from the quick settings", async () => {
+    const user = userEvent.setup();
+    const App = await loadApp();
+
+    render(<App />);
+
+    const axisSnap = screen.getByLabelText(/軸に吸着/i);
+    const intervalSnap = screen.getByLabelText(/一定間隔に吸着/i);
+
+    await user.click(axisSnap);
+    expect(axisSnap).toBeChecked();
+    expect(intervalSnap).not.toBeChecked();
+
+    await user.click(intervalSnap);
+    expect(axisSnap).not.toBeChecked();
+    expect(intervalSnap).toBeChecked();
+  });
+
+  it("shows rotate drag sensitivity in the quick settings", async () => {
+    const user = userEvent.setup();
+    const App = await loadApp();
+
+    render(<App />);
+
+    await user.click(
+      screen.getByRole("button", { name: /Switch to Rotate UI tool/i }),
+    );
+
+    const sensitivity = screen.getByLabelText(/ドラッグ感度/i);
+    expect(sensitivity).toHaveValue("1");
+
+    fireEvent.change(sensitivity, { target: { value: "1.5" } });
+
+    expect(sensitivity).toHaveValue("1.5");
+    expect(screen.getAllByText("1.50x")).not.toHaveLength(0);
   });
 
   it("shows magnet axis settings in move settings", async () => {
