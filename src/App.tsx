@@ -4,6 +4,7 @@ import { InteractionModeToolbar } from "./components/InteractionModeToolbar";
 import { PrototypeSceneFallback } from "./components/PrototypeSceneFallback";
 import { SceneStatusHud } from "./components/SceneStatusHud";
 import { SettingsWindow } from "./components/SettingsWindow";
+import { SurfaceSnapToggle } from "./components/SurfaceSnapToggle";
 
 const PrototypeScene = lazy(async () => {
   const module = await import("./components/PrototypeScene");
@@ -29,6 +30,7 @@ export default function App() {
         <Suspense fallback={<PrototypeSceneFallback />}>
           <PrototypeScene />
         </Suspense>
+        <SurfaceSnapToggle />
         <InteractionModeToolbar />
         <SettingsWindow />
         <SceneStatusHud />

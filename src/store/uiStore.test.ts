@@ -81,4 +81,19 @@ describe("uiStore", () => {
       objectId: "amber-box",
     });
   });
+
+  it("clears an active axis magnet when surface snapping changes", () => {
+    useUiStore.setState({
+      axisMagnetTarget: {
+        axis: "z",
+        direction: "negative",
+        objectId: "amber-box",
+      },
+    });
+
+    useUiStore.getState().setSurfaceSnapEnabled(true);
+
+    expect(useUiStore.getState().surfaceSnapEnabled).toBe(true);
+    expect(useUiStore.getState().axisMagnetTarget).toBeNull();
+  });
 });

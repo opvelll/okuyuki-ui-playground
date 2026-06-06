@@ -21,6 +21,10 @@ import {
   calculateDragPlaneOverlayGeometry,
 } from "./dragPlaneOverlayGeometry";
 import { applyScreenDepthDragModifiers } from "./moveDragModifiers";
+import {
+  applySurfaceDepthOffset,
+  intersectRayWithGuideSurface,
+} from "./surfaceSnap";
 
 const OVERLAY_ORIENTATION_SHORTCUTS = {
   "1": "camera-facing",
@@ -43,6 +47,9 @@ type DragSession = {
   pointerId: number;
   pointerOffset: Vector3;
   startPoint: Vector3;
+  surfaceDepthOffset: Vector3;
+  surfacePointerOffset: Vector3;
+  surfaceSnapped: boolean;
 };
 
 type DragModifierState = {
@@ -255,6 +262,60 @@ export function useObjectDragSession({
       clientY: number,
       modifierState: DragModifierState,
     ) => {
+      const bounds = gl.domElement.getBoundingClientRect();
+      if (bounds.width === 0 || bounds.height === 0) {
+        return null;
+      }
+
+      pointerVector.set(
+        ((clientX - bounds.left) / bounds.width) * 2 - 1,
+        -((clientY - bounds.top) / bounds.height) * 2 + 1,
+      );
+      raycaster.setFromCamera(pointerVector, camera);
+
+      if (useUiStore.getState().surfaceSnapEnabled) {
+        const surfaceHit = intersectRayWithGuideSurface(
+          raycaster.ray,
+          dragSession.surfacePointerOffset,
+        );
+
+        if (surfaceHit) {
+          const snappedPosition = applySurfaceDepthOffset(
+            surfaceHit.objectPosition,
+            dragSession.surfaceDepthOffset,
+          );
+          dragSession.lastClientX = clientX;
+          dragSession.lastClientY = clientY;
+          dragSession.axisMagnetTarget = null;
+          dragSession.surfaceSnapped = true;
+          dragSession.currentPoint.copy(snappedPosition);
+          dragSession.plane.setFromNormalAndCoplanarPoint(
+            dragSession.planeNormal,
+            snappedPosition,
+          );
+          const rebasedIntersection = raycaster.ray.intersectPlane(
+            dragSession.plane,
+            new Vector3(),
+          );
+          if (rebasedIntersection) {
+            dragSession.pointerOffset
+              .copy(snappedPosition)
+              .sub(rebasedIntersection);
+          }
+          setAxisMagnetTarget(null);
+          useSceneStore
+            .getState()
+            .updateObjectPosition(
+              dragSession.objectId,
+              tupleFromVector(snappedPosition),
+            );
+          syncOverlayState(dragSession);
+
+          return snappedPosition;
+        }
+      }
+
+      dragSession.surfaceSnapped = false;
       const intersection = projectClientPointToPlane(
         clientX,
         clientY,
@@ -274,7 +335,16 @@ export function useObjectDragSession({
         modifierState,
       );
     },
-    [applyModifiers, projectClientPointToPlane],
+    [
+      applyModifiers,
+      camera,
+      gl,
+      pointerVector,
+      projectClientPointToPlane,
+      raycaster,
+      setAxisMagnetTarget,
+      syncOverlayState,
+    ],
   );
 
   const handlePointerDown = useCallback(
@@ -303,6 +373,7 @@ export function useObjectDragSession({
         return;
       }
 
+      const pointerOffset = objectPosition.clone().sub(intersection);
       dragSessionRef.current = {
         axisMagnetTarget: null,
         currentPoint: objectPosition.clone(),
@@ -313,8 +384,11 @@ export function useObjectDragSession({
         plane,
         planeNormal,
         pointerId: event.pointerId,
-        pointerOffset: objectPosition.sub(intersection),
+        pointerOffset: pointerOffset.clone(),
         startPoint: vectorFromTuple(sceneObject.position),
+        surfaceDepthOffset: new Vector3(),
+        surfacePointerOffset: pointerOffset,
+        surfaceSnapped: false,
       };
       syncOverlayState(dragSessionRef.current);
       setControlsEnabled(false);
@@ -395,6 +469,24 @@ export function useObjectDragSession({
       const forwardOffset = dragSession.planeNormal
         .clone()
         .multiplyScalar(delta);
+
+      if (
+        dragSession.surfaceSnapped &&
+        useUiStore.getState().surfaceSnapEnabled
+      ) {
+        dragSession.surfaceDepthOffset.add(forwardOffset);
+        updateDraggedObjectPosition(
+          dragSession,
+          dragSession.lastClientX,
+          dragSession.lastClientY,
+          {
+            ctrlKey: event.ctrlKey,
+            shiftKey: event.shiftKey,
+          },
+        );
+        return;
+      }
+
       const nextPosition = vectorFromTuple(currentObject.position).add(
         forwardOffset,
       );

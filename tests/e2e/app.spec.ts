@@ -20,6 +20,11 @@ test("shows the 3d prototype screen", async ({ page }) => {
   await expect(
     page.getByRole("button", { name: /Expand settings/i }),
   ).toBeVisible();
+  const surfaceSnapToggle = page.getByLabel(/面に吸着/i);
+  await expect(surfaceSnapToggle).toBeVisible();
+  await expect(surfaceSnapToggle).not.toBeChecked();
+  await surfaceSnapToggle.check();
+  await expect(surfaceSnapToggle).toBeChecked();
   await expect(page.getByLabel("Scene loading")).toBeVisible();
   await expect(
     page.getByRole("button", { name: /Switch to Move UI tool/i }),
@@ -92,6 +97,7 @@ test("switches tool mode and opens rotate settings", async ({ page }) => {
 
   await expect(page.getByText(/Object Rotate/i)).toBeVisible();
   await expect(page.getByText(/Rotate mode:/i)).toBeVisible();
+  await expect(page.getByLabel(/面に吸着/i)).toHaveCount(0);
 
   await expandSettings(page);
   await page.getByRole("button", { name: /Rotate UI arcball rotate/i }).click();

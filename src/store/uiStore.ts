@@ -70,6 +70,7 @@ type PersistedUiState = {
   showFps: boolean;
   settingsOpen: boolean;
   suppressObjectRotation: boolean;
+  surfaceSnapEnabled: boolean;
   interactionMode: InteractionMode;
 };
 
@@ -126,6 +127,7 @@ type UiState = PersistedUiState & {
   setShowFps: (value: boolean) => void;
   setSettingsOpen: (open: boolean) => void;
   setSuppressObjectRotation: (value: boolean) => void;
+  setSurfaceSnapEnabled: (value: boolean) => void;
 };
 
 export const UI_STORE_PERSIST_KEY = "naname-ui-settings";
@@ -172,6 +174,7 @@ export const createDefaultPersistedUiState = (): PersistedUiState => ({
   showFps: true,
   settingsOpen: false,
   suppressObjectRotation: false,
+  surfaceSnapEnabled: false,
   interactionMode: "move",
 });
 
@@ -224,6 +227,7 @@ const createInitialUiState = (): Omit<
   | "setShowFps"
   | "setSettingsOpen"
   | "setSuppressObjectRotation"
+  | "setSurfaceSnapEnabled"
 > => ({
   ...createDefaultPersistedUiState(),
   axisMagnetTarget: null,
@@ -339,6 +343,11 @@ export const useUiStore = create<UiState>()(
       setSettingsOpen: (open) => set({ settingsOpen: open }),
       setSuppressObjectRotation: (value) =>
         set({ suppressObjectRotation: value }),
+      setSurfaceSnapEnabled: (value) =>
+        set({
+          axisMagnetTarget: null,
+          surfaceSnapEnabled: value,
+        }),
     }),
     {
       name: UI_STORE_PERSIST_KEY,
@@ -386,6 +395,7 @@ export const useUiStore = create<UiState>()(
         showFps: state.showFps,
         settingsOpen: state.settingsOpen,
         suppressObjectRotation: state.suppressObjectRotation,
+        surfaceSnapEnabled: state.surfaceSnapEnabled,
       }),
       storage: createJSONStorage(() => localStorage),
     },

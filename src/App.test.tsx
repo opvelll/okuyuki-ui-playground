@@ -70,6 +70,7 @@ describe("App", () => {
     expect(
       screen.getByRole("button", { name: /Expand settings/i }),
     ).toBeInTheDocument();
+    expect(screen.getByLabelText(/面に吸着/i)).not.toBeChecked();
     expect(screen.getAllByRole("button", { name: /Move UI/i })).toHaveLength(1);
     expect(
       screen.getByRole("button", { name: /Switch to Rotate UI tool/i }),
@@ -113,6 +114,20 @@ describe("App", () => {
     expect(screen.getByLabelText(/Grid Minor/i)).toBeInTheDocument();
   });
 
+  it("persists the surface snap toggle", async () => {
+    const user = userEvent.setup();
+    const App = await loadApp();
+
+    render(<App />);
+
+    await user.click(screen.getByLabelText(/面に吸着/i));
+
+    expect(screen.getByLabelText(/面に吸着/i)).toBeChecked();
+    expect(window.localStorage.getItem(UI_STORE_PERSIST_KEY)).toContain(
+      '"surfaceSnapEnabled":true',
+    );
+  });
+
   it("shows the placeholder while the scene module is still loading", async () => {
     vi.doMock("./components/PrototypeScene", () => new Promise(() => {}));
     const App = await loadApp();
@@ -123,6 +138,7 @@ describe("App", () => {
     expect(
       screen.getByText(/Preparing the 3D prototype scene/i),
     ).toBeInTheDocument();
+    expect(screen.getByLabelText(/面に吸着/i)).toBeInTheDocument();
   });
 
   it("collapses the settings window while the scene is loading", async () => {
@@ -222,6 +238,7 @@ describe("App", () => {
     expect(
       screen.getByRole("button", { name: /Switch to Rotate UI tool/i }),
     ).toHaveAttribute("aria-pressed", "true");
+    expect(screen.queryByLabelText(/面に吸着/i)).not.toBeInTheDocument();
   });
 
   it("switches the interaction mode with m and r hotkeys", async () => {
@@ -236,10 +253,12 @@ describe("App", () => {
     expect(
       screen.getByRole("button", { name: /Switch to Rotate UI tool/i }),
     ).toHaveAttribute("aria-pressed", "true");
+    expect(screen.queryByLabelText(/面に吸着/i)).not.toBeInTheDocument();
 
     await user.keyboard("m");
 
     expect(screen.getByText(/Object Move/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/面に吸着/i)).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /Switch to Move UI tool/i }),
     ).toHaveAttribute("aria-pressed", "true");

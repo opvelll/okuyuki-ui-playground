@@ -5,6 +5,7 @@ import { Color, MOUSE } from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { useUiStore } from "../store/uiStore";
 import { FloorVisual } from "./scene/FloorVisual";
+import { GuideSurface } from "./scene/GuideSurface";
 import { ObjectMoveController } from "./scene/ObjectMoveController";
 import { SceneContents } from "./scene/SceneContents";
 
@@ -58,6 +59,7 @@ export function PrototypeScene() {
           shadow-mapSize-width={2048}
         />
         <FloorVisual position={[0, 0, 0]} />
+        <GuideSurface />
         <SceneContents physicsEnabled={physicsEnabled}>
           <ObjectMoveController
             controlsRef={controlsRef}
