@@ -13,8 +13,9 @@ import {
   useUiStore,
 } from "../store/uiStore";
 
-const panelClasses =
-  "absolute left-3 right-3 top-72 z-20 w-auto overflow-hidden rounded-[1.4rem] border border-white/15 bg-slate-950/72 shadow-[0_22px_48px_rgba(3,10,20,0.34)] backdrop-blur-xl md:left-auto md:right-4 md:top-4 md:w-[min(28rem,calc(100vw-2rem))]";
+const openPanelClasses =
+  "left-3 right-3 top-72 w-auto md:left-auto md:right-4 md:top-4 md:w-[min(28rem,calc(100vw-2rem))]";
+const closedPanelClasses = "right-3 top-3 w-11 md:right-4 md:top-4";
 const sectionHeadingClasses =
   "text-[0.68rem] font-bold uppercase tracking-[0.16em] text-sky-100/70";
 const fieldClasses =
@@ -30,8 +31,8 @@ const subsectionToggleClasses =
 const settingsMenuItems = [
   { description: "app-wide defaults", key: "general", label: "全体" },
   { description: "rapier tuning", key: "physics", label: "物理演算" },
-  { description: "screen-depth drag", key: "move-ui", label: "Move UI" },
-  { description: "arcball rotate", key: "rotate-ui", label: "Rotate UI" },
+  { description: "screen-depth drag", key: "move-ui", label: "Move" },
+  { description: "arcball rotate", key: "rotate-ui", label: "Rotate" },
 ] as const satisfies ReadonlyArray<{
   description: string;
   key: SettingsMenu;
@@ -407,18 +408,47 @@ export function SettingsWindow() {
     };
 
   return (
-    <aside aria-label="Settings window" className={panelClasses}>
+    <aside
+      aria-label="Settings window"
+      className={`absolute z-40 overflow-hidden rounded-[1.4rem] border border-white/15 bg-slate-950/72 shadow-[0_22px_48px_rgba(3,10,20,0.34)] backdrop-blur-xl ${
+        settingsOpen ? openPanelClasses : closedPanelClasses
+      }`}
+    >
       <button
         aria-expanded={settingsOpen}
         aria-label={settingsOpen ? "Collapse settings" : "Expand settings"}
-        className="flex w-full items-center justify-between gap-4 px-4 py-3 text-[0.72rem] font-bold uppercase tracking-[0.18em] text-slate-50 outline-none transition hover:bg-white/5 focus-visible:ring-2 focus-visible:ring-sky-300/50"
+        className={`flex h-11 items-center text-slate-50 outline-none transition hover:bg-white/5 focus-visible:ring-2 focus-visible:ring-sky-300/50 ${
+          settingsOpen
+            ? "w-full justify-between gap-4 px-4"
+            : "w-11 justify-center"
+        }`}
         onClick={() => setSettingsOpen(!settingsOpen)}
         type="button"
       >
-        <span>Settings</span>
-        <span className="inline-flex w-6 justify-center text-base leading-none text-sky-300">
-          {settingsOpen ? "−" : "+"}
+        <span className="inline-flex h-5 w-5 items-center justify-center text-sky-200">
+          <svg
+            aria-hidden="true"
+            className="h-5 w-5"
+            fill="none"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Zm8 3.5-2.05-1.18.04-.82-.04-.82L20 8l-2-3.46-2.05 1.18a7.7 7.7 0 0 0-1.42-.82V2.5h-4v2.4a7.7 7.7 0 0 0-1.42.82L7.05 4.54 5 8l2.05 1.18-.04.82.04.82L5 12l2.05 3.46 2.06-1.18c.44.33.91.6 1.42.82v2.4h4v-2.4c.51-.22.98-.49 1.42-.82L18 15.46 20 12Z"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="1.5"
+            />
+          </svg>
         </span>
+        {settingsOpen ? (
+          <>
+            <span className="mr-auto text-[0.72rem] font-bold uppercase tracking-[0.18em]">
+              Settings
+            </span>
+            <span className="text-base leading-none text-sky-300">−</span>
+          </>
+        ) : null}
       </button>
       {settingsOpen ? (
         <div className="grid max-h-[calc(100vh-10rem)] gap-4 overflow-y-auto border-t border-white/8 px-3 pb-3 pt-3 md:max-h-[calc(100vh-8rem)] md:grid-cols-[8.5rem_minmax(0,1fr)]">
@@ -682,11 +712,10 @@ export function SettingsWindow() {
             {selectedSettingsMenu === "move-ui" ? (
               <section aria-labelledby="move-settings" className="grid gap-3">
                 <h2 className={sectionHeadingClasses} id="move-settings">
-                  Move UI
+                  Move
                 </h2>
                 <SectionNote>
-                  Move UI:
-                  オブジェクト移動操作の見え方とステップ量を調整します。
+                  Move: オブジェクト移動操作の見え方とステップ量を調整します。
                 </SectionNote>
                 <ToggleField
                   checked={moveVerticalDropGuide}
@@ -882,10 +911,10 @@ export function SettingsWindow() {
             {selectedSettingsMenu === "rotate-ui" ? (
               <section aria-labelledby="rotate-settings" className="grid gap-3">
                 <h2 className={sectionHeadingClasses} id="rotate-settings">
-                  Rotate UI
+                  Rotate
                 </h2>
                 <SectionNote>
-                  Rotate UI: 画面基準の arcball 回転とホイール twist
+                  Rotate: 画面基準の arcball 回転とホイール twist
                   の感度を調整します。
                 </SectionNote>
                 <ColorField

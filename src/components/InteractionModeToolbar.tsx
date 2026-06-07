@@ -4,12 +4,12 @@ import { type InteractionMode, useUiStore } from "../store/uiStore";
 const toolButtons = [
   {
     description: "screen-depth drag",
-    label: "Move UI",
+    label: "Move",
     mode: "move",
   },
   {
     description: "arcball rotate",
-    label: "Rotate UI",
+    label: "Rotate",
     mode: "rotate",
   },
 ] as const satisfies ReadonlyArray<{
@@ -75,8 +75,8 @@ export function InteractionModeToolbar() {
             <button
               aria-label={
                 toolButton.mode === "move"
-                  ? "Switch to Move UI tool"
-                  : "Switch to Rotate UI tool"
+                  ? "Switch to Move tool"
+                  : "Switch to Rotate tool"
               }
               aria-pressed={active}
               className={`grid grid-cols-[auto_1fr] items-center gap-3 rounded-2xl border px-3 py-2 text-left transition ${

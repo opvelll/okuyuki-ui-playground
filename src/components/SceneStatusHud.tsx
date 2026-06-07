@@ -38,6 +38,7 @@ const ROTATE_TWIST_AXIS_LABELS = {
 
 export function SceneStatusHud() {
   const [fps, setFps] = useState(0);
+  const [hudOpen, setHudOpen] = useState(false);
   const axisMagnetTarget = useUiStore((state) => state.axisMagnetTarget);
   const interactionMode = useUiStore((state) => state.interactionMode);
   const interactionState = useUiStore((state) => state.interactionState);
@@ -87,10 +88,10 @@ export function SceneStatusHud() {
           ? "Physics enabled: drag to move on the screen plane and use the wheel for depth. Released objects rejoin the simulation."
           : "Physics enabled: select an object to start screen-depth-drag editing."
         : selectedObjectId
-          ? "Drag to move on screen plane. Wheel changes camera depth. Shift reduces wheel depth step, Ctrl magnetizes one axis to another object, and Shift + Ctrl applies interval snap. Move UI settings can keep either axis or interval snapping always on."
+          ? "Drag to move on screen plane. Wheel changes camera depth. Shift reduces wheel depth step, Ctrl magnetizes one axis to another object, and Shift + Ctrl applies interval snap. Move settings can keep either axis or interval snapping always on."
           : "Select an object to start screen-depth-drag editing."
       : selectedObjectId
-        ? "Rotate mode: drag the sphere gizmo for arcball rotation, hold Ctrl to snap the arc to an XYZ ring, hold Ctrl + Shift for fixed-angle snap, and use the wheel for twist. Selection is cleared by clicking empty space, pressing Escape, or switching to Move UI."
+        ? "Rotate mode: drag the sphere gizmo for arcball rotation, hold Ctrl to snap the arc to an XYZ ring, hold Ctrl + Shift for fixed-angle snap, and use the wheel for twist. Selection is cleared by clicking empty space, pressing Escape, or switching to Move."
         : "Rotate mode: select an object to show the sphere gizmo.";
 
   useEffect(() => {
@@ -119,94 +120,109 @@ export function SceneStatusHud() {
   }, []);
 
   return (
-    <aside className="pointer-events-none absolute bottom-3 left-3 z-10 max-w-[min(24rem,calc(100vw-3rem))] rounded-[1.35rem] border border-white/12 bg-slate-950/68 px-4 py-3 text-slate-50 shadow-[0_18px_40px_rgba(3,10,20,0.3)] backdrop-blur-xl md:bottom-4 md:left-4 md:z-20">
-      <p className="text-[0.68rem] font-bold uppercase tracking-[0.18em] text-sky-100/70">
-        {interactionMode === "move" ? "Object Move" : "Object Rotate"}
-      </p>
-      <dl className="mt-2 grid gap-2 text-sm">
-        <div className="grid grid-cols-[5rem_1fr] gap-3">
-          <dt className="text-slate-300/70">Selected</dt>
-          <dd>{selectedObjectId ?? "none"}</dd>
+    <aside className="absolute bottom-3 left-3 z-10 max-w-[min(24rem,calc(100vw-3rem))] rounded-[1.35rem] border border-white/12 bg-slate-950/68 text-slate-50 shadow-[0_18px_40px_rgba(3,10,20,0.3)] backdrop-blur-xl md:bottom-4 md:left-4 md:z-20">
+      <button
+        aria-expanded={hudOpen}
+        aria-label={hudOpen ? "Collapse HUD" : "Expand HUD"}
+        className="flex w-full items-center justify-between gap-4 px-4 py-3 text-[0.68rem] font-bold uppercase tracking-[0.18em] text-sky-100/70 outline-none transition hover:bg-white/5 focus-visible:ring-2 focus-visible:ring-sky-300/50"
+        onClick={() => setHudOpen((open) => !open)}
+        type="button"
+      >
+        <span>
+          {interactionMode === "move" ? "Object Move" : "Object Rotate"}
+        </span>
+        <span className="text-base leading-none text-sky-300">
+          {hudOpen ? "−" : "+"}
+        </span>
+      </button>
+      {hudOpen ? (
+        <div className="pointer-events-none border-t border-white/8 px-4 pb-3">
+          <dl className="mt-2 grid gap-2 text-sm">
+            <div className="grid grid-cols-[5rem_1fr] gap-3">
+              <dt className="text-slate-300/70">Selected</dt>
+              <dd>{selectedObjectId ?? "none"}</dd>
+            </div>
+            <div className="grid grid-cols-[5rem_1fr] gap-3">
+              <dt className="text-slate-300/70">State</dt>
+              <dd>{interactionState}</dd>
+            </div>
+            {showFps ? (
+              <div className="grid grid-cols-[5rem_1fr] gap-3">
+                <dt className="text-slate-300/70">FPS</dt>
+                <dd>{fps}</dd>
+              </div>
+            ) : null}
+            {interactionMode === "move" ? (
+              <>
+                <div className="grid grid-cols-[5rem_1fr] gap-3">
+                  <dt className="text-slate-300/70">Depth</dt>
+                  <dd>
+                    {moveDepthWheelStep.toFixed(2)} / {moveDepthWheelDirection}
+                  </dd>
+                </div>
+                <div className="grid grid-cols-[5rem_1fr] gap-3">
+                  <dt className="text-slate-300/70">Snap</dt>
+                  <dd>
+                    shift {movePrecisionStep.toFixed(2)} / interval{" "}
+                    {moveGridSnapStep.toFixed(2)} (
+                    {GRID_SNAP_PATTERN_LABELS[moveGridSnapPattern]})
+                  </dd>
+                </div>
+                <div className="grid grid-cols-[5rem_1fr] gap-3">
+                  <dt className="text-slate-300/70">Magnet</dt>
+                  <dd>
+                    {axisMagnetTarget
+                      ? `${axisMagnetTarget.objectId} / ${AXIS_REFERENCE_FRAME_LABELS[moveAxisMagnetReferenceFrame]} ${axisMagnetTarget.axis}${AXIS_DIRECTION_LABELS[axisMagnetTarget.direction]}`
+                      : `none / ${ALWAYS_SNAP_MODE_LABELS[moveAlwaysSnapMode]} / ${AXIS_REFERENCE_FRAME_LABELS[moveAxisMagnetReferenceFrame]}`}
+                  </dd>
+                </div>
+                <div className="grid grid-cols-[5rem_1fr] gap-3">
+                  <dt className="text-slate-300/70">Overlay</dt>
+                  <dd>
+                    {OVERLAY_DISPLAY_LABELS[moveOverlayDisplayMode]} /{" "}
+                    {OVERLAY_MODE_LABELS[moveOverlayOrientationMode]}
+                  </dd>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="grid grid-cols-[5rem_1fr] gap-3">
+                  <dt className="text-slate-300/70">Arcball</dt>
+                  <dd>{rotateArcballSensitivity.toFixed(2)}x</dd>
+                </div>
+                <div className="grid grid-cols-[5rem_1fr] gap-3">
+                  <dt className="text-slate-300/70">Radius</dt>
+                  <dd>{rotateUiRadiusPx.toFixed(0)} px</dd>
+                </div>
+                <div className="grid grid-cols-[5rem_1fr] gap-3">
+                  <dt className="text-slate-300/70">Strength</dt>
+                  <dd>{rotateUiOpacity.toFixed(2)}</dd>
+                </div>
+                <div className="grid grid-cols-[5rem_1fr] gap-3">
+                  <dt className="text-slate-300/70">Twist</dt>
+                  <dd>
+                    {rotateWheelRotateStepDeg.toFixed(0)} deg /{" "}
+                    {rotateWheelDirection}
+                  </dd>
+                </div>
+                <div className="grid grid-cols-[5rem_1fr] gap-3">
+                  <dt className="text-slate-300/70">Snap</dt>
+                  <dd>ctrl + shift {rotateAngleSnapStepDeg.toFixed(0)} deg</dd>
+                </div>
+                <div className="grid grid-cols-[5rem_1fr] gap-3">
+                  <dt className="text-slate-300/70">Release</dt>
+                  <dd>{rotateDragReleaseBehavior}</dd>
+                </div>
+                <div className="grid grid-cols-[5rem_1fr] gap-3">
+                  <dt className="text-slate-300/70">Axis</dt>
+                  <dd>{ROTATE_TWIST_AXIS_LABELS[rotateTwistAxis]}</dd>
+                </div>
+              </>
+            )}
+          </dl>
+          <p className="mt-3 text-sm text-slate-200/85">{helperText}</p>
         </div>
-        <div className="grid grid-cols-[5rem_1fr] gap-3">
-          <dt className="text-slate-300/70">State</dt>
-          <dd>{interactionState}</dd>
-        </div>
-        {showFps ? (
-          <div className="grid grid-cols-[5rem_1fr] gap-3">
-            <dt className="text-slate-300/70">FPS</dt>
-            <dd>{fps}</dd>
-          </div>
-        ) : null}
-        {interactionMode === "move" ? (
-          <>
-            <div className="grid grid-cols-[5rem_1fr] gap-3">
-              <dt className="text-slate-300/70">Depth</dt>
-              <dd>
-                {moveDepthWheelStep.toFixed(2)} / {moveDepthWheelDirection}
-              </dd>
-            </div>
-            <div className="grid grid-cols-[5rem_1fr] gap-3">
-              <dt className="text-slate-300/70">Snap</dt>
-              <dd>
-                shift {movePrecisionStep.toFixed(2)} / interval{" "}
-                {moveGridSnapStep.toFixed(2)} (
-                {GRID_SNAP_PATTERN_LABELS[moveGridSnapPattern]})
-              </dd>
-            </div>
-            <div className="grid grid-cols-[5rem_1fr] gap-3">
-              <dt className="text-slate-300/70">Magnet</dt>
-              <dd>
-                {axisMagnetTarget
-                  ? `${axisMagnetTarget.objectId} / ${AXIS_REFERENCE_FRAME_LABELS[moveAxisMagnetReferenceFrame]} ${axisMagnetTarget.axis}${AXIS_DIRECTION_LABELS[axisMagnetTarget.direction]}`
-                  : `none / ${ALWAYS_SNAP_MODE_LABELS[moveAlwaysSnapMode]} / ${AXIS_REFERENCE_FRAME_LABELS[moveAxisMagnetReferenceFrame]}`}
-              </dd>
-            </div>
-            <div className="grid grid-cols-[5rem_1fr] gap-3">
-              <dt className="text-slate-300/70">Overlay</dt>
-              <dd>
-                {OVERLAY_DISPLAY_LABELS[moveOverlayDisplayMode]} /{" "}
-                {OVERLAY_MODE_LABELS[moveOverlayOrientationMode]}
-              </dd>
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="grid grid-cols-[5rem_1fr] gap-3">
-              <dt className="text-slate-300/70">Arcball</dt>
-              <dd>{rotateArcballSensitivity.toFixed(2)}x</dd>
-            </div>
-            <div className="grid grid-cols-[5rem_1fr] gap-3">
-              <dt className="text-slate-300/70">Radius</dt>
-              <dd>{rotateUiRadiusPx.toFixed(0)} px</dd>
-            </div>
-            <div className="grid grid-cols-[5rem_1fr] gap-3">
-              <dt className="text-slate-300/70">Strength</dt>
-              <dd>{rotateUiOpacity.toFixed(2)}</dd>
-            </div>
-            <div className="grid grid-cols-[5rem_1fr] gap-3">
-              <dt className="text-slate-300/70">Twist</dt>
-              <dd>
-                {rotateWheelRotateStepDeg.toFixed(0)} deg /{" "}
-                {rotateWheelDirection}
-              </dd>
-            </div>
-            <div className="grid grid-cols-[5rem_1fr] gap-3">
-              <dt className="text-slate-300/70">Snap</dt>
-              <dd>ctrl + shift {rotateAngleSnapStepDeg.toFixed(0)} deg</dd>
-            </div>
-            <div className="grid grid-cols-[5rem_1fr] gap-3">
-              <dt className="text-slate-300/70">Release</dt>
-              <dd>{rotateDragReleaseBehavior}</dd>
-            </div>
-            <div className="grid grid-cols-[5rem_1fr] gap-3">
-              <dt className="text-slate-300/70">Axis</dt>
-              <dd>{ROTATE_TWIST_AXIS_LABELS[rotateTwistAxis]}</dd>
-            </div>
-          </>
-        )}
-      </dl>
-      <p className="mt-3 text-sm text-slate-200/85">{helperText}</p>
+      ) : null}
     </aside>
   );
 }

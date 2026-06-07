@@ -25,13 +25,13 @@ export function SurfaceSnapToggle() {
     <aside
       aria-label={
         interactionMode === "move"
-          ? "Move UI quick settings"
-          : "Rotate UI quick settings"
+          ? "Move quick settings"
+          : "Rotate quick settings"
       }
-      className="absolute left-3 right-3 top-44 z-30 flex items-center gap-4 overflow-x-auto rounded-2xl border border-white/15 bg-slate-950/72 px-4 py-3 shadow-[0_18px_40px_rgba(3,10,20,0.3)] backdrop-blur-xl md:left-[13rem] md:right-[30rem] md:top-4 md:justify-center"
+      className="absolute left-1/2 top-44 z-30 flex max-w-[calc(100%-1.5rem)] -translate-x-1/2 items-center gap-4 overflow-x-auto rounded-2xl border border-white/15 bg-slate-950/72 px-4 py-3 shadow-[0_18px_40px_rgba(3,10,20,0.3)] backdrop-blur-xl md:left-[calc(50%-8.5rem)] md:top-4"
     >
       <span className="whitespace-nowrap text-[0.62rem] font-bold uppercase tracking-[0.18em] text-sky-100/70">
-        {interactionMode === "move" ? "Move UI" : "Rotate UI"}
+        {interactionMode === "move" ? "Move" : "Rotate"}
       </span>
       {interactionMode === "move" ? (
         <div className="flex items-center gap-4">
