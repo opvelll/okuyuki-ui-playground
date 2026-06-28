@@ -166,7 +166,7 @@ export const createDefaultPersistedUiState = (): PersistedUiState => ({
   sceneBackgroundColor: "#dbe7f3",
   rotateGizmoRingColor: "#7dd3fc",
   rotateGizmoSphereColor: "#7dd3fc",
-  rotateArcballSensitivity: 1,
+  rotateArcballSensitivity: 2,
   rotateDragReleaseBehavior: "keep-selected",
   rotateAngleSnapStepDeg: 15,
   rotateTwistAxis: "+y",
