@@ -171,11 +171,6 @@ export function DynamicSceneObject({
   const [bodyType, setBodyType] = useState<NonNullable<RigidBodyProps["type"]>>(
     dragging || held ? "kinematicPosition" : physicsRigidBodyType,
   );
-  const scaleMultiplier = dragging ? 1.08 : selected ? 1.04 : 1;
-  const scaledSize = scale.map(
-    (value) => value * scaleMultiplier,
-  ) as SceneObject["scale"];
-
   latestTransformRef.current = { quaternion, translation };
 
   useEffect(() => {
@@ -280,7 +275,7 @@ export function DynamicSceneObject({
         restitution={objectRestitution}
         scale={scale}
       />
-      <group scale={scaledSize} onPointerDown={onPointerDown}>
+      <group scale={scale} onPointerDown={onPointerDown}>
         <ShapeMesh
           color={color}
           dragging={dragging}

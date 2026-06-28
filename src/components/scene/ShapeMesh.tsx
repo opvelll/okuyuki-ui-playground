@@ -1,4 +1,6 @@
-import { Outlines } from "@react-three/drei";
+import { Line, Outlines } from "@react-three/drei";
+import { useMemo } from "react";
+import { Vector3 } from "three";
 import { useUiStore } from "../../store/uiStore";
 import type { ShapeKind } from "../../types/scene";
 
@@ -33,6 +35,48 @@ function ShapeGeometry({ kind }: { kind: ShapeKind }) {
   return <capsuleGeometry args={[0.3, 0.75, 10, 20]} />;
 }
 
+function TorusSelectionRings({ color }: { color: string }) {
+  const { innerRingPoints, outerRingPoints } = useMemo(() => {
+    const segmentCount = 96;
+    const createRingPoints = (radius: number) =>
+      Array.from({ length: segmentCount + 1 }, (_, index) => {
+        const angle = (index / segmentCount) * Math.PI * 2;
+
+        return new Vector3(
+          Math.cos(angle) * radius,
+          Math.sin(angle) * radius,
+          0,
+        );
+      });
+
+    return {
+      innerRingPoints: createRingPoints(0.32),
+      outerRingPoints: createRingPoints(0.68),
+    };
+  }, []);
+
+  return (
+    <>
+      <Line
+        color={color}
+        depthTest={false}
+        lineWidth={2}
+        points={outerRingPoints}
+        renderOrder={11}
+        toneMapped={false}
+      />
+      <Line
+        color={color}
+        depthTest={false}
+        lineWidth={2}
+        points={innerRingPoints}
+        renderOrder={11}
+        toneMapped={false}
+      />
+    </>
+  );
+}
+
 export function ShapeMesh({
   color,
   dragging = false,
@@ -56,7 +100,10 @@ export function ShapeMesh({
         metalness={selected ? 0.24 : 0.2}
         roughness={dragging ? 0.26 : 0.38}
       />
-      {selected ? (
+      {selected && kind === "torus" ? (
+        <TorusSelectionRings color={generalSelectionOutlineColor} />
+      ) : null}
+      {selected && kind !== "torus" ? (
         <Outlines
           angle={Math.PI}
           color={generalSelectionOutlineColor}

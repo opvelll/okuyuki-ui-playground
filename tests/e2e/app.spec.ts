@@ -12,6 +12,11 @@ async function expandHud(page: Parameters<typeof test>[0]["page"]) {
   await page.getByRole("button", { name: /Expand HUD/i }).click();
 }
 
+async function selectAmberBox(page: Parameters<typeof test>[0]["page"]) {
+  await page.waitForFunction(() => window.__OKUYUKI_E2E__);
+  await page.evaluate(() => window.__OKUYUKI_E2E__?.selectObject("amber-box"));
+}
+
 test("shows the 3d prototype screen", async ({ page }) => {
   await page.goto("/");
 
@@ -24,6 +29,28 @@ test("shows the 3d prototype screen", async ({ page }) => {
   await expect(
     page.getByRole("button", { name: /Expand settings/i }),
   ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /Switch to Move tool/i }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: /Switch to Rotate tool/i }),
+  ).toHaveCount(0);
+  await expect(page.getByLabel(/面に吸着/i)).toHaveCount(0);
+  await expect(page.getByLabel(/軸に吸着/i)).toHaveCount(0);
+  await expect(page.getByLabel(/一定間隔に吸着/i)).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /Expand HUD/i })).toBeVisible();
+  await expect(page.getByText("FPS", { exact: true })).toHaveCount(0);
+
+  await selectAmberBox(page);
+  await expect(
+    page.getByRole("button", { name: /Move selected object/i }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /Rotate selected object/i }),
+  ).toBeVisible();
+  await expect(page.getByLabel(/面に吸着/i)).toHaveCount(0);
+
+  await page.getByRole("button", { name: /Move selected object/i }).click();
   const surfaceSnapToggle = page.getByLabel(/面に吸着/i);
   const axisSnapToggle = page.getByLabel(/軸に吸着/i);
   const intervalSnapToggle = page.getByLabel(/一定間隔に吸着/i);
@@ -38,19 +65,11 @@ test("shows the 3d prototype screen", async ({ page }) => {
   await intervalSnapToggle.check();
   await expect(axisSnapToggle).not.toBeChecked();
   await expect(intervalSnapToggle).toBeChecked();
-  await expect(
-    page.getByRole("button", { name: /Switch to Move tool/i }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: /Switch to Rotate tool/i }),
-  ).toBeVisible();
-  await expect(page.getByRole("button", { name: /Expand HUD/i })).toBeVisible();
-  await expect(page.getByText("FPS", { exact: true })).toHaveCount(0);
 
   await expandHud(page);
   await expect(
     page.getByText(
-      /Physics enabled: select an object to pause simulation and show move or rotate actions/i,
+      /Move mode: drag the center point to move on the screen plane/i,
     ),
   ).toBeVisible();
   await expect(page.getByText("FPS", { exact: true })).toBeVisible();
@@ -91,7 +110,7 @@ test("collapses the settings window", async ({ page }) => {
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: /Switch to Move tool/i }),
-  ).toBeVisible();
+  ).toHaveCount(0);
   await expect(page.getByRole("button", { name: /全体/i })).toHaveCount(0);
 });
 
@@ -109,14 +128,17 @@ test("switches to physics settings", async ({ page }) => {
 test("switches tool mode and opens rotate settings", async ({ page }) => {
   await page.goto("/");
 
-  await page.getByRole("button", { name: /Switch to Rotate tool/i }).click();
+  await selectAmberBox(page);
+  await expect(
+    page.getByRole("button", { name: /Rotate selected object/i }),
+  ).toBeVisible();
+  await expect(page.getByLabel(/ドラッグ感度/i)).toHaveCount(0);
+  await page.getByRole("button", { name: /Rotate selected object/i }).click();
 
   await expect(page.getByText(/Object Rotate/i)).toBeVisible();
   await expandHud(page);
   await expect(
-    page.getByText(
-      /Physics enabled: select an object to pause simulation and show move or rotate actions/i,
-    ),
+    page.getByText(/Rotate mode: drag the sphere gizmo to rotate/i),
   ).toBeVisible();
   await expect(page.getByLabel(/面に吸着/i)).toHaveCount(0);
   const rotateQuickSettings = page.getByLabel("Rotate quick settings");

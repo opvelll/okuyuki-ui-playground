@@ -5,12 +5,6 @@ import type { SceneObject, Vector3Tuple } from "../../types/scene";
 const hudButtonClasses =
   "inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/18 bg-slate-950/74 text-slate-100 shadow-[0_10px_26px_rgba(3,10,20,0.28)] transition hover:bg-sky-300/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200";
 
-const getHudPosition = (sceneObject: SceneObject): Vector3Tuple => [
-  sceneObject.position[0],
-  sceneObject.position[1] + sceneObject.scale[1] * 0.72 + 0.55,
-  sceneObject.position[2],
-];
-
 export function TransformActionHud({
   onMoveClick,
   onRotateClick,
@@ -31,7 +25,7 @@ export function TransformActionHud({
       center
       distanceFactor={9}
       occlude={false}
-      position={getHudPosition(selectedObject)}
+      position={selectedObject.position as Vector3Tuple}
       zIndexRange={[60, 40]}
     >
       <div

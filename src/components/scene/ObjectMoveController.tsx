@@ -124,6 +124,9 @@ export function ObjectMoveController({
     }
 
     event.stopPropagation();
+    if (controlsRef.current) {
+      controlsRef.current.enabled = false;
+    }
     selectObject(sceneObject.id);
   };
   const handleMoveHandlePointerDown = (

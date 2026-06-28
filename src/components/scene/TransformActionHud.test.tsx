@@ -5,8 +5,16 @@ import type { SceneObject } from "../../types/scene";
 import { TransformActionHud } from "./TransformActionHud";
 
 vi.mock("@react-three/drei", () => ({
-  Html: ({ children }: { children: ReactNode }) => (
-    <div data-testid="html-hud">{children}</div>
+  Html: ({
+    children,
+    position,
+  }: {
+    children: ReactNode;
+    position?: unknown;
+  }) => (
+    <div data-position={JSON.stringify(position)} data-testid="html-hud">
+      {children}
+    </div>
   ),
 }));
 
@@ -41,6 +49,10 @@ describe("TransformActionHud", () => {
     expect(
       screen.getByRole("button", { name: /Rotate selected object/i }),
     ).toBeInTheDocument();
+    expect(screen.getByTestId("html-hud")).toHaveAttribute(
+      "data-position",
+      JSON.stringify(selectedObject.position),
+    );
   });
 
   it("calls the requested transform action", () => {

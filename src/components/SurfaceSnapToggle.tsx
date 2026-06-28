@@ -6,6 +6,7 @@ const optionClasses =
 
 export function SurfaceSnapToggle() {
   const interactionMode = useUiStore((state) => state.interactionMode);
+  const transformStage = useUiStore((state) => state.transformStage);
   const moveAlwaysSnapMode = useUiStore((state) => state.moveAlwaysSnapMode);
   const rotateArcballSensitivity = useUiStore(
     (state) => state.rotateArcballSensitivity,
@@ -20,6 +21,10 @@ export function SurfaceSnapToggle() {
   const setSurfaceSnapEnabled = useUiStore(
     (state) => state.setSurfaceSnapEnabled,
   );
+
+  if (transformStage !== "move" && transformStage !== "rotate") {
+    return null;
+  }
 
   return (
     <aside

@@ -20,6 +20,7 @@ export function PrototypeScene() {
   const clearSelection = useUiStore((state) => state.clearSelection);
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
   const effectivePhysicsEnabled = physicsEnabled && !selectedObjectId;
+  const cameraControlsEnabled = selectedObjectId === null;
   const sceneShellBackground = useMemo(() => {
     const base = new Color(sceneBackgroundColor);
     const topGlow = base.clone().lerp(new Color("#ffffff"), 0.42);
@@ -77,6 +78,7 @@ export function PrototypeScene() {
           ref={controlsRef}
           enableDamping={false}
           enablePan
+          enabled={cameraControlsEnabled}
           maxPolarAngle={Math.PI / 2.1}
           mouseButtons={{
             LEFT: MOUSE.ROTATE,

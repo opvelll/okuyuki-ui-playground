@@ -15,7 +15,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "e2e:install": "cross-env PLAYWRIGHT_BROWSERS_PATH=0 playwright install chromium",
-    "e2e": "pnpm run build && cross-env PLAYWRIGHT_BROWSERS_PATH=0 playwright test",
+    "e2e": "cross-env VITE_E2E=true pnpm run build && cross-env PLAYWRIGHT_BROWSERS_PATH=0 playwright test",
     "e2e:ui": "cross-env PLAYWRIGHT_BROWSERS_PATH=0 playwright test --ui",
     "check": "pnpm run lint && pnpm run test && pnpm run build"
   },

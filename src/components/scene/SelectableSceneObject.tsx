@@ -18,16 +18,11 @@ export function SelectableSceneObject({
   sceneObject,
   selected,
 }: SelectableSceneObjectProps) {
-  const scaleMultiplier = dragging ? 1.08 : selected ? 1.04 : 1;
-  const scaledSize = sceneObject.scale.map(
-    (value) => value * scaleMultiplier,
-  ) as SceneObject["scale"];
-
   return (
     <group
       position={sceneObject.position}
       rotation={sceneObject.rotation}
-      scale={scaledSize}
+      scale={sceneObject.scale}
       onPointerDown={(event) => onPointerDown(event, sceneObject)}
     >
       <ShapeMesh

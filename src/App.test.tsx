@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -76,11 +76,10 @@ describe("App", () => {
     expect(
       screen.getByRole("button", { name: /Expand settings/i }),
     ).toBeInTheDocument();
-    expect(screen.getByLabelText(/面に吸着/i)).not.toBeChecked();
-    expect(screen.getAllByRole("button", { name: /Move/i })).toHaveLength(1);
     expect(
-      screen.getByRole("button", { name: /Switch to Rotate tool/i }),
-    ).toBeInTheDocument();
+      screen.queryByRole("button", { name: /Switch to Rotate tool/i }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/面に吸着/i)).not.toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /Expand HUD/i }),
     ).toBeInTheDocument();
@@ -101,7 +100,7 @@ describe("App", () => {
 
     await expandSettings(user);
 
-    expect(screen.getAllByRole("button", { name: /Move/i })).toHaveLength(2);
+    expect(screen.getAllByRole("button", { name: /Move/i })).toHaveLength(1);
     expect(screen.getByLabelText(/Physics/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Show FPS \/ FPS表示/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /全体/i })).toHaveAttribute(
@@ -130,7 +129,14 @@ describe("App", () => {
   it("persists the surface snap toggle", async () => {
     const user = userEvent.setup();
     const App = await loadApp();
+    const { useUiStore: appUiStore } = await import("./store/uiStore");
 
+    appUiStore.setState({
+      interactionMode: "move",
+      interactionState: "active",
+      selectedObjectId: "amber-box",
+      transformStage: "move",
+    });
     render(<App />);
 
     await user.click(screen.getByLabelText(/面に吸着/i));
@@ -151,7 +157,7 @@ describe("App", () => {
     expect(
       screen.getByText(/Preparing the 3D prototype scene/i),
     ).toBeInTheDocument();
-    expect(screen.getByLabelText(/面に吸着/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/面に吸着/i)).not.toBeInTheDocument();
   });
 
   it("collapses the settings window while the scene is loading", async () => {
@@ -233,29 +239,47 @@ describe("App", () => {
     expect(screen.getByLabelText(/Fog Color/i)).toBeInTheDocument();
   });
 
-  it("switches the active tool mode from the left toolbar", async () => {
+  it("shows move quick settings only after move mode begins", async () => {
     const user = userEvent.setup();
     const App = await loadApp();
+    const { useUiStore: appUiStore } = await import("./store/uiStore");
 
     render(<App />);
 
     await expandHud(user);
-    await expandSettings(user);
-    await user.click(
-      screen.getByRole("button", { name: /Switch to Rotate tool/i }),
-    );
-
-    expect(screen.getByText(/Object Rotate/i)).toBeInTheDocument();
     expect(
       screen.getByText(
         /Physics enabled: select an object to pause simulation and show move or rotate actions/i,
       ),
     ).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: /Rotate/i })).toHaveLength(2);
-    expect(
-      screen.getByRole("button", { name: /Switch to Rotate tool/i }),
-    ).toHaveAttribute("aria-pressed", "true");
     expect(screen.queryByLabelText(/面に吸着/i)).not.toBeInTheDocument();
+
+    act(() => {
+      appUiStore.setState({
+        interactionMode: "move",
+        interactionState: "active",
+        selectedObjectId: "amber-box",
+        transformStage: "selection",
+      });
+    });
+
+    expect(
+      screen.getByText(
+        /Selection mode: choose Move or Rotate from the object action icons/i,
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText(/面に吸着/i)).not.toBeInTheDocument();
+
+    act(() => {
+      appUiStore.getState().beginMoveMode();
+    });
+
+    expect(screen.getByLabelText(/面に吸着/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /Move mode: drag the center point to move on the screen plane/i,
+      ),
+    ).toBeInTheDocument();
   });
 
   it("switches the interaction mode with m and r hotkeys", async () => {
@@ -267,18 +291,13 @@ describe("App", () => {
     await user.keyboard("r");
 
     expect(screen.getByText(/Object Rotate/i)).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /Switch to Rotate tool/i }),
-    ).toHaveAttribute("aria-pressed", "true");
+    expect(screen.queryByLabelText(/ドラッグ感度/i)).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/面に吸着/i)).not.toBeInTheDocument();
 
     await user.keyboard("m");
 
     expect(screen.getByText(/Object Move/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/面に吸着/i)).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /Switch to Move tool/i }),
-    ).toHaveAttribute("aria-pressed", "true");
+    expect(screen.queryByLabelText(/面に吸着/i)).not.toBeInTheDocument();
   });
 
   it("shows rotate settings when the section is selected", async () => {
@@ -288,7 +307,9 @@ describe("App", () => {
     render(<App />);
 
     await expandSettings(user);
-    await user.click(screen.getAllByRole("button", { name: /Rotate/i })[1]);
+    await user.click(
+      screen.getByRole("button", { name: /Rotate arcball rotate/i }),
+    );
 
     expect(screen.getByLabelText(/Gizmo Sphere Color/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Gizmo Ring Color/i)).toBeInTheDocument();
@@ -312,7 +333,9 @@ describe("App", () => {
     render(<App />);
 
     await expandSettings(user);
-    await user.click(screen.getAllByRole("button", { name: /Rotate/i })[1]);
+    await user.click(
+      screen.getByRole("button", { name: /Rotate arcball rotate/i }),
+    );
     await user.selectOptions(
       screen.getByLabelText(/Drag Release Behavior \/ ドラッグ後の選択/i),
       "clear-selection",
@@ -333,7 +356,9 @@ describe("App", () => {
     render(<App />);
 
     await expandSettings(user);
-    await user.click(screen.getAllByRole("button", { name: /Rotate/i })[1]);
+    await user.click(
+      screen.getByRole("button", { name: /Rotate arcball rotate/i }),
+    );
     await user.clear(screen.getByLabelText(/Angle Snap Step/i));
     await user.type(screen.getByLabelText(/Angle Snap Step/i), "30");
 
@@ -350,7 +375,9 @@ describe("App", () => {
     render(<App />);
 
     await expandSettings(user);
-    await user.click(screen.getAllByRole("button", { name: /Move/i })[1]);
+    await user.click(
+      screen.getByRole("button", { name: /Move screen-depth drag/i }),
+    );
 
     expect(
       screen.getByLabelText(/Vertical Drop Guide \/ 落下ガイド線/i),
@@ -373,7 +400,9 @@ describe("App", () => {
     render(<App />);
 
     await expandSettings(user);
-    await user.click(screen.getAllByRole("button", { name: /Move/i })[1]);
+    await user.click(
+      screen.getByRole("button", { name: /Move screen-depth drag/i }),
+    );
     await user.selectOptions(
       screen.getByLabelText(/Always Snap \/ 常時スナップ/i),
       "grid",
@@ -402,7 +431,9 @@ describe("App", () => {
     render(<App />);
 
     await expandSettings(user);
-    await user.click(screen.getAllByRole("button", { name: /Move/i })[1]);
+    await user.click(
+      screen.getByRole("button", { name: /Move screen-depth drag/i }),
+    );
     await user.selectOptions(
       screen.getByLabelText(/Always Snap \/ 常時スナップ/i),
       "axis-magnet",
@@ -416,7 +447,14 @@ describe("App", () => {
   it("switches move snap modes from the quick settings", async () => {
     const user = userEvent.setup();
     const App = await loadApp();
+    const { useUiStore: appUiStore } = await import("./store/uiStore");
 
+    appUiStore.setState({
+      interactionMode: "move",
+      interactionState: "active",
+      selectedObjectId: "amber-box",
+      transformStage: "move",
+    });
     render(<App />);
 
     const axisSnap = screen.getByLabelText(/軸に吸着/i);
@@ -432,17 +470,19 @@ describe("App", () => {
   });
 
   it("shows rotate drag sensitivity in the quick settings", async () => {
-    const user = userEvent.setup();
     const App = await loadApp();
+    const { useUiStore: appUiStore } = await import("./store/uiStore");
 
+    appUiStore.setState({
+      interactionMode: "rotate",
+      interactionState: "active",
+      selectedObjectId: "amber-box",
+      transformStage: "rotate",
+    });
     render(<App />);
 
-    await user.click(
-      screen.getByRole("button", { name: /Switch to Rotate tool/i }),
-    );
-
     const sensitivity = screen.getByLabelText(/ドラッグ感度/i);
-    expect(sensitivity).toHaveValue("1");
+    expect(sensitivity).toHaveValue("2");
 
     fireEvent.change(sensitivity, { target: { value: "1.5" } });
 
@@ -457,7 +497,9 @@ describe("App", () => {
     render(<App />);
 
     await expandSettings(user);
-    await user.click(screen.getAllByRole("button", { name: /Move/i })[1]);
+    await user.click(
+      screen.getByRole("button", { name: /Move screen-depth drag/i }),
+    );
 
     expect(
       screen.getByLabelText(/Magnet Axis Space \/ 軸吸着の基準/i),
