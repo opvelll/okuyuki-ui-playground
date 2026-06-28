@@ -42,6 +42,7 @@ export function SceneStatusHud() {
   const axisMagnetTarget = useUiStore((state) => state.axisMagnetTarget);
   const interactionMode = useUiStore((state) => state.interactionMode);
   const interactionState = useUiStore((state) => state.interactionState);
+  const transformStage = useUiStore((state) => state.transformStage);
   const moveDepthWheelDirection = useUiStore(
     (state) => state.moveDepthWheelDirection,
   );
@@ -82,17 +83,15 @@ export function SceneStatusHud() {
   const showFps = useUiStore((state) => state.showFps);
 
   const helperText =
-    interactionMode === "move"
-      ? physicsEnabled
-        ? selectedObjectId
-          ? "Physics enabled: drag to move on the screen plane and use the wheel for depth. Released objects rejoin the simulation."
-          : "Physics enabled: select an object to start screen-depth-drag editing."
-        : selectedObjectId
-          ? "Drag to move on screen plane. Wheel changes camera depth. Shift reduces wheel depth step, Ctrl magnetizes one axis to another object, and Shift + Ctrl applies interval snap. Move settings can keep either axis or interval snapping always on."
-          : "Select an object to start screen-depth-drag editing."
-      : selectedObjectId
-        ? "Rotate mode: drag the sphere gizmo for arcball rotation, hold Ctrl to snap the arc to an XYZ ring, hold Ctrl + Shift for fixed-angle snap, and use the wheel for twist. Selection is cleared by clicking empty space, pressing Escape, or switching to Move."
-        : "Rotate mode: select an object to show the sphere gizmo.";
+    transformStage === "selection"
+      ? "Selection mode: choose Move or Rotate from the object action icons."
+      : transformStage === "move"
+        ? "Move mode: drag the center point to move on the screen plane. Release to finish and clear selection."
+        : transformStage === "rotate"
+          ? "Rotate mode: drag the sphere gizmo to rotate. Release to finish and clear selection."
+          : physicsEnabled
+            ? "Physics enabled: select an object to pause simulation and show move or rotate actions."
+            : "Select an object to show move or rotate actions.";
 
   useEffect(() => {
     let animationFrameId = 0;
@@ -144,7 +143,9 @@ export function SceneStatusHud() {
             </div>
             <div className="grid grid-cols-[5rem_1fr] gap-3">
               <dt className="text-slate-300/70">State</dt>
-              <dd>{interactionState}</dd>
+              <dd>
+                {transformStage} / {interactionState}
+              </dd>
             </div>
             {showFps ? (
               <div className="grid grid-cols-[5rem_1fr] gap-3">

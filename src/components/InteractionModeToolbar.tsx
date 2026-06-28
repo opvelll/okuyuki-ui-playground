@@ -1,4 +1,5 @@
-import type { ReactNode } from "react";
+import { Move3d, Rotate3d } from "lucide-react";
+import type { ComponentType } from "react";
 import { type InteractionMode, useUiStore } from "../store/uiStore";
 
 const toolButtons = [
@@ -18,43 +19,12 @@ const toolButtons = [
   mode: InteractionMode;
 }>;
 
-function MoveIcon() {
-  return (
-    <svg aria-hidden="true" className="h-4 w-4" fill="none" viewBox="0 0 24 24">
-      <path
-        d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.8"
-      />
-    </svg>
-  );
-}
-
-function RotateIcon() {
-  return (
-    <svg aria-hidden="true" className="h-4 w-4" fill="none" viewBox="0 0 24 24">
-      <path
-        d="M8.5 6.5A7 7 0 1 1 5 12"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeWidth="1.8"
-      />
-      <path
-        d="M5 7v5h5"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.8"
-      />
-    </svg>
-  );
-}
-
-const modeIcons: Record<InteractionMode, () => ReactNode> = {
-  move: MoveIcon,
-  rotate: RotateIcon,
+const modeIcons: Record<
+  InteractionMode,
+  ComponentType<{ "aria-hidden"?: boolean; className?: string }>
+> = {
+  move: Move3d,
+  rotate: Rotate3d,
 };
 
 export function InteractionModeToolbar() {
@@ -89,7 +59,7 @@ export function InteractionModeToolbar() {
               type="button"
             >
               <span className="inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-white/6 text-sky-200">
-                <Icon />
+                <Icon aria-hidden={true} className="h-4 w-4" />
               </span>
               <span className="min-w-0">
                 <span className="block text-sm font-semibold">

@@ -50,7 +50,7 @@ test("shows the 3d prototype screen", async ({ page }) => {
   await expandHud(page);
   await expect(
     page.getByText(
-      /Physics enabled: select an object to start screen-depth-drag editing/i,
+      /Physics enabled: select an object to pause simulation and show move or rotate actions/i,
     ),
   ).toBeVisible();
   await expect(page.getByText("FPS", { exact: true })).toBeVisible();
@@ -113,7 +113,11 @@ test("switches tool mode and opens rotate settings", async ({ page }) => {
 
   await expect(page.getByText(/Object Rotate/i)).toBeVisible();
   await expandHud(page);
-  await expect(page.getByText(/Rotate mode:/i)).toBeVisible();
+  await expect(
+    page.getByText(
+      /Physics enabled: select an object to pause simulation and show move or rotate actions/i,
+    ),
+  ).toBeVisible();
   await expect(page.getByLabel(/面に吸着/i)).toHaveCount(0);
   const rotateQuickSettings = page.getByLabel("Rotate quick settings");
   const quickSensitivity = rotateQuickSettings.getByLabel(/ドラッグ感度/i);

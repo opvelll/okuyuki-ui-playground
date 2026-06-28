@@ -57,6 +57,13 @@ type DragModifierState = {
   shiftKey: boolean;
 };
 
+type MoveStartPointer = {
+  button: number;
+  clientX: number;
+  clientY: number;
+  pointerId: number;
+};
+
 type OverlayShortcutState = {
   displayMode: MoveOverlayDisplayMode;
   orientationMode: (typeof OVERLAY_ORIENTATION_SHORTCUTS)[keyof typeof OVERLAY_ORIENTATION_SHORTCUTS];
@@ -146,7 +153,6 @@ export function useObjectDragSession({
   const setMoveOverlayOrientationMode = useUiStore(
     (state) => state.setMoveOverlayOrientationMode,
   );
-  const selectObject = useUiStore((state) => state.selectObject);
   const dragSessionRef = useRef<DragSession | null>(null);
   const overlayShortcutKeysRef = useRef<
     Set<keyof typeof OVERLAY_ORIENTATION_SHORTCUTS>
@@ -347,14 +353,11 @@ export function useObjectDragSession({
     ],
   );
 
-  const handlePointerDown = useCallback(
-    (event: ThreeEvent<PointerEvent>, sceneObject: SceneObject) => {
-      if (interactionMode !== "move" || event.button !== 0) {
+  const startMoveDrag = useCallback(
+    (pointer: MoveStartPointer, sceneObject: SceneObject) => {
+      if (pointer.button !== 0) {
         return;
       }
-
-      event.stopPropagation();
-      selectObject(sceneObject.id);
 
       const planeNormal = camera.getWorldDirection(new Vector3()).normalize();
       const objectPosition = vectorFromTuple(sceneObject.position);
@@ -363,8 +366,8 @@ export function useObjectDragSession({
         objectPosition,
       );
       const intersection = projectClientPointToPlane(
-        event.nativeEvent.clientX,
-        event.nativeEvent.clientY,
+        pointer.clientX,
+        pointer.clientY,
         plane,
       );
 
@@ -377,13 +380,13 @@ export function useObjectDragSession({
       dragSessionRef.current = {
         axisMagnetTarget: null,
         currentPoint: objectPosition.clone(),
-        lastClientX: event.nativeEvent.clientX,
-        lastClientY: event.nativeEvent.clientY,
+        lastClientX: pointer.clientX,
+        lastClientY: pointer.clientY,
         lastSurfaceNormal: null,
         objectId: sceneObject.id,
         plane,
         planeNormal,
-        pointerId: event.pointerId,
+        pointerId: pointer.pointerId,
         pointerOffset: pointerOffset.clone(),
         startPoint: vectorFromTuple(sceneObject.position),
         surfaceDepthOffset: new Vector3(),
@@ -396,13 +399,31 @@ export function useObjectDragSession({
     },
     [
       camera,
-      interactionMode,
       projectClientPointToPlane,
-      selectObject,
       setControlsEnabled,
       setInteractionState,
       syncOverlayState,
     ],
+  );
+
+  const handlePointerDown = useCallback(
+    (event: ThreeEvent<PointerEvent>, sceneObject: SceneObject) => {
+      if (interactionMode !== "move" || event.button !== 0) {
+        return;
+      }
+
+      event.stopPropagation();
+      startMoveDrag(
+        {
+          button: event.button,
+          clientX: event.nativeEvent.clientX,
+          clientY: event.nativeEvent.clientY,
+          pointerId: event.pointerId,
+        },
+        sceneObject,
+      );
+    },
+    [interactionMode, startMoveDrag],
   );
 
   useEffect(() => {
@@ -628,5 +649,6 @@ export function useObjectDragSession({
   return {
     handlePointerDown,
     overlayState,
+    startMoveDrag,
   };
 }

@@ -230,13 +230,11 @@ export function ObjectRotateController({
   const gl = useThree((state) => state.gl);
   const selectedObjectId = useUiStore((state) => state.selectedObjectId);
   const interactionState = useUiStore((state) => state.interactionState);
+  const transformStage = useUiStore((state) => state.transformStage);
   const rotateUiOpacity = useUiStore((state) => state.rotateUiOpacity);
   const rotateUiRadiusPx = useUiStore((state) => state.rotateUiRadiusPx);
   const rotateArcballSensitivity = useUiStore(
     (state) => state.rotateArcballSensitivity,
-  );
-  const rotateDragReleaseBehavior = useUiStore(
-    (state) => state.rotateDragReleaseBehavior,
   );
   const rotateAngleSnapStepDeg = useUiStore(
     (state) => state.rotateAngleSnapStepDeg,
@@ -430,25 +428,14 @@ export function ObjectRotateController({
       // ignore pointer-capture races during teardown
     }
     setControlsEnabled(true);
-    if (rotateDragReleaseBehavior === "clear-selection") {
-      clearSelection();
-      return;
-    }
-
-    setInteractionState(selectedObjectId ? "active" : "idle");
-  }, [
-    clearSelection,
-    gl,
-    rotateDragReleaseBehavior,
-    selectedObjectId,
-    setControlsEnabled,
-    setInteractionState,
-  ]);
+    clearSelection();
+  }, [clearSelection, gl, setControlsEnabled]);
 
   const handleGizmoPointerDown = useCallback(
     (event: ThreeEvent<PointerEvent>) => {
       if (
         interactionMode !== "rotate" ||
+        transformStage !== "rotate" ||
         event.button !== 0 ||
         !selectedObject ||
         !pivot
@@ -496,13 +483,18 @@ export function ObjectRotateController({
       selectedObject,
       setControlsEnabled,
       setInteractionState,
+      transformStage,
     ],
   );
 
   const handleWheelTwist = useCallback(
     (event: WheelEvent) => {
       const currentObjectId = selectedObjectId;
-      if (interactionMode !== "rotate" || !currentObjectId) {
+      if (
+        interactionMode !== "rotate" ||
+        transformStage !== "rotate" ||
+        !currentObjectId
+      ) {
         return;
       }
 
@@ -577,6 +569,7 @@ export function ObjectRotateController({
       interactionMode,
       rotateAngleSnapStepDeg,
       selectedObjectId,
+      transformStage,
       updateObjectRotation,
     ],
   );
@@ -686,12 +679,15 @@ export function ObjectRotateController({
   );
 
   useEffect(() => {
-    if (interactionMode === "rotate" || !rotateSessionRef.current) {
+    if (
+      (interactionMode === "rotate" && transformStage === "rotate") ||
+      !rotateSessionRef.current
+    ) {
       return;
     }
 
     finishDrag();
-  }, [finishDrag, interactionMode]);
+  }, [finishDrag, interactionMode, transformStage]);
 
   const arcPoints = useMemo(() => {
     const rotateSession = rotateSessionRef.current;
@@ -792,7 +788,7 @@ export function ObjectRotateController({
     return points;
   }, [camera, interactionState, pivot, radiusWorld]);
 
-  if (interactionMode !== "rotate") {
+  if (interactionMode !== "rotate" || transformStage !== "rotate") {
     return null;
   }
 

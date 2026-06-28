@@ -11,14 +11,15 @@ import { SceneContents } from "./scene/SceneContents";
 
 export function PrototypeScene() {
   const interactionState = useUiStore((state) => state.interactionState);
-  const interactionMode = useUiStore((state) => state.interactionMode);
   const fogColor = useUiStore((state) => state.fogColor);
   const physicsEnabled = useUiStore((state) => state.physicsEnabled);
+  const selectedObjectId = useUiStore((state) => state.selectedObjectId);
   const sceneBackgroundColor = useUiStore(
     (state) => state.sceneBackgroundColor,
   );
   const clearSelection = useUiStore((state) => state.clearSelection);
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
+  const effectivePhysicsEnabled = physicsEnabled && !selectedObjectId;
   const sceneShellBackground = useMemo(() => {
     const base = new Color(sceneBackgroundColor);
     const topGlow = base.clone().lerp(new Color("#ffffff"), 0.42);
@@ -41,9 +42,7 @@ export function PrototypeScene() {
         dpr={[1, 1.8]}
         onPointerMissed={() => {
           if (useUiStore.getState().interactionState !== "dragging") {
-            if (interactionMode === "rotate") {
-              clearSelection();
-            }
+            clearSelection();
           }
         }}
         shadows
@@ -60,10 +59,10 @@ export function PrototypeScene() {
         />
         <FloorVisual position={[0, 0, 0]} />
         <GuideSurface />
-        <SceneContents physicsEnabled={physicsEnabled}>
+        <SceneContents physicsEnabled={effectivePhysicsEnabled}>
           <ObjectMoveController
             controlsRef={controlsRef}
-            physicsEnabled={physicsEnabled}
+            physicsEnabled={effectivePhysicsEnabled}
           />
         </SceneContents>
         <ContactShadows

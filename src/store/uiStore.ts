@@ -4,6 +4,7 @@ import { createJSONStorage, persist } from "zustand/middleware";
 export type MoveDepthWheelDirection = "normal" | "inverted";
 export type InteractionState = "idle" | "active" | "dragging";
 export type InteractionMode = "move" | "rotate";
+export type TransformStage = "idle" | "selection" | "move" | "rotate";
 export type MoveAlwaysSnapMode = "off" | "axis-magnet" | "grid";
 export type MoveAxisMagnetReferenceFrame = "local" | "world";
 export type MoveGridSnapPattern = "xyz" | "xz";
@@ -78,6 +79,9 @@ type UiState = PersistedUiState & {
   axisMagnetTarget: AxisMagnetTarget | null;
   interactionState: InteractionState;
   selectedObjectId: string | null;
+  transformStage: TransformStage;
+  beginMoveMode: () => void;
+  beginRotateMode: () => void;
   completeMoveDrag: () => void;
   clearSelection: () => void;
   selectObject: (objectId: string) => void;
@@ -181,6 +185,8 @@ export const createDefaultPersistedUiState = (): PersistedUiState => ({
 const createInitialUiState = (): Omit<
   UiState,
   | "completeMoveDrag"
+  | "beginMoveMode"
+  | "beginRotateMode"
   | "clearSelection"
   | "selectObject"
   | "setAxisMagnetTarget"
@@ -233,29 +239,47 @@ const createInitialUiState = (): Omit<
   axisMagnetTarget: null,
   interactionState: "idle",
   selectedObjectId: null,
+  transformStage: "idle",
 });
 
 export const useUiStore = create<UiState>()(
   persist(
     (set) => ({
       ...createInitialUiState(),
+      beginMoveMode: () =>
+        set((state) => ({
+          axisMagnetTarget: null,
+          interactionMode: "move",
+          interactionState: state.selectedObjectId ? "active" : "idle",
+          transformStage: state.selectedObjectId ? "move" : "idle",
+        })),
+      beginRotateMode: () =>
+        set((state) => ({
+          axisMagnetTarget: null,
+          interactionMode: "rotate",
+          interactionState: state.selectedObjectId ? "active" : "idle",
+          transformStage: state.selectedObjectId ? "rotate" : "idle",
+        })),
       completeMoveDrag: () =>
         set({
           axisMagnetTarget: null,
           interactionState: "idle",
           selectedObjectId: null,
+          transformStage: "idle",
         }),
       clearSelection: () =>
         set({
           axisMagnetTarget: null,
           interactionState: "idle",
           selectedObjectId: null,
+          transformStage: "idle",
         }),
       selectObject: (objectId) =>
         set({
           axisMagnetTarget: null,
           interactionState: "active",
           selectedObjectId: objectId,
+          transformStage: "selection",
         }),
       setAxisMagnetTarget: (target) => set({ axisMagnetTarget: target }),
       setFloorFriction: (value) => set({ floorFriction: value }),
@@ -293,6 +317,7 @@ export const useUiStore = create<UiState>()(
           interactionState: "idle",
           physicsEnabled: enabled,
           selectedObjectId: null,
+          transformStage: "idle",
         }),
       setPhysicsRigidBodyType: (value) => set({ physicsRigidBodyType: value }),
       setFogColor: (value) => set({ fogColor: value }),
@@ -311,15 +336,11 @@ export const useUiStore = create<UiState>()(
             axisMagnetTarget: null,
             interactionMode: mode,
             interactionState:
-              state.interactionMode === "rotate" && mode === "move"
-                ? "idle"
-                : state.selectedObjectId
-                  ? "active"
-                  : "idle",
-            selectedObjectId:
-              state.interactionMode === "rotate" && mode === "move"
-                ? null
-                : state.selectedObjectId,
+              state.transformStage === "idle" && state.selectedObjectId
+                ? "active"
+                : state.interactionState,
+            selectedObjectId: state.selectedObjectId,
+            transformStage: state.transformStage,
           };
         }),
       setRotateGizmoRingColor: (value) => set({ rotateGizmoRingColor: value }),

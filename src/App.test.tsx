@@ -25,6 +25,7 @@ vi.mock("@react-three/rapier", () => ({
 
 vi.mock("@react-three/drei", () => ({
   ContactShadows: () => null,
+  Html: ({ children }: { children: ReactNode }) => <>{children}</>,
   OrbitControls: () => null,
 }));
 
@@ -56,6 +57,7 @@ describe("App", () => {
       axisMagnetTarget: null,
       interactionState: "idle",
       selectedObjectId: null,
+      transformStage: "idle",
     });
     useSceneStore.getState().resetScene();
   });
@@ -92,7 +94,7 @@ describe("App", () => {
 
     expect(
       screen.getByText(
-        /Physics enabled: select an object to start screen-depth-drag editing/i,
+        /Physics enabled: select an object to pause simulation and show move or rotate actions/i,
       ),
     ).toBeInTheDocument();
     expect(screen.getByText("FPS")).toBeInTheDocument();
@@ -244,7 +246,11 @@ describe("App", () => {
     );
 
     expect(screen.getByText(/Object Rotate/i)).toBeInTheDocument();
-    expect(screen.getByText(/Rotate mode:/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /Physics enabled: select an object to pause simulation and show move or rotate actions/i,
+      ),
+    ).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: /Rotate/i })).toHaveLength(2);
     expect(
       screen.getByRole("button", { name: /Switch to Rotate tool/i }),

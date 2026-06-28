@@ -8,21 +8,32 @@ describe("uiStore", () => {
       axisMagnetTarget: null,
       interactionState: "idle",
       selectedObjectId: null,
+      transformStage: "idle",
     });
   });
 
-  it("clears the rotate selection when switching to move mode", () => {
+  it("enters selection stage when selecting an object", () => {
+    useUiStore.getState().selectObject("amber-box");
+
+    expect(useUiStore.getState().selectedObjectId).toBe("amber-box");
+    expect(useUiStore.getState().interactionState).toBe("active");
+    expect(useUiStore.getState().transformStage).toBe("selection");
+  });
+
+  it("enters move stage without dragging", () => {
     useUiStore.setState({
-      interactionMode: "rotate",
       interactionState: "active",
       selectedObjectId: "amber-box",
+      transformStage: "selection",
     });
 
-    useUiStore.getState().setInteractionMode("move");
+    useUiStore.getState().beginMoveMode();
 
+    expect(useUiStore.getState().axisMagnetTarget).toBeNull();
     expect(useUiStore.getState().interactionMode).toBe("move");
-    expect(useUiStore.getState().selectedObjectId).toBeNull();
-    expect(useUiStore.getState().interactionState).toBe("idle");
+    expect(useUiStore.getState().interactionState).toBe("active");
+    expect(useUiStore.getState().selectedObjectId).toBe("amber-box");
+    expect(useUiStore.getState().transformStage).toBe("move");
   });
 
   it("clears selection when a move drag completes", () => {
@@ -35,6 +46,7 @@ describe("uiStore", () => {
       interactionMode: "move",
       interactionState: "dragging",
       selectedObjectId: "amber-box",
+      transformStage: "move",
     });
 
     useUiStore.getState().completeMoveDrag();
@@ -42,23 +54,26 @@ describe("uiStore", () => {
     expect(useUiStore.getState().axisMagnetTarget).toBeNull();
     expect(useUiStore.getState().interactionState).toBe("idle");
     expect(useUiStore.getState().selectedObjectId).toBeNull();
+    expect(useUiStore.getState().transformStage).toBe("idle");
   });
 
-  it("keeps the selection when changing into rotate mode", () => {
+  it("enters rotate stage without dragging", () => {
     useUiStore.setState({
-      interactionMode: "move",
       interactionState: "active",
       selectedObjectId: "amber-box",
+      transformStage: "selection",
     });
 
-    useUiStore.getState().setInteractionMode("rotate");
+    useUiStore.getState().beginRotateMode();
 
+    expect(useUiStore.getState().axisMagnetTarget).toBeNull();
     expect(useUiStore.getState().interactionMode).toBe("rotate");
-    expect(useUiStore.getState().selectedObjectId).toBe("amber-box");
     expect(useUiStore.getState().interactionState).toBe("active");
+    expect(useUiStore.getState().selectedObjectId).toBe("amber-box");
+    expect(useUiStore.getState().transformStage).toBe("rotate");
   });
 
-  it("keeps dragging state when setting the current interaction mode again", () => {
+  it("clears selection and returns to idle", () => {
     useUiStore.setState({
       axisMagnetTarget: {
         axis: "z",
@@ -66,20 +81,17 @@ describe("uiStore", () => {
         objectId: "amber-box",
       },
       interactionMode: "move",
-      interactionState: "dragging",
+      interactionState: "active",
       selectedObjectId: "amber-box",
+      transformStage: "move",
     });
 
-    useUiStore.getState().setInteractionMode("move");
+    useUiStore.getState().clearSelection();
 
-    expect(useUiStore.getState().interactionMode).toBe("move");
-    expect(useUiStore.getState().interactionState).toBe("dragging");
-    expect(useUiStore.getState().selectedObjectId).toBe("amber-box");
-    expect(useUiStore.getState().axisMagnetTarget).toEqual({
-      axis: "z",
-      direction: "negative",
-      objectId: "amber-box",
-    });
+    expect(useUiStore.getState().axisMagnetTarget).toBeNull();
+    expect(useUiStore.getState().interactionState).toBe("idle");
+    expect(useUiStore.getState().selectedObjectId).toBeNull();
+    expect(useUiStore.getState().transformStage).toBe("idle");
   });
 
   it("clears an active axis magnet when surface snapping changes", () => {
