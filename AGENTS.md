@@ -7,8 +7,15 @@
 2. 実装後に `pnpm run format` を実行する。
 3. 次に `pnpm run lint` と `pnpm run test` を実行する。
 4. リリース前または画面変更時は `pnpm run e2e` を実行する。
-5. 画面変更時は`playwright-interactive` skillで画面を確認する。
+5. 画面変更時は Codex app 標準の in-app Browser（browser/control-in-app-browser）で画面を確認する。
 6. 最終確認として `pnpm run build` を通す。
+
+## Smooth Verification Loop
+
+- 実装中の内側ループは `pnpm run lint` と `pnpm run test` を優先し、e2e は UI の流れが固まってから実行する。
+- e2e の調査中は、必要なら `pnpm run build` を一度通したあと `pnpm exec playwright test tests/e2e/app.spec.ts -g "<test name>"` で対象を絞って再実行する。
+- ブラウザ確認では `pnpm exec vite preview --host 127.0.0.1 --port 4173 --strictPort` を起動し、Codex app の in-app Browser で `http://127.0.0.1:4173/` を開いて確認する。確認後は起動した preview プロセスを停止する。
+- 画面変更の完了前には、対象を絞った確認だけで終わらせず、`pnpm run e2e` と `pnpm run build` を通す。
 
 ## Current Guardrails
 
