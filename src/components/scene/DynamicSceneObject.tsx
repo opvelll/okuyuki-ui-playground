@@ -263,7 +263,6 @@ export function DynamicSceneObject({
     position,
     restitution: objectRestitution,
     rotation,
-    scale,
     type: bodyType,
   };
 
